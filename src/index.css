@@ -1,0 +1,7 @@
+/* Import Design System */
+@import './design-system.css';
+
+/* Adding tailwind */
+@import "tailwindcss";
+
+/* Additional app-wide styles go here */

@@ -1,0 +1,43 @@
+{
+  "name": "caritas-inn-igbobi",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode development",
+    "start": "vite",
+    "build": "npm run generate-sitemap && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "generate-sitemap": "node scripts/generate-sitemap.js"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/react-helmet": "^6.1.11",
+    "axios": "^1.13.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-helmet": "^6.1.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.9.1",
+    "react-toastify": "^11.0.5",
+    "sitemap-webpack-plugin": "^1.1.1",
+    "styled-components": "^6.1.19"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.22",
+    "baseline-browser-mapping": "^2.8.28",
+    "env-cmd": "^11.0.0",
+    "eslint": "^9.33.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "vite": "^7.1.2"
+  }
+}

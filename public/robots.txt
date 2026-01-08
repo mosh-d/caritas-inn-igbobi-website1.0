@@ -1,0 +1,18 @@
+# Caritas Inn Igbobi - robots.txt
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /*?*
+
+# Sitemap location
+Sitemap: https://caritasinnigbobi.fivecloverhotels.com/sitemap.xml
+
+Crawl-delay: 10
+
+# Example for blocking specific bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: / 
