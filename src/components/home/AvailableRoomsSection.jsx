@@ -22,7 +22,6 @@ import {
   IoBedOutline,
   IoCardOutline,
   IoPersonOutline,
-  IoRefresh,
 } from "react-icons/io5";
 import { FaTv } from "react-icons/fa";
 import { LuBath } from "react-icons/lu";
@@ -138,7 +137,6 @@ export default function AvailableRoomsSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedRooms, setSelectedRooms] = useState({});
-  const [lastUpdated, setLastUpdated] = useState(Date.now());
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [currentGalleryImages, setCurrentGalleryImages] = useState([]);
 
@@ -196,15 +194,16 @@ export default function AvailableRoomsSection() {
     }
   }, [branchId]);
 
+  // Auto-refresh every 60 seconds
   useEffect(() => {
-    fetchRoomData();
-  }, [fetchRoomData, lastUpdated]);
+    fetchRoomData(); // Initial fetch
 
-  const refreshData = () => {
-    setLastUpdated(Date.now());
-    setLoading(true);
-    setError(null);
-  };
+    const interval = setInterval(() => {
+      fetchRoomData(); // Auto-refresh
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, [fetchRoomData]);
 
   const handleRoomsChange = (roomTypeId, value) => {
     setSelectedRooms((prev) => ({
@@ -276,25 +275,11 @@ export default function AvailableRoomsSection() {
     >
       <div className="flex max-sm:flex-col max-sm:gap-[2.4rem] justify-between items-center max-sm:items-start">
         <h2 className="text-6xl font-secondary font-bold">Available Rooms</h2>
-        <button
-          onClick={refreshData}
-          disabled={loading}
-          className="flex text-xl gap-2 px-6 py-4 gap-[1.2rem] bg-[color:var(--text-color)] text-white rounded hover:cursor-pointer hover:bg-[color:var(--text-color)]/70 disabled:bg-[color:var(--text-color)]"
-        >
-          <IoRefresh size="1.5rem" className={loading ? "animate-spin" : ""} />
-          {loading ? "Refreshing..." : "Refresh Rooms"}
-        </button>
       </div>
 
       {error && (
         <div className="p-4 text-xl text-center text-red-500 bg-red-50 rounded">
           {error}
-          <button
-            onClick={refreshData}
-            className="ml-4 text-xl text-[color:var(--text-color)] hover:underline"
-          >
-            Try Again
-          </button>
         </div>
       )}
 

@@ -179,6 +179,8 @@ export default function AdminBookingsPage() {
 
   useEffect(() => {
     fetchBookings();
+    const interval = setInterval(() => fetchBookings(), 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const formatDate = (dateString) => {
@@ -259,20 +261,6 @@ export default function AdminBookingsPage() {
           <h1 className="text-6xl font-secondary font-bold text-[color:var(--black)]">
             Bookings
           </h1>
-          <div className="w-56 flex justify-end">
-            <button
-              onClick={fetchBookings}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 text-xl w-56 py-4 bg-[color:var(--text-color)] text-white rounded cursor-pointer hover:bg-[color:var(--text-color)]/70 disabled:bg-[color:var(--text-color)]"
-              title="Refresh bookings"
-            >
-              <IoRefresh
-                size="1.5rem"
-                className={loading ? "animate-spin" : ""}
-              />
-              {loading ? "Refreshing..." : "Refresh Data"}
-            </button>
-          </div>
         </div>
         <div className="w-full overflow-x-auto">
           <table className="min-w-full border-collapse text-2xl">

@@ -6,7 +6,6 @@ import CustomInput from "../components/shared/CustomInput";
 import Footer from "../components/shared/Footer";
 import { createReservation, getRoomTypeId } from "../utils/booking-api";
 import { toast } from "react-toastify";
-import { IoRefresh } from "react-icons/io5";
 
 // Define the context type (optional, for TypeScript; can omit if not using TS)
 const useSharedContext = () => {
@@ -41,20 +40,11 @@ export default function BookingConfirmationPage() {
     isLoadingRooms,
     fetchAvailableRooms, // Function to refresh room availability
   } = useSharedContext();
-  
-  // Handle refresh button click
-  const handleRefresh = async () => {
-    try {
-      await fetchAvailableRooms(checkInDate, checkOutDate);
-      toast.success('Room availability updated');
-    } catch (error) {
-      console.error('Error refreshing room availability:', error);
-      toast.error('Failed to refresh room availability');
-    }
-  };
 
   // Get the currently selected room details
-  const selectedRoom = roomTypes?.find(room => room.room_type_name === roomType);
+  const selectedRoom = roomTypes?.find(
+    (room) => room.room_type_name === roomType
+  );
 
   // Form state
   const [formData, setFormData] = useState({
@@ -70,16 +60,19 @@ export default function BookingConfirmationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Validation and error state
-  const [validationError, setValidationError] = useState({ show: false, message: '' });
-  
+  const [validationError, setValidationError] = useState({
+    show: false,
+    message: "",
+  });
+
   // Helper to set validation error
-  const setFormError = (message = '') => {
+  const setFormError = (message = "") => {
     setValidationError({ show: true, message });
   };
-  
+
   // Helper to clear validation error
   const clearFormError = () => {
-    setValidationError({ show: false, message: '' });
+    setValidationError({ show: false, message: "" });
   };
 
   // Handle form input changes
@@ -99,11 +92,11 @@ export default function BookingConfirmationPage() {
   const handleRoomTypeChange = (selectedRoomType) => {
     setRoomType(selectedRoomType);
     // Reset number of rooms when room type changes
-    setNumberOfRooms('');
+    setNumberOfRooms("");
     if (validationError.show) {
       clearFormError();
     }
-    
+
     // Update total payment with the new room type
     updateTotalPayment(selectedRoomType, 1); // Default to 1 room when changing room type
   };
@@ -150,42 +143,42 @@ export default function BookingConfirmationPage() {
 
   // Format date to YYYY-MM-DD, handling both YYYY-MM-DD and MM/DD/YYYY formats
   const formatDate = (dateString) => {
-    if (!dateString) return '';
-    
+    if (!dateString) return "";
+
     // If already in YYYY-MM-DD format, return as is
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
       return dateString;
     }
-    
+
     // Handle MM/DD/YYYY format from date picker
-    if (dateString.includes('/')) {
-      const [month, day, year] = dateString.split('/').map(Number);
+    if (dateString.includes("/")) {
+      const [month, day, year] = dateString.split("/").map(Number);
       const date = new Date(year, month - 1, day);
-      
+
       // Ensure we have a valid date
       if (isNaN(date.getTime())) {
-        console.error('Invalid date format:', dateString);
-        return '';
+        console.error("Invalid date format:", dateString);
+        return "";
       }
-      
+
       // Format as YYYY-MM-DD
-      return date.toISOString().split('T')[0];
+      return date.toISOString().split("T")[0];
     }
-    
-    console.error('Unsupported date format:', dateString);
-    return '';
+
+    console.error("Unsupported date format:", dateString);
+    return "";
   };
 
   // Handle booking confirmation
   const handleConfirmBooking = async () => {
     if (!isFormValid()) {
-      setFormError('Please fill in all required fields');
+      setFormError("Please fill in all required fields");
       return;
     }
 
     // Get room type ID from the room type name
     const selectedRoomTypeId = getRoomTypeId(roomType);
-    
+
     if (!selectedRoomTypeId) {
       toast.error("Please select a valid room type");
       return;
@@ -199,7 +192,9 @@ export default function BookingConfirmationPage() {
       const checkOut = formatDate(checkOutDate);
 
       if (!checkIn || !checkOut) {
-        throw new Error("Invalid date format. Please check your dates and try again.");
+        throw new Error(
+          "Invalid date format. Please check your dates and try again."
+        );
       }
 
       const reservationPayload = {
@@ -213,7 +208,7 @@ export default function BookingConfirmationPage() {
         phone: formData.phone,
       };
 
-      console.log('Sending reservation payload:', reservationPayload);
+      console.log("Sending reservation payload:", reservationPayload);
       const response = await createReservation(reservationPayload);
 
       if (response.reservation_id) {
@@ -227,6 +222,11 @@ export default function BookingConfirmationPage() {
           totalAmount: totalPayment,
         });
         setShowSuccessModal(true);
+
+        // Immediately refresh room availability to show updated counts
+        await fetchAvailableRooms(checkInDate, checkOutDate);
+
+        console.log("Success modal shown");
       }
     } catch (error) {
       console.error("Error creating reservation:", {
@@ -234,16 +234,21 @@ export default function BookingConfirmationPage() {
         response: error.response?.data,
         status: error.response?.status,
       });
-      
-      if (error.response?.status === 409 && 
-          (error.response?.data?.message?.includes('Insufficient availability') || 
-           error.response?.data?.error?.includes('Insufficient availability'))) {
-        setFormError('There are no more rooms for the selected category. Please click the refresh button to see available rooms.');
+
+      if (
+        error.response?.status === 409 &&
+        (error.response?.data?.message?.includes("Insufficient availability") ||
+          error.response?.data?.error?.includes("Insufficient availability"))
+      ) {
+        setFormError(
+          "There are no more rooms for the selected category. Please click the refresh button to see available rooms."
+        );
       } else {
-        const errorMessage = error.response?.data?.message || 
-                           error.response?.data?.error || 
-                           error.message ||
-                           "Failed to create reservation. Please check your details and try again.";
+        const errorMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to create reservation. Please check your details and try again.";
         toast.error(errorMessage);
       }
     } finally {
@@ -274,14 +279,6 @@ export default function BookingConfirmationPage() {
               <h1 className="text-6xl font-secondary font-bold text-[color:var(--text-color)]">
                 Booking Confirmation
               </h1>
-              <button
-                onClick={handleRefresh}
-                disabled={isLoadingRooms}
-                className="flex items-center text-xl gap-2 px-6 py-4 bg-[color:var(--text-color)] text-white rounded hover:cursor-pointer hover:bg-[color:var(--text-color)]/70 disabled:bg-[color:var(--text-color)]/50"
-              >
-                <IoRefresh size="1.5rem" className={isLoadingRooms ? 'animate-spin' : ''} />
-                {isLoadingRooms ? 'Refreshing...' : 'Refresh Rooms'}
-              </button>
             </div>
             <div className="flex max-lg:flex-col gap-[4.8rem] w-full">
               <div
@@ -361,7 +358,7 @@ export default function BookingConfirmationPage() {
                       ) : (
                         <select
                           id="room-type"
-                          value={roomType || ''}
+                          value={roomType || ""}
                           onChange={(e) => handleRoomTypeChange(e.target.value)}
                           className="cursor-pointer bg-transparent border-b-[.5px] border-[color:var(--text-color)]/50 py-2 focus:outline-none focus:border-[color:var(--emphasis)] hover:border-[color:var(--emphasis)] focus:bg-[color:var(--emphasis)]/10 text-xl"
                           disabled={isLoadingRooms}
@@ -373,8 +370,11 @@ export default function BookingConfirmationPage() {
                               value={room.room_type_name}
                               disabled={room.total_rooms === 0}
                             >
-                              {room.room_type_name} (₦{room.base_rate?.toLocaleString()}/night)
-                              {room.total_rooms === 0 ? ' - Sold Out' : ` - ${room.total_rooms} available`}
+                              {room.room_type_name} (₦
+                              {room.base_rate?.toLocaleString()}/night)
+                              {room.total_rooms === 0
+                                ? " - Sold Out"
+                                : ` - ${room.total_rooms} available`}
                             </option>
                           ))}
                         </select>
@@ -400,26 +400,40 @@ export default function BookingConfirmationPage() {
                         <select
                           id="number-of-rooms"
                           value={numberOfRooms || ""}
-                          onChange={(e) => handleNumberOfRoomsChange(e.target.value)}
+                          onChange={(e) =>
+                            handleNumberOfRoomsChange(e.target.value)
+                          }
                           className="cursor-pointer bg-transparent border-b-[.5px] border-[color:var(--text-color)]/50 py-2 focus:outline-none focus:border-[color:var(--emphasis)] hover:border-[color:var(--emphasis)] focus:bg-[color:var(--emphasis)]/10 text-xl"
-                          disabled={!roomType || isLoadingRooms || !selectedRoom || (selectedRoom && selectedRoom.total_rooms === 0)}
+                          disabled={
+                            !roomType ||
+                            isLoadingRooms ||
+                            !selectedRoom ||
+                            (selectedRoom && selectedRoom.total_rooms === 0)
+                          }
                         >
                           <option value="">Select Number of Rooms</option>
-                          {selectedRoom?.total_rooms > 0 ? (
-                            Array.from(
-                              { length: Math.min(selectedRoom.total_rooms, 10) },
-                              (_, i) => {
-                                const num = i + 1;
-                                const isMax = num === Math.min(selectedRoom.total_rooms, 10);
-                                return (
-                                  <option key={num} value={num}>
-                                    {num} {num === 1 ? "Room" : "Rooms"}
-                                    {isMax ? ' (Max)' : ''}
-                                  </option>
-                                );
-                              }
-                            )
-                          ) : null}
+                          {selectedRoom?.total_rooms > 0
+                            ? Array.from(
+                                {
+                                  length: Math.min(
+                                    selectedRoom.total_rooms,
+                                    10
+                                  ),
+                                },
+                                (_, i) => {
+                                  const num = i + 1;
+                                  const isMax =
+                                    num ===
+                                    Math.min(selectedRoom.total_rooms, 10);
+                                  return (
+                                    <option key={num} value={num}>
+                                      {num} {num === 1 ? "Room" : "Rooms"}
+                                      {isMax ? " (Max)" : ""}
+                                    </option>
+                                  );
+                                }
+                              )
+                            : null}
                         </select>
                       )}
                     </div>
@@ -526,7 +540,25 @@ export default function BookingConfirmationPage() {
                   >
                     {isSubmitting ? (
                       <div className="flex items-center gap-2">
-                        <IoRefresh className="animate-spin" />
+                        <svg
+                          className="animate-spin h-5 w-5"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
                         Processing...
                       </div>
                     ) : (
@@ -541,7 +573,8 @@ export default function BookingConfirmationPage() {
             {validationError.show && (
               <div className="mt-[2rem] p-[2rem] bg-red-50 border border-red-200 rounded-lg">
                 <h3 className="text-lg font-semibold text-red-800 mb-[1rem]">
-                  {validationError.message || 'Please fill in all required fields:'}
+                  {validationError.message ||
+                    "Please fill in all required fields:"}
                 </h3>
                 <ul className="text-red-700">
                   {getMissingFields().map((field, index) => (
@@ -620,8 +653,8 @@ export default function BookingConfirmationPage() {
                     <div className="ml-3">
                       <p className="text-xl text-[]">
                         <strong>Important:</strong> This room has been booked on
-                        hold for 2 hours. Please proceed to the hotel or contact us to
-                        finalize your reservation and make payment.
+                        hold for 2 hours. Please proceed to the hotel or contact
+                        us to finalize your reservation and make payment.
                         <br />
                         <br />
                         <span className="font-bold">
