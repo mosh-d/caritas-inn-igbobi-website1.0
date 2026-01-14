@@ -106,6 +106,14 @@ export default function AdminOverviewPage() {
 
       setUpdateMessage(response.data.message);
       setIsEditing(false);
+
+      // Immediately update the UI with the new count (optimistic update)
+      setRoomDetails((prev) => ({
+        ...prev,
+        totalAvailableRooms: newCount,
+      }));
+
+      // Then refresh to ensure data is in sync
       await loadRoomData(); // Refresh the data
 
       // Clear the message after 3 seconds
