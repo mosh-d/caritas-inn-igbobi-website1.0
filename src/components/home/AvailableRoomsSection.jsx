@@ -382,7 +382,7 @@ export default function AvailableRoomsSection() {
                 </td>
                 <td className="p-4 border border-[color:var(--text-color)]/20">
                   <div className="flex flex-col gap-6">
-                    <span className="text-xl font-bold">
+                    <span className="text-3xl font-bold">
                       {room.currency_symbol || "₦"}
                       {room.base_rate?.toLocaleString()} per night
                     </span>
@@ -507,7 +507,7 @@ export default function AvailableRoomsSection() {
               <div className="border border-[color:var(--white)]/20 p-[1rem]">
                 <h5 className="text-xl font-semibold mb-2">Price</h5>
                 <div className="space-y-2">
-                  <div className="text-lg">
+                  <div className="text-2xl">
                     {room.currency_symbol || "₦"}
                     {room.base_rate?.toLocaleString()} per night
                   </div>
