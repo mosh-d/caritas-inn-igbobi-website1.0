@@ -284,14 +284,14 @@ export default function Footer() {
                   target="_blank"
                   className="text-2xl"
                 >
-                  Eso, Ikeja
+                  Eso close, ikeja GRA
                 </a>
                 <a
                   href="https://ringrubyhoteloduduwaikejagra.com/"
                   target="_blank"
                   className="text-2xl"
                 >
-                  Oduduwa, Ikeja
+                  Oduduwa way, ikeja GRA
                 </a>
                 <a
                   href="https://ringrubyhoteloduduwaikejagra.com/"
