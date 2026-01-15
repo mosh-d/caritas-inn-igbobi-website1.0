@@ -389,7 +389,7 @@ export default function AvailableRoomsSection() {
                     {parseInt(selectedRooms[room.room_type_id] || "1") > 1 && (
                       <>
                         <hr />
-                        <span className="text-2xl font-bold text-[color:var(--emphasis)]">
+                        <span className="text-3xl font-bold text-[color:var(--emphasis)]">
                           {room.currency_symbol || "₦"}
                           {(
                             room.base_rate *
@@ -512,7 +512,7 @@ export default function AvailableRoomsSection() {
                     {room.base_rate?.toLocaleString()} per night
                   </div>
                   {parseInt(selectedRooms[room.room_type_id] || "1") > 1 && (
-                    <div className="text-xl font-bold text-[color:var(--emphasis)]">
+                    <div className="text-2xl font-bold text-[color:var(--emphasis)]">
                       {room.currency_symbol || "₦"}
                       {(
                         room.base_rate *
