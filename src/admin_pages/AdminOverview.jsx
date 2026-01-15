@@ -27,9 +27,9 @@ export default function AdminOverviewPage() {
   const [updateMessage, setUpdateMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const loadRoomData = async () => {
+  const loadRoomData = async (showLoading = true) => {
     try {
-      setIsLoading(true);
+      if (showLoading) setIsLoading(true);
       const roomTypeId = ROOM_TYPE_MAP[roomType];
       const data = await fetchRoomDetails();
 
@@ -47,13 +47,13 @@ export default function AdminOverviewPage() {
     } catch (error) {
       console.error("Error loading room data:", error);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadRoomData();
-    const interval = setInterval(() => loadRoomData(), 30000);
+    loadRoomData(true);
+    const interval = setInterval(() => loadRoomData(false), 30000);
     return () => clearInterval(interval);
   }, [roomType]);
 
@@ -114,7 +114,7 @@ export default function AdminOverviewPage() {
       }));
 
       // Then refresh to ensure data is in sync
-      await loadRoomData(); // Refresh the data
+      // await loadRoomData(); // Refresh the data
 
       // Clear the message after 3 seconds
       setTimeout(() => setUpdateMessage(""), 5000);
