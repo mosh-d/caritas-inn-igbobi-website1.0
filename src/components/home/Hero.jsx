@@ -22,7 +22,7 @@ const useSharedContext = () => {
 
 export default function HeroSection() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 640 : false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
   const videoRef = useRef(null);
