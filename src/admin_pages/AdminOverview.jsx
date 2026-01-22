@@ -6,6 +6,14 @@ import { IoRefresh } from "react-icons/io5";
 
 const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
 
+// ========================================
+// 🔧 MAINTENANCE MODE TOGGLE
+// ========================================
+// Set to 'true' to enable maintenance modal (blocks all admin interactions)
+// Set to 'false' to disable maintenance modal (normal operation)
+const MAINTENANCE_MODE = false; // ← Change this to true/false
+// ========================================
+
 const ROOM_TYPE_MAP = {
   standard: 6,
   classic: 7,
@@ -69,7 +77,7 @@ export default function AdminOverviewPage() {
     }
     if (numValue > roomDetails.maxCapacity) {
       setErrorMessage(
-        `Cannot exceed maximum capacity of ${roomDetails.maxCapacity} rooms`
+        `Cannot exceed maximum capacity of ${roomDetails.maxCapacity} rooms`,
       );
       return false;
     }
@@ -101,7 +109,7 @@ export default function AdminOverviewPage() {
             "Content-Type": "application/json",
           },
           withCredentials: true,
-        }
+        },
       );
 
       setUpdateMessage(response.data.message);
@@ -121,7 +129,7 @@ export default function AdminOverviewPage() {
     } catch (error) {
       console.error("Error updating room count:", error);
       setUpdateMessage(
-        error.response?.data?.message || "Failed to update room count"
+        error.response?.data?.message || "Failed to update room count",
       );
       setTimeout(() => setUpdateMessage(""), 5000);
     }
@@ -266,6 +274,50 @@ export default function AdminOverviewPage() {
           </div>
         )}
       </div>
+
+      {/* Maintenance Modal - Blocks all interaction when MAINTENANCE_MODE is true */}
+      {MAINTENANCE_MODE && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "3rem",
+              borderRadius: "1rem",
+              maxWidth: "50rem",
+              textAlign: "center",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🔧</div>
+            <h2
+              style={{
+                fontSize: "2.4rem",
+                fontWeight: "bold",
+                marginBottom: "1rem",
+              }}
+            >
+              Maintenance In Progress
+            </h2>
+            <p style={{ fontSize: "1.6rem", color: "#666" }}>
+              Maintenance currently ongoing, please hold on before making any
+              changes
+            </p>
+          </div>
+        </div>
+      )}
     </>
   );
 }

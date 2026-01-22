@@ -6,12 +6,12 @@ import logo from "../../assets/caritas-logo.png";
 
 export default function MainNavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
 
   // Update mobile state on window resize
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+      setIsMobile(window.innerWidth < 640);
     };
 
     window.addEventListener("resize", handleResize);
