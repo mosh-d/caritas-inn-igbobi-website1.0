@@ -15,14 +15,13 @@ const MAINTENANCE_MODE = false; // ← Change this to true/false
 // ========================================
 
 const ROOM_TYPE_MAP = {
-  standard: 6,
   classic: 7,
   deluxe: 8,
   executive: 9,
 };
 
 export default function AdminOverviewPage() {
-  const [roomType, setRoomType] = useState("standard");
+  const [roomType, setRoomType] = useState("classic");
   const [roomDetails, setRoomDetails] = useState({
     maxCapacity: 0,
     totalAvailableRooms: 0,
@@ -147,18 +146,6 @@ export default function AdminOverviewPage() {
           </h1>
         </div>
         <menu className="flex gap-[4rem] text-xl text-[color:var(--emphasis)]">
-          {roomType === "standard" ? (
-            <li className="bg-[color:var(--emphasis)] text-[color:var(--white)] px-2 py-1 cursor-pointer">
-              STANDARD
-            </li>
-          ) : (
-            <li
-              className="border-b-[1px] border-[color:var(--emphasis)] cursor-pointer"
-              onClick={() => setRoomType("standard")}
-            >
-              STANDARD
-            </li>
-          )}
           {roomType === "classic" ? (
             <li className="bg-[color:var(--emphasis)] text-[color:var(--white)] px-2 py-1 cursor-pointer">
               CLASSIC
