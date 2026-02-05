@@ -1,31 +1,31 @@
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { verifyToken } from '../utils/auth';
-import AdminNavBar from '../components/shared/AdminNavBar';
-import AdminTopBar from '../components/shared/AdminTopBar';
-import LoadingSpinner from '../components/shared/LoadingSpinner';
+import { Outlet, Navigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { verifyToken } from "../utils/auth";
+import AdminNavBar from "../components/shared/AdminNavBar";
+import AdminTopBar from "../components/shared/AdminTopBar";
+import LoadingSpinner from "../components/shared/LoadingSpinner";
 
 export default function AdminRootLayout() {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
-  const isLoginPage = location.pathname === '/admin';
+  const isLoginPage = location.pathname === "/admin";
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const userData = await verifyToken();
         setIsAuthenticated(!!userData);
-        
+
         // Redirect to login if not authenticated and not on login page
         if (!userData && !isLoginPage) {
-          window.location.href = '/admin';
+          window.location.href = "/admin";
         }
       } catch (error) {
-        console.error('Authentication check failed:', error);
+        console.error("Authentication check failed:", error);
         setIsAuthenticated(false);
         if (!isLoginPage) {
-          window.location.href = '/admin';
+          window.location.href = "/admin";
         }
       } finally {
         setIsLoading(false);
@@ -61,7 +61,7 @@ export default function AdminRootLayout() {
       </header>
       <div className="flex min-h-[calc(100vh-4rem)]">
         <AdminNavBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-0 md:p-6">
           <Outlet />
         </main>
       </div>

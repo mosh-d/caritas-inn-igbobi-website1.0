@@ -138,7 +138,7 @@ export default function AdminOverviewPage() {
     <>
       <div
         data-component="AdminOverview"
-        className="px-[4rem] py-[4rem] flex flex-col items-start gap-[4rem]"
+        className="p-[2rem] md:px-[4rem] md:py-[4rem] flex flex-col items-start gap-[4rem]"
       >
         <div className="w-full flex justify-between items-center">
           <h1 className="text-6xl font-secondary font-bold text-[color:var(--black)]">
@@ -194,7 +194,7 @@ export default function AdminOverviewPage() {
           >
             <div
               data-component="AdminOverviewRoomDetailsItem"
-              className="w-[25%] min-w-[40rem]"
+              className="w-[25%] min-w-[35rem] md:min-w-[40rem]"
             >
               <div className="flex flex-col gap-[4rem] bg-[color:var(--white)] p-[1rem] shadow-lg h-full justify-between">
                 <p>Max Capacity</p>
@@ -207,7 +207,7 @@ export default function AdminOverviewPage() {
             </div>
             <div
               data-component="AdminOverviewRoomDetailsItem"
-              className="w-[25%] min-w-[40rem]"
+              className="w-[25%] min-w-[35rem] md:min-w-[40rem]"
             >
               <div className="flex flex-col gap-[4rem] bg-[color:var(--white)] p-[1rem] shadow-lg h-full justify-between">
                 <p>Total Available Rooms</p>
