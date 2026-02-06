@@ -4,7 +4,6 @@ import {
   RiTiktokLine,
   RiFacebookLine,
   RiInstagramLine,
-  RiTwitterXLine,
   RiPhoneLine,
   RiWhatsappLine,
   RiMailLine,
@@ -71,12 +70,12 @@ export default function ContactMainSection() {
           >
             <RiFacebookLine size="3rem" />
             <a
-              href="https://www.facebook.com/RingrubyHotel?_rdc=1&_rdr#"
+              href="https://www.facebook.com/caritasinn1/"
               className="border-b border-[color:var(--text-color)]/30 text-xl"
               target="_blank"
               rel="noopener noreferrer"
             >
-              RingrubyHotel
+              Caritas Inn
             </a>
           </div>
           <div
@@ -85,12 +84,12 @@ export default function ContactMainSection() {
           >
             <RiInstagramLine size="3rem" />
             <a
-              href="https://www.instagram.com/ringruby_hotel/"
+              href="https://www.instagram.com/caritas.inn/"
               className="border-b border-[color:var(--text-color)]/30 text-xl"
               target="_blank"
               rel="noopener noreferrer"
             >
-              @ringruby_hotel
+              @caritas.inn
             </a>
           </div>
           <div
@@ -99,24 +98,12 @@ export default function ContactMainSection() {
           >
             <RiTiktokLine size="3rem" />
             <a
-              href="https://www.tiktok.com/@ringrubyhotels"
+              href="https://www.tiktok.com/@caritasinnlagos"
               className="border-b border-[color:var(--text-color)]/30 text-xl"
               target="_blank"
               rel="noopener noreferrer"
             >
-              @ringrubyhotels
-            </a>
-          </div>
-          <div
-            data-component="ContactItem"
-            className="flex gap-[1.2rem] items-center"
-          >
-            <RiTwitterXLine size="3rem" />
-            <a
-              href=""
-              className="border-b border-[color:var(--text-color)]/30 text-xl"
-            >
-              @fivecloverhotel
+              @caritasinnlagos
             </a>
           </div>
         </div>

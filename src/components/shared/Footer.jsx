@@ -47,23 +47,17 @@ export default function Footer() {
             className="flex gap-[2.4rem] flex-wrap justify-center"
           >
             <li>
-              <a
-                href="https://www.facebook.com/RingrubyHotel?_rdc=1&_rdr#"
-                target="_blank"
-              >
+              <a href="https://www.facebook.com/caritasinn1/" target="_blank">
                 <RiFacebookLine size="3rem" />
               </a>
             </li>
             <li>
-              <a
-                href="https://www.instagram.com/ringruby_hotel/"
-                target="_blank"
-              >
+              <a href="https://www.instagram.com/caritas.inn/" target="_blank">
                 <RiInstagramLine size="3rem" />
               </a>
             </li>
             <li>
-              <a href="https://www.tiktok.com/@ringrubyhotels" target="_blank">
+              <a href="https://www.tiktok.com/@caritasinnlagos" target="_blank">
                 <RiTiktokLine size="3rem" />
               </a>
             </li>
