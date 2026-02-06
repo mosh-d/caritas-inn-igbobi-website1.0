@@ -409,7 +409,7 @@ export default function AvailableRoomsSection() {
             {roomTypes.map((room) => (
               <tr key={`desktop-${room.room_type_id}`}>
                 <td
-                  className="flex flex-col p-4 border border-[color:var(--background-color)] border-1 bg-cover bg-center relative"
+                  className="flex flex-col p-4 border-[color:var(--background-color)] border-1 bg-cover bg-center relative"
                   style={{
                     backgroundImage: `linear-gradient(to bottom, hsla(359, 50%, 7%, .85), hsla(359, 50%, 7%, .85)), url(${
                       roomPrimaryImages[room.room_type_name] ||
