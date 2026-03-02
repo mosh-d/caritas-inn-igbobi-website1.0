@@ -42,3 +42,28 @@ export const fetchRoomDetails = async () => {
     throw error;
   }
 };
+
+export const fetchMaintenanceMode = async () => {
+  try {
+    const baseUrl = API_BASE_URL.endsWith("/")
+      ? API_BASE_URL.slice(0, -1)
+      : API_BASE_URL;
+    const response = await axios.post(
+      `${baseUrl}/api/branches/maintenance-mode`,
+      {
+        branch_id: BRANCH_ID,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching maintenance mode:", error);
+    throw error;
+  }
+};

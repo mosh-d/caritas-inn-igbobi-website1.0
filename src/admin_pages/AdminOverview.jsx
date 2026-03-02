@@ -1,18 +1,10 @@
-import { useState, useEffect } from "react";
-import { fetchRoomDetails } from "../utils/room-data";
+import { useState, useEffect, useCallback } from "react";
+import { fetchRoomDetails, fetchMaintenanceMode } from "../utils/room-data";
 import axios from "axios";
 import Button from "../components/shared/Button";
 import { IoRefresh } from "react-icons/io5";
 
 const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
-
-// ========================================
-// 🔧 MAINTENANCE MODE TOGGLE
-// ========================================
-// Set to 'true' to enable maintenance modal (blocks all admin interactions)
-// Set to 'false' to disable maintenance modal (normal operation)
-const MAINTENANCE_MODE = false; // ← Change this to true/false
-// ========================================
 
 const ROOM_TYPE_MAP = {
   classic: 7,
@@ -33,8 +25,9 @@ export default function AdminOverviewPage() {
   const [tempRoomCount, setTempRoomCount] = useState("");
   const [updateMessage, setUpdateMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
 
-  const loadRoomData = async (showLoading = true) => {
+  const loadRoomData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setIsLoading(true);
       const roomTypeId = ROOM_TYPE_MAP[roomType];
@@ -56,13 +49,40 @@ export default function AdminOverviewPage() {
     } finally {
       if (showLoading) setIsLoading(false);
     }
-  };
+  }, [roomType]);
+
+  const checkMaintenanceMode = useCallback(async () => {
+    try {
+      const data = await fetchMaintenanceMode();
+      
+      console.log("🔧 Maintenance Mode Debug:", {
+        raw_value: data.maintenance_mode,
+        type: typeof data.maintenance_mode,
+        is_one: data.maintenance_mode === 1,
+        is_true: data.maintenance_mode === true,
+        full_response: data
+      });
+      
+      if (data.maintenance_mode !== undefined) {
+        setMaintenanceMode(data.maintenance_mode === 1);
+      }
+    } catch (error) {
+      console.error("Error checking maintenance mode:", error);
+    }
+  }, []);
 
   useEffect(() => {
     loadRoomData(true);
-    const interval = setInterval(() => loadRoomData(false), 30000);
-    return () => clearInterval(interval);
-  }, [roomType]);
+    checkMaintenanceMode(); // Initial check
+    
+    const roomInterval = setInterval(() => loadRoomData(false), 30000);
+    const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 30000);
+    
+    return () => {
+      clearInterval(roomInterval);
+      clearInterval(maintenanceInterval);
+    };
+  }, [loadRoomData, checkMaintenanceMode]);
 
   const validateInput = (value) => {
     const numValue = parseInt(value, 10);
@@ -262,8 +282,8 @@ export default function AdminOverviewPage() {
         )}
       </div>
 
-      {/* Maintenance Modal - Blocks all interaction when MAINTENANCE_MODE is true */}
-      {MAINTENANCE_MODE && (
+      {/* Maintenance Modal - Blocks all interaction when maintenance_mode is true */}
+      {maintenanceMode && (
         <div
           style={{
             position: "fixed",
