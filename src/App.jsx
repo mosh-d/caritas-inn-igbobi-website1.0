@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { WebSocketProvider } from "./context/WebSocketContext";
 
 import HomePage from "./pages/Home";
 import AboutPage from "./pages/About";
@@ -39,5 +40,9 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <WebSocketProvider>
+      <RouterProvider router={router} />
+    </WebSocketProvider>
+  );
 }

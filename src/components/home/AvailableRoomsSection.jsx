@@ -1,6 +1,7 @@
 import { useOutletContext } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
+import { useWebSocketContext } from "../../context/WebSocketContext";
 import axios from "axios";
 import CustomInput from "../shared/CustomInput";
 import Button from "../shared/Button";
@@ -281,15 +282,23 @@ export default function AvailableRoomsSection() {
     }
   }, [branchId]);
 
-  // Auto-refresh every 60 seconds
+  // WebSocket handler - refetch data when rooms are updated
+  const handleRoomsUpdated = useCallback((data) => {
+    console.log('🔄 [AvailableRoomsSection] Refreshing room data due to WebSocket update...');
+    fetchRoomData();
+  }, [fetchRoomData]);
+
+  // Subscribe to WebSocket updates
+  const { isConnected, subscribe } = useWebSocketContext();
+  
   useEffect(() => {
-    fetchRoomData(); // Initial fetch
+    const unsubscribe = subscribe(handleRoomsUpdated);
+    return unsubscribe;
+  }, [handleRoomsUpdated, subscribe]);
 
-    const interval = setInterval(() => {
-      fetchRoomData(); // Auto-refresh
-    }, 60000); // 60 seconds
-
-    return () => clearInterval(interval); // Cleanup on unmount
+  // Initial fetch only
+  useEffect(() => {
+    fetchRoomData();
   }, [fetchRoomData]);
 
   const handleRoomsChange = (roomTypeId, value) => {

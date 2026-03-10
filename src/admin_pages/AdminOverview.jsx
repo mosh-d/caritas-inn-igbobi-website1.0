@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchRoomDetails, fetchMaintenanceMode } from "../utils/room-data";
+import { useWebSocketContext } from "../context/WebSocketContext";
 import axios from "axios";
 import Button from "../components/shared/Button";
-import { IoRefresh } from "react-icons/io5";
 
-const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://five-clover-shared-backend.onrender.com";
 
 const ROOM_TYPE_MAP = {
   classic: 7,
@@ -51,6 +51,20 @@ export default function AdminOverviewPage() {
     }
   }, [roomType]);
 
+  // WebSocket handler - refetch data when rooms are updated
+  const handleRoomsUpdated = useCallback(() => {
+    console.log('🔄 [AdminOverview] Refreshing room data due to WebSocket update...');
+    loadRoomData(false);
+  }, [loadRoomData]);
+
+  // Subscribe to WebSocket updates
+  const { subscribe } = useWebSocketContext();
+  
+  useEffect(() => {
+    const unsubscribe = subscribe(handleRoomsUpdated);
+    return unsubscribe;
+  }, [handleRoomsUpdated, subscribe]);
+
   const checkMaintenanceMode = useCallback(async () => {
     try {
       const data = await fetchMaintenanceMode();
@@ -75,11 +89,9 @@ export default function AdminOverviewPage() {
     loadRoomData(true);
     checkMaintenanceMode(); // Initial check
     
-    const roomInterval = setInterval(() => loadRoomData(false), 30000);
     const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 30000);
     
     return () => {
-      clearInterval(roomInterval);
       clearInterval(maintenanceInterval);
     };
   }, [loadRoomData, checkMaintenanceMode]);
@@ -134,16 +146,12 @@ export default function AdminOverviewPage() {
       setUpdateMessage(response.data.message);
       setIsEditing(false);
 
-      // Immediately update the UI with the new count (optimistic update)
-      setRoomDetails((prev) => ({
-        ...prev,
-        totalAvailableRooms: newCount,
-      }));
+      // Manually refresh after a short delay to ensure DB has committed
+      setTimeout(() => {
+        loadRoomData(false);
+      }, 500);
 
-      // Then refresh to ensure data is in sync
-      // await loadRoomData(); // Refresh the data
-
-      // Clear the message after 3 seconds
+      // Clear the message after 5 seconds
       setTimeout(() => setUpdateMessage(""), 5000);
     } catch (error) {
       console.error("Error updating room count:", error);
