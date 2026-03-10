@@ -455,7 +455,7 @@ export default function AvailableRoomsSection() {
                     disabled={loading || !room.total_rooms}
                   >
                     <option value="0" className="text-xl">
-                      0
+                      {room.total_rooms === 0 ? "Unavailable" : "0"}
                     </option>
                     {Array.from({ length: room.total_rooms || 0 }, (_, i) => (
                       <option
@@ -577,7 +577,7 @@ export default function AvailableRoomsSection() {
                     value="0"
                     className="text-lg cursor-pointer text-[color:var(--text-color)]"
                   >
-                    0 (Select rooms)
+                    {room.total_rooms === 0 ? "Unavailable" : "0 (Select rooms)"}
                   </option>
                   {Array.from({ length: room.total_rooms || 0 }, (_, i) => (
                     <option
