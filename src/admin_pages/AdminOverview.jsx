@@ -154,7 +154,14 @@ export default function AdminOverviewPage() {
       // Clear the message after 5 seconds
       setTimeout(() => setUpdateMessage(""), 5000);
     } catch (error) {
-      console.error("Error updating room count:", error);
+      console.error("❌ [AdminOverview] Error updating room count:", error);
+      console.error('📝 [AdminOverview] Update error details:', {
+        error_message: error.message,
+        error_stack: error.stack,
+        response_status: error.response?.status,
+        response_data: error.response?.data,
+        timestamp: new Date().toISOString()
+      });
       setUpdateMessage(
         error.response?.data?.message || "Failed to update room count",
       );
