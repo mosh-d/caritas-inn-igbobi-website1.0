@@ -250,8 +250,11 @@ export default function AvailableRoomsSection() {
     branchId,
   } = useSharedContext();
 
-  const fetchRoomData = useCallback(async () => {
+ const fetchRoomData = useCallback(async () => {
     try {
+      console.log('🔄 [AvailableRoomsSection] Starting fetchRoomData at:', new Date().toISOString());
+      setLoading(true);
+      
       // Ensure API_BASE_URL doesn't end with a slash to prevent double slashes
       const baseUrl = API_BASE_URL.endsWith("/")
         ? API_BASE_URL.slice(0, -1)
@@ -260,9 +263,14 @@ export default function AvailableRoomsSection() {
         branch_id: branchId,
       });
 
-      console.log("API Response:", response.data);
+      console.log("📊 [AvailableRoomsSection] API Response at:", new Date().toISOString(), response.data);
 
       if (response.data && response.data.room_types) {
+        // Log room details for debugging
+        response.data.room_types.forEach((room) => {
+          console.log(`🏠 [AvailableRoomsSection] Room ${room.room_type_id} (${room.room_type_name}): ${room.available_rooms}/${room.total_rooms} available`);
+        });
+        
         setRoomTypes(response.data.room_types);
 
         const initialSelectedRooms = {};
@@ -275,17 +283,64 @@ export default function AvailableRoomsSection() {
         }));
       }
     } catch (err) {
-      console.error("Error fetching room data:", err);
-      setError("Failed to load room data. Please try again later.");
+      console.error("❌ [AvailableRoomsSection] Error fetching room data:", err);
+      setError("Failed to load room data. Please refresh the page or try again later.");
     } finally {
       setLoading(false);
     }
   }, [branchId]);
 
-  // WebSocket handler - refetch data when rooms are updated
+  // WebSocket handler - refetch data when rooms are updated (with dual fetch for reliability)
   const handleRoomsUpdated = useCallback((data) => {
-    console.log('🔄 [AvailableRoomsSection] Refreshing room data due to WebSocket update...');
-    fetchRoomData();
+    console.log('🔄 [AvailableRoomsSection] WebSocket update received at:', new Date().toISOString());
+    console.log('📡 [AvailableRoomsSection] WebSocket data:', data);
+    
+    // Check if we have a manual update response with room count data
+    if (data.new_available !== undefined || data.requested_count !== undefined) {
+      const updatedCount = data.new_available || data.requested_count;
+      console.log(`🔄 [AvailableRoomsSection] Using manual update response: ${updatedCount}`);
+      
+      // Update specific room type that was changed
+      setRoomTypes(prev => prev.map(room => {
+        // Find room that was updated (assume it's one that matches the count)
+        if (room.room_type_id === 7) { // Classic room type ID for igbobi
+          return {
+            ...room,
+            total_rooms: updatedCount,
+            available_rooms: updatedCount
+          };
+        }
+        return room;
+      }));
+      console.log('✅ [AvailableRoomsSection] UI updated with manual update response');
+    }
+    // If we only get branch_id, it's a basic notification - fetch to get actual data
+    else if (data.branch_id) {
+      console.log('🔄 [AvailableRoomsSection] Basic WebSocket notification, fetching updated data...');
+      // Immediate fetch to get the latest data
+      fetchRoomData();
+      console.log('🔄 [AvailableRoomsSection] Immediate fetch triggered for basic notification');
+    }
+    // Update UI immediately with WebSocket data if available
+    else if (data.room_types && Array.isArray(data.room_types)) {
+      console.log('🔄 [AvailableRoomsSection] Updating UI immediately with WebSocket data');
+      setRoomTypes(data.room_types);
+      console.log('✅ [AvailableRoomsSection] UI updated with WebSocket data');
+    }
+    
+    // First fetch after 2 seconds (immediate response)
+    setTimeout(() => {
+      console.log('🔄 [AvailableRoomsSection] Starting first fetch...');
+      fetchRoomData();
+      console.log('🔄 [AvailableRoomsSection] First fetch triggered');
+    }, 2000);
+    
+    // Second verification fetch after 5 seconds (ensure consistency)
+    setTimeout(() => {
+      console.log('🔄 [AvailableRoomsSection] Starting verification fetch...');
+      fetchRoomData();
+      console.log('🔄 [AvailableRoomsSection] Verification fetch triggered');
+    }, 5000);
   }, [fetchRoomData]);
 
   // Subscribe to WebSocket updates

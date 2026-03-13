@@ -50,12 +50,30 @@ export default function AdminOverviewPage() {
       if (showLoading) setIsLoading(false);
     }
   }, [roomType]);
-
-  // WebSocket handler - refetch data when rooms are updated
-  const handleRoomsUpdated = useCallback(() => {
-    console.log('🔄 [AdminOverview] Refreshing room data due to WebSocket update...');
-    loadRoomData(false);
-  }, [loadRoomData]);
+  // WebSocket handler - refetch data when rooms are updated (with dual fetch for reliability)
+  const handleRoomsUpdated = useCallback((data) => {
+    console.log(' [AdminOverview] WebSocket update received at:', new Date().toISOString());
+    console.log('📡 [AdminOverview] WebSocket data:', data);
+    
+    // Only refresh if not currently editing to prevent interference
+    if (!isEditing) {
+      // First fetch after 2 seconds (immediate response)
+      setTimeout(() => {
+        console.log('🔄 [AdminOverview] Starting first fetch...');
+        loadRoomData(false);
+        console.log('🔄 [AdminOverview] First fetch triggered');
+      }, 2000);
+      
+      // Second verification fetch after 5 seconds (ensure consistency)
+      setTimeout(() => {
+        console.log('🔄 [AdminOverview] Starting verification fetch...');
+        loadRoomData(false);
+        console.log('🔄 [AdminOverview] Verification fetch triggered');
+      }, 5000);
+    } else {
+      console.log('⏸️ [AdminOverview] Skipping refresh - user is currently editing');
+    }
+  }, [loadRoomData, isEditing]);
 
   // Subscribe to WebSocket updates
   const { subscribe } = useWebSocketContext();
@@ -121,14 +139,24 @@ export default function AdminOverviewPage() {
       return;
     }
 
+    console.log('🚀 [AdminOverview] === STARTING MANUAL ROOM UPDATE ===');
+    console.log(`📝 [AdminOverview] Update request: ${roomType} → ${tempRoomCount} rooms`);
+    console.log(`⏰ [AdminOverview] Manual update started at:`, new Date().toISOString());
+
     try {
       const roomTypeId = ROOM_TYPE_MAP[roomType];
       const newCount = parseInt(tempRoomCount, 10);
+
+      console.log(`🔍 [AdminOverview] Room mapping: ${roomType} → ID ${roomTypeId}`);
+      console.log(`📊 [AdminOverview] New count parsed: ${newCount}`);
 
       // Ensure API_BASE_URL doesn't end with a slash to prevent double slashes
       const baseUrl = API_BASE_URL.endsWith("/")
         ? API_BASE_URL.slice(0, -1)
         : API_BASE_URL;
+      
+      console.log(`🌐 [AdminOverview] Making request to: ${baseUrl}/api/rooms/manual-update`);
+      
       const response = await axios.post(
         `${baseUrl}/api/rooms/manual-update`,
         {
@@ -143,15 +171,40 @@ export default function AdminOverviewPage() {
         },
       );
 
+      console.log('📤 [AdminOverview] Manual Update Response:', response.data);
+      console.log(`✅ [AdminOverview] Manual update completed successfully`);
+      console.log(`⏰ [AdminOverview] Manual update completed at:`, new Date().toISOString());
+
+      // Update UI immediately with the confirmed response
+      const updatedCount = response.data.new_available || response.data.requested_count;
+      if (updatedCount !== undefined) {
+        console.log(`🔄 [AdminOverview] Updating UI immediately with confirmed count: ${updatedCount}`);
+        setRoomDetails(prev => ({
+          ...prev,
+          totalAvailableRooms: updatedCount
+        }));
+        setTempRoomCount(updatedCount.toString());
+        console.log('✅ [AdminOverview] UI updated with manual update response');
+      }
+
+      // First fetch after 2 seconds (immediate response)
+      setTimeout(() => {
+        console.log('🔄 [AdminOverview] Starting first fetch...');
+        loadRoomData(false);
+        console.log('🔄 [AdminOverview] First fetch triggered');
+      }, 2000);
+      
+      // Second verification fetch after 5 seconds (ensure consistency)
+      setTimeout(() => {
+        console.log('🔄 [AdminOverview] Starting verification fetch...');
+        loadRoomData(false);
+        console.log('🔄 [AdminOverview] Verification fetch triggered');
+      }, 5000);
+
       setUpdateMessage(response.data.message);
       setIsEditing(false);
 
-      // Manually refresh after a short delay to ensure DB has committed
-      setTimeout(() => {
-        loadRoomData(false);
-      }, 500);
-
-      // Clear the message after 5 seconds
+      // Clear message after 5 seconds
       setTimeout(() => setUpdateMessage(""), 5000);
     } catch (error) {
       console.error("❌ [AdminOverview] Error updating room count:", error);
