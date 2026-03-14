@@ -69,7 +69,14 @@ export default function AdminOverviewPage() {
         console.log('🔄 [AdminOverview] Starting verification fetch...');
         loadRoomData(false);
         console.log('🔄 [AdminOverview] Verification fetch triggered');
-      }, 5000);
+      }, 6000);
+
+      // Final verification fetch after 10 seconds (ensure consistency)
+      setTimeout(() => {
+        console.log('🔄 [AdminOverview] Starting verification fetch...');
+        loadRoomData(false);
+        console.log('🔄 [AdminOverview] Verification fetch triggered');
+      }, 10000);
     } else {
       console.log('⏸️ [AdminOverview] Skipping refresh - user is currently editing');
     }
@@ -199,13 +206,20 @@ export default function AdminOverviewPage() {
         console.log('🔄 [AdminOverview] Starting verification fetch...');
         loadRoomData(false);
         console.log('🔄 [AdminOverview] Verification fetch triggered');
-      }, 5000);
+      }, 6000);
+
+      // Final safety fetch after 10 seconds (ensure consistency)
+      setTimeout(() => {
+        console.log('🔄 [AdminOverview] Starting safety fetch...');
+        loadRoomData(false);
+        console.log('🔄 [AdminOverview] Safety fetch triggered');
+      }, 10000);
 
       setUpdateMessage(response.data.message);
       setIsEditing(false);
 
       // Clear message after 5 seconds
-      setTimeout(() => setUpdateMessage(""), 5000);
+      setTimeout(() => setUpdateMessage(""), 10000);
     } catch (error) {
       console.error("❌ [AdminOverview] Error updating room count:", error);
       console.error('📝 [AdminOverview] Update error details:', {
@@ -218,7 +232,7 @@ export default function AdminOverviewPage() {
       setUpdateMessage(
         error.response?.data?.message || "Failed to update room count",
       );
-      setTimeout(() => setUpdateMessage(""), 5000);
+      setTimeout(() => setUpdateMessage(""), 10000);
     }
   };
 
