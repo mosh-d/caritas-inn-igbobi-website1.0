@@ -99,7 +99,7 @@ export default function MainNavBar() {
 
       {/* Mobile Menu */}
       <MobileMenu
-        isOpen={isMenuOpen && isMobile}
+        isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
       />
     </>

@@ -229,7 +229,7 @@ export default function HeroSection() {
         </div>
         {/* Mobile Menu */}
         <MobileMenu
-          isOpen={isMenuOpen && isMobile}
+          isOpen={isMenuOpen}
           onClose={() => setIsMenuOpen(false)}
         />
       </div>

@@ -67,7 +67,7 @@ export default function AdminNavBar() {
 
       {/* Mobile Menu */}
       <AdminMobileMenu
-        isOpen={isMenuOpen && isMobile}
+        isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
       />
     </>
