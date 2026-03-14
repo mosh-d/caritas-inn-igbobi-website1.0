@@ -345,6 +345,13 @@ export default function AvailableRoomsSection() {
       fetchRoomData();
       console.log('🔄 [AvailableRoomsSection] Verification fetch triggered');
     }, 5000);
+
+    // Final safety fetch after 10 seconds (ensure consistency)
+    setTimeout(() => {
+      console.log('🔄 [AvailableRoomsSection] Starting safety fetch...');
+      fetchRoomData();
+      console.log('🔄 [AvailableRoomsSection] Safety fetch triggered');
+    }, 10000);
   }, [fetchRoomData]);
 
   // Subscribe to WebSocket updates
