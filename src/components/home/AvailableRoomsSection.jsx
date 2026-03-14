@@ -272,15 +272,6 @@ export default function AvailableRoomsSection() {
         });
         
         setRoomTypes(response.data.room_types);
-
-        const initialSelectedRooms = {};
-        response.data.room_types.forEach((room) => {
-          initialSelectedRooms[room.room_type_id] = "0"; // Default to 0 rooms selected
-        });
-        setSelectedRooms((prev) => ({
-          ...prev,
-          ...initialSelectedRooms,
-        }));
       }
     } catch (err) {
       console.error("❌ [AvailableRoomsSection] Error fetching room data:", err);
@@ -300,19 +291,26 @@ export default function AvailableRoomsSection() {
       const updatedCount = data.new_available || data.requested_count;
       console.log(`🔄 [AvailableRoomsSection] Using manual update response: ${updatedCount}`);
       
-      // Update specific room type that was changed
-      setRoomTypes(prev => prev.map(room => {
-        // Find room that was updated (assume it's one that matches the count)
-        if (room.room_type_id === 7) { // Classic room type ID for igbobi
-          return {
-            ...room,
-            total_rooms: updatedCount,
-            available_rooms: updatedCount
-          };
-        }
-        return room;
-      }));
-      console.log('✅ [AvailableRoomsSection] UI updated with manual update response');
+      // If response includes room_type_id, update that specific room type
+      if (data.room_type_id) {
+        console.log(`🎯 [AvailableRoomsSection] Updating specific room type ${data.room_type_id} with count ${updatedCount}`);
+        setRoomTypes(prev => prev.map(room => {
+          if (room.room_type_id === data.room_type_id) {
+            return {
+              ...room,
+              total_rooms: updatedCount,
+              available_rooms: updatedCount
+            };
+          }
+          return room;
+        }));
+        console.log('✅ [AvailableRoomsSection] UI updated with manual update response for specific room type');
+      } else {
+        // If no room_type_id in response, fetch fresh data to ensure accuracy
+        console.log('🔄 [AvailableRoomsSection] No room_type_id in response, fetching fresh data for accuracy...');
+        fetchRoomData();
+        console.log('✅ [AvailableRoomsSection] Fresh data fetch triggered for manual update');
+      }
     }
     // If we only get branch_id, it's a basic notification - fetch to get actual data
     else if (data.branch_id) {
@@ -326,6 +324,12 @@ export default function AvailableRoomsSection() {
       console.log('🔄 [AvailableRoomsSection] Updating UI immediately with WebSocket data');
       setRoomTypes(data.room_types);
       console.log('✅ [AvailableRoomsSection] UI updated with WebSocket data');
+    }
+    else {
+      // Fallback: fetch fresh data for any other WebSocket message types
+      console.log('🔄 [AvailableRoomsSection] Unknown WebSocket message type, fetching fresh data...');
+      fetchRoomData();
+      console.log('✅ [AvailableRoomsSection] Fallback fetch triggered');
     }
     
     // First fetch after 2 seconds (immediate response)
