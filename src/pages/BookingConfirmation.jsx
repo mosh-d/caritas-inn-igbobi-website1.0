@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
 import Footer from "../components/shared/Footer";
 import { createReservation, getRoomTypeId } from "../utils/booking-api";
 import { toast } from "react-toastify";
+import { useWebSocketContext } from "../context/WebSocketContext";
 
 // Define the context type (optional, for TypeScript; can omit if not using TS)
 const useSharedContext = () => {
@@ -40,6 +41,21 @@ export default function BookingConfirmationPage() {
     isLoadingRooms,
     fetchAvailableRooms, // Function to refresh room availability
   } = useSharedContext();
+
+  // WebSocket: live room count updates with delayed safety fetches
+  const handleRoomsUpdated = useCallback(() => {
+    console.log('🔄 [BookingConfirmation] WebSocket update - refreshing room availability...');
+    fetchAvailableRooms(checkInDate, checkOutDate);
+    setTimeout(() => fetchAvailableRooms(checkInDate, checkOutDate), 2000);
+    setTimeout(() => fetchAvailableRooms(checkInDate, checkOutDate), 5000);
+    setTimeout(() => fetchAvailableRooms(checkInDate, checkOutDate), 10000);
+  }, [fetchAvailableRooms, checkInDate, checkOutDate]);
+
+  const { subscribe } = useWebSocketContext();
+  useEffect(() => {
+    const unsubscribe = subscribe(handleRoomsUpdated);
+    return unsubscribe;
+  }, [handleRoomsUpdated, subscribe]);
 
   // Get the currently selected room details
   const selectedRoom = roomTypes?.find(
@@ -205,10 +221,11 @@ export default function BookingConfirmationPage() {
         check_out: checkOut,
         rooms_booked: parseInt(numberOfRooms, 10),
         email: formData.email,
-        phone: formData.phone,
+        phone_number: formData.phone,
       };
 
       console.log("Sending reservation payload:", reservationPayload);
+      console.log("Phone number: " + reservationPayload.phone);
       const response = await createReservation(reservationPayload);
 
       if (response.reservation_id) {
@@ -351,7 +368,7 @@ export default function BookingConfirmationPage() {
                       >
                         Room Type
                       </label>
-                      {isLoadingRooms ? (
+                      {isLoadingRooms && roomTypes.length === 0 ? (
                         <div className="py-2 text-gray-500">
                           Loading room types...
                         </div>
@@ -388,7 +405,7 @@ export default function BookingConfirmationPage() {
                       >
                         Number of Rooms
                       </label>
-                      {isLoadingRooms ? (
+                      {isLoadingRooms && roomTypes.length === 0 ? (
                         <div className="py-2 text-gray-500">
                           Loading room availability...
                         </div>

@@ -51,7 +51,7 @@ export default function AdminBookingsPage() {
       const response = await axios.post(
         `${baseUrl}/api/bookings`,
         {
-          room_type_id: [6, 7, 8, 9],
+          room_type_id: [7, 8, 9],
         },
         {
           headers: {
@@ -270,6 +270,12 @@ export default function AdminBookingsPage() {
                   Guest Name
                 </th>
                 <th className="px-8 py-4 text-left whitespace-nowrap">
+                  Guest Email
+                </th>
+                <th className="px-8 py-4 text-left whitespace-nowrap">
+                  Guest Phone
+                </th>
+                <th className="px-8 py-4 text-left whitespace-nowrap">
                   Booking ID
                 </th>
                 <th className="px-8 py-4 text-left whitespace-nowrap">
@@ -322,6 +328,12 @@ export default function AdminBookingsPage() {
                   >
                     <td className="px-8 py-4 text-left">
                       {booking.guest_name}
+                    </td>
+                    <td className="px-8 py-4 text-left">
+                      {booking.guest_email || "N/A"}
+                    </td>
+                    <td className="px-8 py-4 text-left">
+                      {booking.phone_number || "N/A"}
                     </td>
                     <td className="px-8 py-4 text-left">
                       {booking.booking_id}
