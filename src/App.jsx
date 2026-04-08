@@ -10,6 +10,7 @@ import AdminRootLayout from "./admin_pages/AdminRoot";
 import ErrorPage from "./pages/Error";
 import AdminOverview from "./admin_pages/AdminOverview";
 import AdminBookings from "./admin_pages/AdminBookings";
+import AdminRooms from "./admin_pages/AdminRooms";
 import AdminLoginPage from "./admin_pages/AdminLogin";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminLoginPage /> },
       { path: "overview", element: <AdminOverview /> },
+      { path: "rooms", element: <AdminRooms /> },
       { path: "bookings", element: <AdminBookings /> },
       { path: "*", element: <NotFound /> },
     ],
