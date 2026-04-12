@@ -70,6 +70,10 @@ export default function AdminBookingsPage() {
   const [exportStatusActive, setExportStatusActive] = useState(true);
   const [exportStatusConfirmed, setExportStatusConfirmed] = useState(true);
 
+  // Early Checkout Modal State
+  const [isEarlyCheckoutOpen, setIsEarlyCheckoutOpen] = useState(false);
+  const [processingEarlyCheckout, setProcessingEarlyCheckout] = useState(false);
+
   const fetchBookings = async (isBackgroundRefresh = false) => {
     try {
       if (!isBackgroundRefresh) {
@@ -237,6 +241,9 @@ export default function AdminBookingsPage() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Don't close Guest Info Modal if Early Checkout modal is open
+      if (isEarlyCheckoutOpen) return;
+
       if (modalRef.current && !modalRef.current.contains(event.target)) {
         setSelectedBooking(null);
       }
@@ -253,7 +260,7 @@ export default function AdminBookingsPage() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [selectedBooking, isFilterOpen, isExportModalOpen]);
+  }, [selectedBooking, isFilterOpen, isExportModalOpen, isEarlyCheckoutOpen]);
 
   const formatDate = (dateString) => {
     const options = { year: "numeric", month: "short", day: "numeric" };
@@ -284,6 +291,53 @@ export default function AdminBookingsPage() {
     // This triggers the native browser download instantly.
     window.location.href = exportUrl;
     setIsExportModalOpen(false);
+  };
+
+  const handleEarlyCheckout = async () => {
+    try {
+      if (!selectedBooking) {
+        setError("No booking selected. Please try again.");
+        setIsEarlyCheckoutOpen(false);
+        return;
+      }
+
+      setProcessingEarlyCheckout(true);
+      const baseUrl = API_BASE_URL.endsWith("/")
+        ? API_BASE_URL.slice(0, -1)
+        : API_BASE_URL;
+
+      const reservationId = selectedBooking.reservation_id || selectedBooking.booking_id;
+      
+      const payload = {
+        reservation_id: reservationId
+      };
+      
+      console.log("AdminBookings: Processing emergency early checkout for reservation ID:", reservationId);
+      
+      const response = await axios.post(
+        `${baseUrl}/api/reservations/emergency-checkout`,
+        payload,
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        }
+      );
+      
+      setSuccessMessage(response.data.message || "Early checkout processed successfully.");
+      setTimeout(() => setSuccessMessage(""), 5000);
+      
+      setIsEarlyCheckoutOpen(false);
+      setSelectedBooking(null); // close modal
+      fetchBookings();
+    } catch (err) {
+      console.error("Error processing early checkout:", err);
+      setError(
+        err.response?.data?.message || "Failed to process early checkout. Please try again."
+      );
+      setIsEarlyCheckoutOpen(false);
+    } finally {
+      setProcessingEarlyCheckout(false);
+    }
   };
 
   // Filter bookings based on search
@@ -333,6 +387,7 @@ export default function AdminBookingsPage() {
                   )
                 }
                 variant="emphasis"
+                className="!bg-green-700 !border-green-600 hover:!bg-green-500 hover:!border-green-700 text-white"
               >
                 Confirm
               </Button>
@@ -348,6 +403,7 @@ export default function AdminBookingsPage() {
                   )
                 }
                 variant="emphasis"
+                className="!bg-red-700 !border-red-600 hover:!bg-red-500 hover:!border-red-700 text-white"
               >
                 Cancel
               </Button>
@@ -355,20 +411,7 @@ export default function AdminBookingsPage() {
           );
 
         case "confirmed":
-          return (
-            <Button
-              onClick={() =>
-                handleStatusUpdate(
-                  booking.booking_id,
-                  "cancelled",
-                  reservationId,
-                )
-              }
-              variant="emphasis"
-            >
-              Cancel
-            </Button>
-          );
+          return null;
 
         default:
           return null;
@@ -646,13 +689,62 @@ export default function AdminBookingsPage() {
 
             {/* Footer */}
 
-            <div className="bg-[var(--text-color)] p-6 justify-center flex">
+            <div className="bg-[var(--text-color)] p-6 justify-center flex gap-6">
+              {'active'.includes(selectedBooking.status.toLowerCase()) && (
+                <Button
+                  onClick={() => setIsEarlyCheckoutOpen(true)}
+                  variant="emphasis"
+                  className="!border-red-600 !text-red-600 hover:!bg-red-600 hover:!text-white active:!bg-red-700 active:!border-red-700 transition-colors"
+                >
+                  <p className="font-primary text-xl">Early Checkout</p>
+                </Button>
+              )}
               <Button
                 onClick={() => setSelectedBooking(null)}
                 variant="white"
               >
                 <p className="font-primary text-xl">Close</p>
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Early Checkout Warning Modal */}
+      {isEarlyCheckoutOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !processingEarlyCheckout && setIsEarlyCheckoutOpen(false)} />
+          <div className="relative z-10 bg-white rounded-lg shadow-2xl max-w-lg w-full p-10 flex flex-col gap-6 text-center font-primary border border-gray-200">
+            <div className="text-red-600 flex justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-20 h-20">
+                <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-4xl font-bold text-[color:var(--text-color)] tracking-wide mb-4 font-secondary">
+                Emergency Checkout?
+              </h3>
+              <p className="text-xl text-[color:var(--text-color)]/70 leading-relaxed font-primary">
+                Are you sure you want to process an early checkout for this guest? This will finalize their reservation and instantly release their rooms back into the public market.
+              </p>
+            </div>
+            <div className="flex gap-4 justify-center pt-4">
+              <button
+                onClick={() => setIsEarlyCheckoutOpen(false)}
+                disabled={processingEarlyCheckout}
+                className="font-primary text-xl tracking-wider px-8 py-4 border border-[color:var(--text-color)]/30 text-[color:var(--text-color)] hover:bg-gray-100 transition-all cursor-pointer rounded-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEarlyCheckout}
+                disabled={processingEarlyCheckout}
+                className={`font-primary text-xl tracking-wider px-8 py-4 bg-red-600 text-white hover:bg-red-700 active:bg-red-800 transition-all rounded-sm ${
+                  processingEarlyCheckout ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+                }`}
+              >
+                {processingEarlyCheckout ? "Processing..." : "Confirm Checkout"}
+              </button>
             </div>
           </div>
         </div>
