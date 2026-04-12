@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { IoRefresh } from "react-icons/io5";
-import { IoClose } from "react-icons/io5";
+import { IoRefresh, IoClose, IoFilter } from "react-icons/io5";
 import Button from "../components/shared/Button";
 
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
@@ -55,8 +54,22 @@ export default function AdminBookingsPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const modalRef = useRef(null);
+  const filterDropdownRef = useRef(null);
+  const exportModalRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const bookingsPerPage = 10;
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("name"); // "name" or "id"
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  
+  // Export Modal State
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState("");
+  const [exportEndDate, setExportEndDate] = useState("");
+  const [exportStatusActive, setExportStatusActive] = useState(true);
+  const [exportStatusConfirmed, setExportStatusConfirmed] = useState(true);
+
   const fetchBookings = async (isBackgroundRefresh = false) => {
     try {
       if (!isBackgroundRefresh) {
@@ -227,6 +240,12 @@ export default function AdminBookingsPage() {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
         setSelectedBooking(null);
       }
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+      if (exportModalRef.current && !exportModalRef.current.contains(event.target)) {
+        setIsExportModalOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -234,18 +253,62 @@ export default function AdminBookingsPage() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [selectedBooking]);
+  }, [selectedBooking, isFilterOpen, isExportModalOpen]);
 
   const formatDate = (dateString) => {
     const options = { year: "numeric", month: "short", day: "numeric" };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  // 1. Export function
+  const exportBookingsToCSV = () => {
+    const baseUrl = API_BASE_URL.endsWith("/")
+      ? API_BASE_URL.slice(0, -1)
+      : API_BASE_URL;
+
+    // Building status array based on checkboxes
+    const statuses = [];
+    if (exportStatusActive) statuses.push("active");
+    if (exportStatusConfirmed) statuses.push("confirmed");
+    const statusQuery = statuses.length > 0 ? `status=${statuses.join(",")}` : "";
+    
+    // Igbobi branch id is 3, appending it to ensure data segregation
+    let queryParams = `branch_id=3`;
+    if (statusQuery) queryParams += `&${statusQuery}`;
+    if (exportStartDate) queryParams += `&start_date=${exportStartDate}`;
+    if (exportEndDate) queryParams += `&end_date=${exportEndDate}`;
+
+    // You can dynamically build this URL string with any filters you desire.
+    const exportUrl = `${baseUrl}/api/bookings/export?${queryParams}`;
+
+    // This triggers the native browser download instantly.
+    window.location.href = exportUrl;
+    setIsExportModalOpen(false);
+  };
+
+  // Filter bookings based on search
+  const filteredBookings = bookings.filter((booking) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase().trim();
+    if (searchType === "name") {
+      return booking.guest_name?.toLowerCase().includes(query);
+    } else if (searchType === "id") {
+      return String(booking.booking_id).toLowerCase().includes(query);
+    }
+    return true;
+  });
+
   // Pagination calculations
   const indexOfLastBooking = currentPage * bookingsPerPage;
   const indexOfFirstBooking = indexOfLastBooking - bookingsPerPage;
-  const currentBookings = bookings.slice(indexOfFirstBooking, indexOfLastBooking);
-  const totalPages = Math.ceil(bookings.length / bookingsPerPage);
+  const currentBookings = filteredBookings.slice(indexOfFirstBooking, indexOfLastBooking);
+  const totalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
+
+  // Reset to page 1 if search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, searchType]);
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
@@ -344,10 +407,47 @@ export default function AdminBookingsPage() {
         data-component="AdminBookings"
         className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[4rem]"
       >
-        <div className="w-full flex justify-between items-center">
+        <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
           <h1 className="text-6xl font-secondary font-bold text-[color:var(--black)]">
             Bookings
           </h1>
+
+          {/* Search and Filter */}
+          <div className="relative flex items-center gap-2">
+            <input
+              type="text"
+              placeholder={`Search by ${searchType === "name" ? "name" : "ID"}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border border-[color:var(--text-color)]/30 rounded-md px-4 py-2 text-xl focus:outline-none focus:border-[color:var(--emphasis)] w-64 max-sm:w-full bg-[color:var(--background-color)]"
+            />
+            <div className="relative" ref={filterDropdownRef}>
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="p-2 border border-[color:var(--text-color)]/30 rounded-md hover:bg-black/5 transition-colors bg-[color:var(--background-color)]"
+                title="Filter"
+              >
+                <IoFilter size={24} className="text-[color:var(--text-color)]" />
+              </button>
+              
+              {isFilterOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 shadow-xl z-10 text-xl overflow-hidden font-primary">
+                  <div 
+                    className={`px-4 py-3 cursor-pointer hover:bg-gray-100 ${searchType === "name" ? "bg-gray-50 font-bold text-[color:var(--emphasis)]" : "text-[color:var(--text-color)]"}`}
+                    onClick={() => { setSearchType("name"); setIsFilterOpen(false); }}
+                  >
+                    Search by name
+                  </div>
+                  <div 
+                    className={`px-4 py-3 cursor-pointer hover:bg-gray-100 ${searchType === "id" ? "bg-gray-50 font-bold text-[color:var(--emphasis)]" : "text-[color:var(--text-color)]"}`}
+                    onClick={() => { setSearchType("id"); setIsFilterOpen(false); }}
+                  >
+                    Search by ID
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="w-full overflow-x-auto">
@@ -374,23 +474,25 @@ export default function AdminBookingsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="2" className="px-8 py-8 text-center">
+                  <td colSpan="4" className="px-8 py-8 text-center text-xl">
                     Loading bookings...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
                   <td
-                    colSpan="2"
-                    className="px-8 py-8 text-center text-red-600"
+                    colSpan="4"
+                    className="px-8 py-8 text-center text-red-600 text-xl"
                   >
                     {error}
                   </td>
                 </tr>
               ) : currentBookings.length === 0 ? (
                 <tr>
-                  <td colSpan="2" className="px-8 py-8 text-center">
-                    No bookings found.
+                  <td colSpan="4" className="px-8 py-8 text-center text-xl">
+                    {searchQuery 
+                      ? `No bookings match your description for ${searchType === "name" ? "name" : "ID"}.` 
+                      : "No bookings found."}
                   </td>
                 </tr>
               ) : (
@@ -420,40 +522,48 @@ export default function AdminBookingsPage() {
           </table>
         </div>
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4 mt-6">
-            <Button
-              variant="emphasis"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`${
-                currentPage === 1
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300 active:bg-gray-300 active:border-gray-300 active:text-gray-500"
-                  : ""
-              }`}
-            >
-              <p className="text-xl">Previous</p>
-            </Button>
+        {/* Pagination and Export Controls */}
+        <div className="flex justify-between items-center w-full mt-6 flex-wrap gap-4">
+          <div className="flex justify-center items-center gap-4">
+            {totalPages > 1 && (
+              <>
+                <Button
+                  variant="emphasis"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`${
+                    currentPage === 1
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300 active:bg-gray-300 active:border-gray-300 active:text-gray-500"
+                      : ""
+                  }`}
+                >
+                  <p className="text-xl">Previous</p>
+                </Button>
 
-            <span className="text-lg font-medium">
-              Page {currentPage} of {totalPages}
-            </span>
+                <span className="text-lg font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
 
-            <Button
-              variant="emphasis"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`${
-                currentPage === totalPages
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300 active:bg-gray-300 active:border-gray-300 active:text-gray-500"
-                  : ""
-              }`}
-            >
-              <p className="text-xl">Next</p>
-            </Button>
+                <Button
+                  variant="emphasis"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`${
+                    currentPage === totalPages
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300 active:bg-gray-300 active:border-gray-300 active:text-gray-500"
+                      : ""
+                  }`}
+                >
+                  <p className="text-xl">Next</p>
+                </Button>
+              </>
+            )}
           </div>
-        )}
+          
+          <Button onClick={() => setIsExportModalOpen(true)} variant="emphasis">
+            <p className="font-primary text-2xl px-4">Export Bookings</p>
+          </Button>
+        </div>
       </div>
 
       {/* Guest Info Modal */}
@@ -542,6 +652,85 @@ export default function AdminBookingsPage() {
                 variant="white"
               >
                 <p className="font-primary text-xl">Close</p>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Options Modal */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+          <div ref={exportModalRef} className="w-full max-w-lg bg-white shadow-2xl flex flex-col font-secondary rounded-lg overflow-hidden">
+            <div className="p-8 text-center bg-[var(--white)] relative">
+              <h2 className="font-bold text-3xl tracking-[0.2em] font-primary text-[var(--text-color)]">
+                Export Options
+              </h2>
+              <button
+                onClick={() => setIsExportModalOpen(false)}
+                className="absolute top-6 right-6 text-[color:var(--text-color)]/50 hover:text-[color:var(--emphasis)] transition-colors"
+                aria-label="Close modal"
+              >
+                <IoClose size={28} />
+              </button>
+            </div>
+            
+            <div className="bg-[var(--text-color)] text-[var(--white)] p-8 flex flex-col gap-8 tracking-[0.1em] text-sm font-primary">
+              <div className="flex gap-4 max-sm:flex-col">
+                <div className="w-full">
+                  <label className="block text-2xl font-semibold mb-2 text-[var(--emphasis)]">Start Date</label>
+                  <input 
+                    type="date" 
+                    value={exportStartDate}
+                    onChange={(e) => setExportStartDate(e.target.value)}
+                    className="w-full p-3 rounded-md bg-gray-800 text-white text-xl focus:outline-none border-2 border-transparent focus:border-[var(--emphasis)] placeholder:text-white"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+
+                <div className="w-full">
+                  <label className="block text-2xl font-semibold mb-2 text-[var(--emphasis)]">End Date</label>
+                  <input 
+                    type="date" 
+                    value={exportEndDate}
+                    onChange={(e) => setExportEndDate(e.target.value)}
+                    className="w-full p-3 rounded-md bg-gray-800 text-white text-xl focus:outline-none border-2 border-transparent focus:border-[var(--emphasis)] placeholder:text-white"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xl font-semibold mb-4 text-[var(--emphasis)]">Booking Status</label>
+                <div className="flex gap-8">
+                  <label className="flex items-center gap-3 cursor-pointer text-xl hover:text-gray-300 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={exportStatusActive}
+                      onChange={(e) => setExportStatusActive(e.target.checked)}
+                      className="w-6 h-6 accent-[var(--emphasis)] cursor-pointer"
+                    />
+                    Active
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer text-xl hover:text-gray-300 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={exportStatusConfirmed}
+                      onChange={(e) => setExportStatusConfirmed(e.target.checked)}
+                      className="w-6 h-6 accent-[var(--emphasis)] cursor-pointer"
+                    />
+                    Confirmed
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[var(--text-color)] p-6 justify-center flex gap-4 border-t border-[var(--white)]/10">
+              <Button onClick={() => setIsExportModalOpen(false)} variant="white">
+                <p className="font-primary text-xl">Cancel</p>
+              </Button>
+              <Button onClick={exportBookingsToCSV} variant="emphasis">
+                <p className="font-primary text-xl">Export Data (CSV)</p>
               </Button>
             </div>
           </div>
