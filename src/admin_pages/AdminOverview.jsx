@@ -86,7 +86,7 @@ export default function AdminOverviewPage() {
   const { subscribe } = useWebSocketContext();
   
   useEffect(() => {
-    const unsubscribe = subscribe(handleRoomsUpdated);
+    const unsubscribe = subscribe(handleRoomsUpdated, 'rooms');
     return unsubscribe;
   }, [handleRoomsUpdated, subscribe]);
 
@@ -115,9 +115,11 @@ export default function AdminOverviewPage() {
     checkMaintenanceMode(); // Initial check
     
     const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 30000);
+    const dataInterval = setInterval(() => loadRoomData(false), 15000);
     
     return () => {
       clearInterval(maintenanceInterval);
+      clearInterval(dataInterval);
     };
   }, [loadRoomData, checkMaintenanceMode]);
 

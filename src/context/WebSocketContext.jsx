@@ -41,22 +41,18 @@ initializeSocketUrl();
 
 function WebSocketProvider({ children }) {
   const socketRef = useRef(null);
-  const listenersRef = useRef(new Set());
+  const roomListenersRef = useRef(new Set());
+  const reservationListenersRef = useRef(new Set());
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const initializeConnection = async () => {
       await initializeSocketUrl();
-      console.log('🔌 [WebSocketProvider] Initializing single WebSocket connection to:', SOCKET_URL);
-      console.log('📍 [WebSocketProvider] Branch ID:', BRANCH_ID);
+      console.log('🔌 [WebSocketProvider] Initializing WebSocket connection to:', SOCKET_URL);
 
-      // Create single socket instance
       socketRef.current = io(SOCKET_URL, {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        reconnectionAttempts: Infinity,
       });
 
       socketRef.current.on('connect', () => {
@@ -69,51 +65,37 @@ function WebSocketProvider({ children }) {
         setIsConnected(false);
       });
 
-      socketRef.current.on('connect_error', (error) => {
-        console.error('❌ [WebSocketProvider] Connection error:', error.message);
-        setIsConnected(false);
+      // Handle rooms_updated
+      socketRef.current.on('rooms_updated', (data) => {
+        if (data.branch_id === parseInt(BRANCH_ID)) {
+          roomListenersRef.current.forEach(callback => {
+            try { callback(data); } catch (e) { console.error(e); }
+          });
+        }
       });
 
-      // Listen for rooms_updated events
-      socketRef.current.on('rooms_updated', (data) => {
-        console.log('📢 [WebSocketProvider] Rooms updated event received:', data);
-        
+      // Handle new_reservation
+      socketRef.current.on('new_reservation', (data) => {
+        console.log('🔔 [WebSocketProvider] New reservation event received:', data);
         if (data.branch_id === parseInt(BRANCH_ID)) {
-          console.log(`✅ [WebSocketProvider] Update is for our branch (${BRANCH_ID}), notifying ${listenersRef.current.size} listeners...`);
-          
-          // Notify all registered listeners
-          listenersRef.current.forEach(callback => {
-            try {
-              callback(data);
-            } catch (error) {
-              console.error('Error in WebSocket listener:', error);
-            }
+          reservationListenersRef.current.forEach(callback => {
+            try { callback(data); } catch (e) { console.error(e); }
           });
-        } else {
-          console.log(`ℹ️ [WebSocketProvider] Update is for different branch (${data.branch_id}), ignoring...`);
         }
       });
     };
 
     initializeConnection();
 
-    // Cleanup on unmount
     return () => {
-      if (socketRef.current) {
-        console.log('🔌 [WebSocketProvider] Disconnecting WebSocket');
-        socketRef.current.disconnect();
-      }
+      if (socketRef.current) socketRef.current.disconnect();
     };
   }, []);
 
-  const subscribe = (callback) => {
-    console.log('➕ [WebSocketProvider] Adding listener, total:', listenersRef.current.size + 1);
-    listenersRef.current.add(callback);
-    
-    return () => {
-      console.log('➖ [WebSocketProvider] Removing listener, total:', listenersRef.current.size - 1);
-      listenersRef.current.delete(callback);
-    };
+  const subscribe = (callback, type = 'rooms') => {
+    const targetRef = type === 'reservations' ? reservationListenersRef : roomListenersRef;
+    targetRef.current.add(callback);
+    return () => targetRef.current.delete(callback);
   };
 
   return (

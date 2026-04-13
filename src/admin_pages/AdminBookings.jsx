@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { IoRefresh, IoClose, IoFilter } from "react-icons/io5";
+import { useWebSocketContext } from "../context/WebSocketContext";
 import Button from "../components/shared/Button";
 
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
@@ -229,13 +230,38 @@ export default function AdminBookingsPage() {
     }
   };
 
+  const { subscribe } = useWebSocketContext();
+
+  // WebSocket handler - refetch data when rooms are updated (with dual fetch for reliability)
+  const handleRoomsUpdated = useCallback((data) => {
+    console.log('📡 [AdminBookings] WebSocket update received:', data);
+    
+    // Safety refetches to ensure UI consistency
+    setTimeout(() => {
+      console.log('🔄 [AdminBookings] Starting triggered fetch...');
+      fetchBookings(true);
+    }, 2000);
+    
+    setTimeout(() => {
+      fetchBookings(true);
+    }, 6000);
+
+    setTimeout(() => {
+      fetchBookings(true);
+    }, 10000);
+  }, []);
+
   useEffect(() => {
     fetchBookings();
 
-    const interval = setInterval(() => fetchBookings(true), 30000);
+    const unsubscribe = subscribe(handleRoomsUpdated, 'rooms');
+    const interval = setInterval(() => fetchBookings(true), 15000);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
+  }, [subscribe, handleRoomsUpdated]);
 
   // Handle click outside modal
 
@@ -690,7 +716,7 @@ export default function AdminBookingsPage() {
             {/* Footer */}
 
             <div className="bg-[var(--text-color)] p-6 justify-center flex gap-6">
-              {'active'.includes(selectedBooking.status.toLowerCase()) && (
+              {selectedBooking.status.toLowerCase() === 'active' && (
                 <Button
                   onClick={() => setIsEarlyCheckoutOpen(true)}
                   variant="emphasis"
