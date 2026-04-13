@@ -44,7 +44,6 @@ const SEO = ({
       {/* Favicon */}
       <link rel="icon" type="image/svg+xml" href="/five-clover-logo.svg" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      <link rel="manifest" href="/site.webmanifest" />
 
       {/* Preconnect to important domains */}
       <link rel="preconnect" href="https://www.google-analytics.com" />
