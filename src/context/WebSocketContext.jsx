@@ -32,9 +32,7 @@ function WebSocketProvider({ children }) {
 
       socketRef.current = io(socketUrl, {
         transports: ['websocket', 'polling'],
-        reconnection: true,
-        withCredentials: true,
-      });
+        reconnection: true });
 
       socketRef.current.on('connect', () => {
         console.log('✅ [WebSocketProvider] Connected:', socketRef.current.id);

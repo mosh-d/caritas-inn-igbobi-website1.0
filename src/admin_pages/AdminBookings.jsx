@@ -21,8 +21,7 @@ const testLocalConnection = async () => {
 
       // Don't throw on non-2xx status codes
 
-      validateStatus: () => true,
-    });
+      validateStatus: () => true });
 
     // If we get any response, the server is up
 
@@ -87,14 +86,10 @@ export default function AdminBookingsPage() {
       const response = await axios.post(
         `${baseUrl}/api/bookings`,
         {
-          room_type_id: [7, 8, 9],
-        },
+          room_type_id: [7, 8, 9] },
         {
           headers: {
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        },
+            "Content-Type": "application/json" } },
       );
 
       setBookings(response.data);
@@ -122,16 +117,11 @@ export default function AdminBookingsPage() {
         `${baseUrl}/api/reservations/confirm`,
 
         {
-          reservation_id: reservationId,
-        },
+          reservation_id: reservationId },
 
         {
           headers: {
-            "Content-Type": "application/json",
-          },
-
-          withCredentials: true,
-        },
+            "Content-Type": "application/json" } },
       );
 
       // Show success message
@@ -155,8 +145,7 @@ export default function AdminBookingsPage() {
         reservationId,
       );
       const payload = {
-        reservation_id: reservationId,
-      };
+        reservation_id: reservationId };
       console.log("Request payload:", JSON.stringify(payload, null, 2));
       const baseUrl = API_BASE_URL.endsWith("/")
         ? API_BASE_URL.slice(0, -1)
@@ -166,10 +155,7 @@ export default function AdminBookingsPage() {
         payload,
         {
           headers: {
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        },
+            "Content-Type": "application/json" } },
       );
       console.log("Cancel response:", response.data);
 
@@ -184,8 +170,7 @@ export default function AdminBookingsPage() {
         message: err.message,
         response: err.response?.data,
         status: err.response?.status,
-        headers: err.response?.headers,
-      });
+        headers: err.response?.headers });
 
       setError(
         err.response?.data?.message ||
@@ -212,11 +197,7 @@ export default function AdminBookingsPage() {
 
           {
             headers: {
-              "Content-Type": "application/json",
-            },
-
-            withCredentials: true,
-          },
+              "Content-Type": "application/json" } },
         );
 
         // Refresh the bookings list after update
@@ -242,7 +223,7 @@ export default function AdminBookingsPage() {
     fetchBookings();
 
     const unsubscribe = subscribe(handleRoomsUpdated, 'rooms');
-    const interval = setInterval(() => fetchBookings(true), 15000);
+    const interval = setInterval(() => fetchBookings(true), 5000);
 
     return () => {
       unsubscribe();
@@ -331,9 +312,7 @@ export default function AdminBookingsPage() {
         `${baseUrl}/api/reservations/emergency-checkout`,
         payload,
         {
-          headers: { "Content-Type": "application/json" },
-          withCredentials: true,
-        }
+          headers: { "Content-Type": "application/json" } }
       );
       
       setSuccessMessage(response.data.message || "Early checkout processed successfully.");
