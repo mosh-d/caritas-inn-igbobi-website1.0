@@ -16,10 +16,9 @@ function WebSocketProvider({ children }) {
 
   useEffect(() => {
     const initializeConnection = async () => {
-      // Determine URL: priority to local in dev, else production
-      let socketUrl = PRODUCTION_URL;
+      let socketUrl = import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL;
       
-      if (!import.meta.env.PROD) {
+      if (!import.meta.env.PROD && !import.meta.env.VITE_BACKEND_URL) {
         try {
           const response = await axios.get(LOCAL_URL, { timeout: 800, validateStatus: () => true });
           if (response.status) socketUrl = LOCAL_URL;
