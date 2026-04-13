@@ -50,33 +50,13 @@ export default function AdminOverviewPage() {
       if (showLoading) setIsLoading(false);
     }
   }, [roomType]);
-  // WebSocket handler - refetch data when rooms are updated (with dual fetch for reliability)
+  // WebSocket handler - refetch data instantly when rooms are updated
   const handleRoomsUpdated = useCallback((data) => {
-    console.log(' [AdminOverview] WebSocket update received at:', new Date().toISOString());
-    console.log('📡 [AdminOverview] WebSocket data:', data);
+    console.log('📡 [AdminOverview] WebSocket update received:', data);
     
-    // Only refresh if not currently editing to prevent interference
+    // Refresh instantly if not editing to prevent UI flicker/stale data
     if (!isEditing) {
-      // First fetch after 2 seconds (immediate response)
-      setTimeout(() => {
-        console.log('🔄 [AdminOverview] Starting first fetch...');
-        loadRoomData(false);
-        console.log('🔄 [AdminOverview] First fetch triggered');
-      }, 2000);
-      
-      // Second verification fetch after 5 seconds (ensure consistency)
-      setTimeout(() => {
-        console.log('🔄 [AdminOverview] Starting verification fetch...');
-        loadRoomData(false);
-        console.log('🔄 [AdminOverview] Verification fetch triggered');
-      }, 6000);
-
-      // Final verification fetch after 10 seconds (ensure consistency)
-      setTimeout(() => {
-        console.log('🔄 [AdminOverview] Starting verification fetch...');
-        loadRoomData(false);
-        console.log('🔄 [AdminOverview] Verification fetch triggered');
-      }, 10000);
+      loadRoomData(false);
     } else {
       console.log('⏸️ [AdminOverview] Skipping refresh - user is currently editing');
     }

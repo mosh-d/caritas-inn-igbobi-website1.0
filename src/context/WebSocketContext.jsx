@@ -4,40 +4,9 @@ import axios from 'axios';
 
 const WebSocketContext = createContext(null);
 
-const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
+const PRODUCTION_URL = import.meta.env.VITE_BACKEND_URL || "https://five-clover-shared-backend.onrender.com";
 const LOCAL_URL = "http://localhost:3000";
 const BRANCH_ID = import.meta.env.VITE_BRANCH_ID || '3';
-
-// Determine WebSocket URL based on environment with same logic as API calls
-let SOCKET_URL = PRODUCTION_URL;
-
-const initializeSocketUrl = async () => {
-  // Skip localhost test in production builds
-  if (import.meta.env.PROD) {
-    console.log("📦 WebSocket: Production build - using production server");
-    SOCKET_URL = PRODUCTION_URL;
-    return;
-  }
-
-  // Only test localhost connection in development
-  try {
-    const response = await axios.get(LOCAL_URL, {
-      timeout: 1000,
-      validateStatus: () => true,
-    });
-    if (response.status) {
-      console.log("✅ WebSocket: Connected to local development server");
-      SOCKET_URL = LOCAL_URL;
-      return;
-    }
-  } catch (error) {
-    console.log("⚠️ WebSocket: Local server not available, using production");
-  }
-  SOCKET_URL = PRODUCTION_URL;
-};
-
-// Initialize the socket URL
-initializeSocketUrl();
 
 function WebSocketProvider({ children }) {
   const socketRef = useRef(null);
@@ -47,27 +16,40 @@ function WebSocketProvider({ children }) {
 
   useEffect(() => {
     const initializeConnection = async () => {
-      await initializeSocketUrl();
-      console.log('🔌 [WebSocketProvider] Initializing WebSocket connection to:', SOCKET_URL);
+      // Determine URL: priority to local in dev, else production
+      let socketUrl = PRODUCTION_URL;
+      
+      if (!import.meta.env.PROD) {
+        try {
+          const response = await axios.get(LOCAL_URL, { timeout: 800, validateStatus: () => true });
+          if (response.status) socketUrl = LOCAL_URL;
+        } catch (e) {
+          console.log("WebSocket: Local server not available, using production");
+        }
+      }
 
-      socketRef.current = io(SOCKET_URL, {
+      console.log('🔌 [WebSocketProvider] Connecting to:', socketUrl);
+
+      socketRef.current = io(socketUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true,
+        withCredentials: true,
       });
 
       socketRef.current.on('connect', () => {
-        console.log('✅ [WebSocketProvider] WebSocket connected:', socketRef.current.id);
+        console.log('✅ [WebSocketProvider] Connected:', socketRef.current.id);
         setIsConnected(true);
       });
 
       socketRef.current.on('disconnect', (reason) => {
-        console.log('❌ [WebSocketProvider] WebSocket disconnected:', reason);
+        console.log('❌ [WebSocketProvider] Disconnected:', reason);
         setIsConnected(false);
       });
 
       // Handle rooms_updated
       socketRef.current.on('rooms_updated', (data) => {
-        if (data.branch_id === parseInt(BRANCH_ID)) {
+        console.log('📢 [WebSocketProvider] Rooms updated:', data);
+        if (Number(data.branch_id) === Number(BRANCH_ID)) {
           roomListenersRef.current.forEach(callback => {
             try { callback(data); } catch (e) { console.error(e); }
           });
@@ -76,8 +58,8 @@ function WebSocketProvider({ children }) {
 
       // Handle new_reservation
       socketRef.current.on('new_reservation', (data) => {
-        console.log('🔔 [WebSocketProvider] New reservation event received:', data);
-        if (data.branch_id === parseInt(BRANCH_ID)) {
+        console.log('🔔 [WebSocketProvider] New reservation:', data);
+        if (Number(data.branch_id) === Number(BRANCH_ID)) {
           reservationListenersRef.current.forEach(callback => {
             try { callback(data); } catch (e) { console.error(e); }
           });

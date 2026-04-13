@@ -232,23 +232,10 @@ export default function AdminBookingsPage() {
 
   const { subscribe } = useWebSocketContext();
 
-  // WebSocket handler - refetch data when rooms are updated (with dual fetch for reliability)
+  // WebSocket handler - refetch data instantly when rooms are updated
   const handleRoomsUpdated = useCallback((data) => {
     console.log('📡 [AdminBookings] WebSocket update received:', data);
-    
-    // Safety refetches to ensure UI consistency
-    setTimeout(() => {
-      console.log('🔄 [AdminBookings] Starting triggered fetch...');
-      fetchBookings(true);
-    }, 2000);
-    
-    setTimeout(() => {
-      fetchBookings(true);
-    }, 6000);
-
-    setTimeout(() => {
-      fetchBookings(true);
-    }, 10000);
+    fetchBookings(true);
   }, []);
 
   useEffect(() => {
