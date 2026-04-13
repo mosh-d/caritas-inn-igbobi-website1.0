@@ -71,7 +71,7 @@ export default function AdminRootLayout() {
     <div className="min-h-screen bg-gray-100 relative">
       {/* ── New Reservation Notification ── */}
       {hasNewReservation && (
-        <div className="fixed top-24 right-6 z-[200] animate-notification">
+        <div className="fixed top-34 right-6 z-[200] animate-notification">
           <div className="bg-white border-l-4 border-[var(--emphasis)] shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-6 rounded-lg flex items-center gap-6 min-w-[320px] backdrop-blur-sm bg-white/95 animate-bounce-subtle">
             <div className="bg-[var(--emphasis)]/10 p-3 rounded-full">
               <span className="text-3xl" style={{ color: 'var(--emphasis)' }}>🔔</span>
