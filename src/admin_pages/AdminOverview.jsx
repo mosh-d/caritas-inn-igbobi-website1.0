@@ -8,11 +8,17 @@ import Button from "../components/shared/Button";
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
 const LOCAL_URL = "http://localhost:3000";
 
-const ROOM_TYPE_MAP = { classic: 7, deluxe: 8, executive: 9 };
+const ROOM_TYPE_MAP = {
+  "Classic Suite": 7,
+  "Deluxe Suite": 8,
+  "Executive Suite": 9,
+  // "Royal Suite": 6,
+  // "Executive Suite": 5
+};
 
 export default function AdminOverviewPage() {
   const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL);
-  const [roomType, setRoomType] = useState("classic");
+  const [roomType, setRoomType] = useState("Classic Suite");
   const [roomDetails, setRoomDetails] = useState({
     maxCapacity: 0,
     totalAvailableRooms: 0,
@@ -148,21 +154,21 @@ export default function AdminOverviewPage() {
         </div>
 
         <div className="w-full">
-          <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-6 w-full max-w-4xl">
-            <div className="flex justify-between items-center pb-4 border-b border-gray-50">
-              <h2 className="text-3xl font-secondary font-bold text-gray-800">
+          <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-6 w-full ">
+            <div className="flex justify-between items-center pb-4 border-b border-gray-300">
+              <h2 className="text-4xl font-secondary font-bold text-gray-800">
                 Room Inventory
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-6 bg-gray-50 rounded-xl">
                 <p className="text-2xl font-semibold text-gray-500 mb-1">Room Category</p>
                 <select
                   value={roomType}
-                  onChange={(e) => setRoomType(e.target.value.toLowerCase())}
+                  onChange={(e) => setRoomType(e.target.value)}
                   disabled={isEditing}
-                  className="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 cursor-pointer capitalize"
+                  className="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 cursor-pointer"
                 >
                   {Object.keys(ROOM_TYPE_MAP).map((type) => (
                     <option key={type} value={type}>
@@ -198,7 +204,7 @@ export default function AdminOverviewPage() {
                         Update
                       </Button>
                     )}
-                    <button 
+                    <button
                       onClick={() => setIsEditing(false)}
                       disabled={isProcessingUpdate}
                       className="p-2 text-[color:var(--text-color)] hover:text-red-600 transition-colors"
@@ -217,14 +223,23 @@ export default function AdminOverviewPage() {
                         setTempRoomCount(roomDetails.totalAvailableRooms.toString());
                         setIsEditing(true);
                       }}
-                      className="text-2xl text-[color:var(--emphasis)] hover:underline font-bold"
+                      className="text-2xl text-[color:var(--emphasis)] hover:underline hover:cursor-pointer font-bold"
                     >
                       Edit
                     </button>
                   </div>
                 )}
               </div>
+
+              <div className="p-6 bg-gray-50 rounded-xl">
+                <p className="text-2xl font-semibold text-gray-500 mb-1">Max Capacity</p>
+                <p className="text-5xl font-bold text-gray-800">
+                  {roomDetails.maxCapacity}
+                </p>
+              </div>
             </div>
+
+            <p className="text-2xl text-red-500">Only use manual update for emergencies!</p>
 
             {updateMessage && (
               <div className={`p-4 rounded-lg text-xl mb-4 ${updateMessage.includes("Failed") ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
