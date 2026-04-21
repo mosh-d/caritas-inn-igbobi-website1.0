@@ -5,22 +5,7 @@ import { IoRefresh, IoClose, IoFilter } from "react-icons/io5";
 import Button from "../components/shared/Button";
 
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
-const LOCAL_URL = "http://localhost:3000";
-let API_BASE_URL = PRODUCTION_URL;
-
-// Determine API base URL based on environment
-const testLocalConnection = async () => {
-  if (import.meta.env.PROD) return PRODUCTION_URL;
-  try {
-    const response = await axios.get(LOCAL_URL, { timeout: 1000, validateStatus: () => true });
-    if (response.status) return LOCAL_URL;
-  } catch (error) { }
-  return PRODUCTION_URL;
-};
-
-(async () => {
-  API_BASE_URL = await testLocalConnection();
-})();
+let API_BASE_URL = import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL;
 
 export default function AdminBookingsPage() {
   const { subscribe } = useWebSocketContext();

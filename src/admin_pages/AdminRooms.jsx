@@ -7,33 +7,8 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 // ─── API Setup ────────────────────────────────────────────────────────────────
 
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
-const LOCAL_URL = "http://localhost:3000";
 
-let API_BASE_URL = PRODUCTION_URL;
-
-const testLocalConnection = async () => {
-  try {
-    console.log("AdminRooms: Testing local server connection...");
-    const response = await axios.get(LOCAL_URL, {
-      timeout: 1000,
-      validateStatus: () => true,
-    });
-    if (response.status) {
-      console.log("✅ AdminRooms: Connected to local development server");
-      return LOCAL_URL;
-    }
-  } catch (error) {
-    console.log(
-      "⚠️ AdminRooms: Local server not available, falling back to production"
-    );
-  }
-  return PRODUCTION_URL;
-};
-
-(async () => {
-  API_BASE_URL = await testLocalConnection();
-  console.log(`AdminRooms: Using API base URL: ${API_BASE_URL}`);
-})();
+let API_BASE_URL = import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL;
 
 // ─── Igbobi branch_id = 3 (Caritas Inn Igbobi) ───────────────────────────────
 // Source of truth: auth.js, room-data.js, WebSocketContext.jsx all use BRANCH_ID = 3
