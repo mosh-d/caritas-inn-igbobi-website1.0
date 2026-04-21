@@ -53,42 +53,45 @@ const GalleryModal = ({ isOpen, onClose, images, currentImageIndex = 0 }) => {
           <FaTimes size="2.5rem" color="var(--black)" />
         </button>
 
-        <div className="w-full h-full flex items-center justify-center gap-[2rem]">
+        <div className="w-full h-full flex flex-col items-center justify-center gap-[1rem] px-4">
           {images.length > 1 && (
             <>
-              {/* Navigation button */}
-              <button
-                onClick={goToPrevious}
-                className="border border-white bg-opacity-20 rounded-full p-4 text-white transition-all duration-300 cursor-pointer active:bg-white/20"
-                aria-label="Previous image"
-              >
-                <FaChevronLeft size="2rem" color="var(--white)" />
-              </button>
+              {/* Flex container for image + navigation */}
+              <div className="w-full max-w-[95vw] lg:max-w-[70vw] flex flex-col gap-[1rem]">
+                {/* Main image */}
+                <div data-component="image container" className="w-full">
+                  <img
+                    src={currentImage.src}
+                    alt={currentImage.alt}
+                    className="w-full aspect-[16/9] object-cover shadow-[0_0_10rem_1rem_rgba(0,0,0,.5)] border border-white/20"
+                  />
+                </div>
 
-              {/* Main image */}
-              <div data-component="image container" className="w-[80%]">
-                <img
-                  src={currentImage.src}
-                  alt={currentImage.alt}
-                  className="w-full aspect-[16/9] max-sm:aspect-[9/16] object-cover shadow-[0_0_10rem_1rem_rgba(0,0,0,.5)] border border-white/20"
-                />
+                {/* Navigation buttons container - below image */}
+                <div className="flex items-center justify-between w-full bg-black/60 rounded-full px-4 py-2">
+                  <button
+                    onClick={goToPrevious}
+                    className="rounded-full p-3 text-white transition-all duration-300 cursor-pointer hover:bg-white/20"
+                    aria-label="Previous image"
+                  >
+                    <FaChevronLeft size="2rem" color="var(--white)" />
+                  </button>
+
+                  <span className="text-white text-lg font-semibold">
+                    {currentIndex + 1} / {images.length}
+                  </span>
+
+                  <button
+                    onClick={goToNext}
+                    className="rounded-full p-3 text-white transition-all duration-300 cursor-pointer hover:bg-white/20"
+                    aria-label="Next image"
+                  >
+                    <FaChevronRight size="2rem" color="var(--white)" />
+                  </button>
+                </div>
               </div>
-
-              {/* Navigation button */}
-              <button
-                onClick={goToNext}
-                className="border border-white bg-opacity-20 rounded-full p-4 text-white transition-all duration-300 cursor-pointer active:bg-white/20"
-                aria-label="Next image"
-              >
-                <FaChevronRight size="2rem" color="var(--white)" />
-              </button>
             </>
           )}
-
-          {/* Image counter */}
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 bg-white bg-opacity-50 text-black px-[2rem] py-2 rounded-full text-3xl font-bold">
-            {currentIndex + 1} / {images.length}
-          </div>
         </div>
       </div>
     </div>
