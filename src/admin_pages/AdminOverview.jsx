@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchRoomDetails, fetchMaintenanceMode } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { IoClose } from "react-icons/io5";
-import axios from "axios";
+
 import Button from "../components/shared/Button";
 
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
-const LOCAL_URL = "http://localhost:3000";
 
 const ROOM_TYPE_MAP = {
   "Classic Suite": 7,
@@ -76,31 +75,17 @@ export default function AdminOverviewPage() {
   const { subscribe } = useWebSocketContext();
 
   useEffect(() => {
-    const detectUrl = async () => {
-      if (!import.meta.env.PROD && !import.meta.env.VITE_BACKEND_URL) {
-        try {
-          const resp = await axios.get(LOCAL_URL, { timeout: 1000, validateStatus: () => true });
-          if (resp.status) setApiUrl(LOCAL_URL);
-        } catch (e) { }
-      }
+    loadRoomData(true);
+    checkMaintenanceMode();
+    const unsubscribe = subscribe(handleRoomsUpdated, 'rooms');
+    const roomsInterval = setInterval(() => loadRoomData(false), 5000);
+    const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 5000);
+    return () => {
+      if (unsubscribe) unsubscribe();
+      clearInterval(roomsInterval);
+      clearInterval(maintenanceInterval);
     };
-    detectUrl();
-  }, []);
-
-  useEffect(() => {
-    if (apiUrl) {
-      loadRoomData(true);
-      checkMaintenanceMode();
-      const unsubscribe = subscribe(handleRoomsUpdated, 'rooms');
-      const roomsInterval = setInterval(() => loadRoomData(false), 5000);
-      const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 5000);
-      return () => {
-        if (unsubscribe) unsubscribe();
-        clearInterval(roomsInterval);
-        clearInterval(maintenanceInterval);
-      };
-    }
-  }, [apiUrl, loadRoomData, checkMaintenanceMode, handleRoomsUpdated, subscribe]);
+  }, [loadRoomData, checkMaintenanceMode, handleRoomsUpdated, subscribe]);
 
   const handleUpdateRoomCount = async () => {
     setIsProcessingUpdate(true);
