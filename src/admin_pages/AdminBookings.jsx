@@ -5,7 +5,7 @@ import { IoRefresh, IoClose, IoFilter } from "react-icons/io5";
 import Button from "../components/shared/Button";
 
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
-let API_BASE_URL = import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL;
+let API_BASE_URL = PRODUCTION_URL;
 
 export default function AdminBookingsPage() {
   const { subscribe } = useWebSocketContext();
