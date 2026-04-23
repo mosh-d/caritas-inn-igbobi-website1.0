@@ -3,7 +3,7 @@ import axios from "axios";
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
 
 // Determine API base URL based on environment
-let API_BASE_URL = import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL;
+let API_BASE_URL = PRODUCTION_URL;
 
 export const createReservation = async (reservationData) => {
   try {

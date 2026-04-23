@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchRoomDetails, fetchMaintenanceMode } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { IoClose } from "react-icons/io5";
+import axios from "axios";
 
 import Button from "../components/shared/Button";
 
@@ -16,7 +17,7 @@ const ROOM_TYPE_MAP = {
 };
 
 export default function AdminOverviewPage() {
-  const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL);
+  const [apiUrl, setApiUrl] = useState(PRODUCTION_URL);
   const [roomType, setRoomType] = useState("Classic Suite");
   const [roomDetails, setRoomDetails] = useState({
     maxCapacity: 0,

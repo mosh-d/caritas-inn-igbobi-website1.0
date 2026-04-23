@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 
 const WebSocketContext = createContext(null);
 
-const PRODUCTION_URL = import.meta.env.VITE_BACKEND_URL || "https://five-clover-shared-backend.onrender.com";
+const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
 
 const BRANCH_ID = import.meta.env.VITE_BRANCH_ID || '3';
 
@@ -15,7 +15,7 @@ function WebSocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL;
+    const socketUrl = PRODUCTION_URL;
 
     console.log('🔌 [WebSocketProvider] Connecting to:', socketUrl);
 
