@@ -10,7 +10,7 @@ import SEO from "../components/seo/SEO";
 import SafeHelmet from "../components/seo/SafeHelmet";
 import SchemaMarkup from "../components/shared/SchemaMarkup";
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://five-clover-shared-backend.onrender.com";
+const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
 
 // Generate structured data for the hotel
 const hotelStructuredData = generateHotelSchema();
