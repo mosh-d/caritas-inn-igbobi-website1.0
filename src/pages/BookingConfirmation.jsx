@@ -4,7 +4,7 @@ import { useOutletContext } from "react-router-dom";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
 import Footer from "../components/shared/Footer";
-import { createReservation, getRoomTypeId } from "../utils/booking-api";
+import { createReservation } from "../utils/booking-api";
 import { toast } from "react-toastify";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
@@ -192,10 +192,8 @@ export default function BookingConfirmationPage() {
       return;
     }
 
-    // Get room type ID from the room type name
-    const selectedRoomTypeId = getRoomTypeId(roomType);
-
-    if (!selectedRoomTypeId) {
+    // roomTypeId comes from the shared context (set from backend data in Root.jsx)
+    if (!roomTypeId) {
       toast.error("Please select a valid room type");
       return;
     }
@@ -215,7 +213,7 @@ export default function BookingConfirmationPage() {
 
       const reservationPayload = {
         branch_id: branchId,
-        room_type_id: selectedRoomTypeId, // Use the mapped ID
+        room_type_id: roomTypeId, // Use the ID from backend/context
         guest_name: `${formData.firstName} ${formData.lastName}`.trim(),
         check_in: checkIn,
         check_out: checkOut,

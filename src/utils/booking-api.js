@@ -36,12 +36,3 @@ export const createReservation = async (reservationData) => {
   }
 };
 
-export const getRoomTypeId = (roomTypeName) => {
-  const roomTypeMap = {
-    Standard: 6,
-    Classic: 7,
-    Deluxe: 8,
-    Executive: 9,
-  };
-  return roomTypeMap[roomTypeName] || null;
-};

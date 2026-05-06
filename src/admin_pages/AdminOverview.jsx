@@ -8,17 +8,10 @@ import Button from "../components/shared/Button";
 
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
 
-const ROOM_TYPE_MAP = {
-  "Classic Suite": 7,
-  "Deluxe Suite": 8,
-  "Executive Suite": 9,
-  // "Royal Suite": 6,
-  // "Executive Suite": 5
-};
-
 export default function AdminOverviewPage() {
   const [apiUrl, setApiUrl] = useState(PRODUCTION_URL);
-  const [roomType, setRoomType] = useState("Classic Suite");
+  const [roomType, setRoomType] = useState("");
+  const [roomTypes, setRoomTypes] = useState([]);
   const [roomDetails, setRoomDetails] = useState({
     maxCapacity: 0,
     totalAvailableRooms: 0,
@@ -35,12 +28,26 @@ export default function AdminOverviewPage() {
   const isEditingRef = useRef(isEditing);
   useEffect(() => { isEditingRef.current = isEditing; }, [isEditing]);
 
+  const initialLoadDone = useRef(false);
+
   const loadRoomData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setIsLoading(true);
-      const roomTypeId = ROOM_TYPE_MAP[roomType];
       const data = await fetchRoomDetails();
-      const roomTypeData = data.room_types?.find((rt) => rt.room_type_id === roomTypeId) || {};
+      const types = data.room_types || [];
+      setRoomTypes(types);
+
+      // Default to first room type on initial load only
+      if (!initialLoadDone.current && types.length > 0) {
+        initialLoadDone.current = true;
+        if (!roomType) {
+          setRoomType(types[0].room_type_name);
+        }
+      }
+
+      const currentType = roomType || types[0]?.room_type_name || "";
+      const roomTypeData = types.find((rt) => rt.room_type_name === currentType) || {};
+
       setRoomDetails({
         maxCapacity: roomTypeData.max_capacity || 0,
         totalAvailableRooms: roomTypeData.available_rooms || 0,
@@ -94,7 +101,11 @@ export default function AdminOverviewPage() {
     setErrorMessage("");
 
     try {
-      const roomTypeId = ROOM_TYPE_MAP[roomType];
+      const roomTypeData = roomTypes.find((rt) => rt.room_type_name === roomType);
+      const roomTypeId = roomTypeData?.room_type_id;
+      if (!roomTypeId) {
+        throw new Error("Could not find room type ID for the selected category");
+      }
       const newCount = parseInt(tempRoomCount, 10);
       const baseUrl = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
       
@@ -156,9 +167,9 @@ export default function AdminOverviewPage() {
                   disabled={isEditing}
                   className="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 cursor-pointer"
                 >
-                  {Object.keys(ROOM_TYPE_MAP).map((type) => (
-                    <option key={type} value={type}>
-                      {type}
+                  {roomTypes.map((rt) => (
+                    <option key={rt.room_type_id} value={rt.room_type_name}>
+                      {rt.room_type_name}
                     </option>
                   ))}
                 </select>
