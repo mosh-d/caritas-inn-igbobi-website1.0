@@ -6,7 +6,7 @@ export default function AboutMainSection() {
     <>
       <div
         data-component="AboutMainSection"
-        className="p-[12rem] max-md:px-[6rem] max-sm:px-[2rem] w-full flex flex-col gap-[4.8rem]"
+        className="p-[12rem] max-md:px-[6rem] max-sm:px-[4rem] w-full flex flex-col gap-[4.8rem]"
       >
         <div
           data-component="Block1"
@@ -39,7 +39,7 @@ export default function AboutMainSection() {
             </div>
             <div
               data-component="Block2Text"
-              className="flex flex-col gap-[1.8rem] font-secondary bg-[color:var(--background-color-2)] w-[100%] p-[12rem] max-md:p-[6rem] max-sm:p-[2rem]"
+              className="flex flex-col gap-[1.8rem] font-secondary bg-[color:var(--background-color-2)] w-[100%] p-[12rem] max-md:p-[6rem] max-sm:p-[4rem]"
             >
               <h1 className="text-6xl font-bold">
                 Your Ideal Retreat for Comfort and Convenience
@@ -61,7 +61,7 @@ export default function AboutMainSection() {
           <div className="flex max-sm:flex-col">
             <div
               data-component="Block2Text"
-              className="flex flex-col gap-[1.8rem] font-secondary bg-[color:var(--background-color-2)] w-[100%] p-[12rem] max-md:p-[6rem] max-sm:p-[2rem]"
+              className="flex flex-col gap-[1.8rem] font-secondary bg-[color:var(--background-color-2)] w-[100%] p-[12rem] max-md:p-[6rem] max-sm:p-[4rem]"
             >
               <h1 className="text-6xl font-bold">
                 Experience Tranquil Stays with Unmatched Security

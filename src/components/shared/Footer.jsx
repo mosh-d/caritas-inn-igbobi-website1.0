@@ -271,7 +271,7 @@ export default function Footer() {
                   target="_blank"
                   className="text-2xl"
                 >
-                  Bateye Road
+                  Ladipo Bateye, Ikeja GRA
                 </a>
                 <a
                   href="https://www.unitedestate.ringrubyhotel.com/"
