@@ -41,10 +41,10 @@ export default function FacilitiesSection() {
       icon: IoRestaurantOutline,
       text: "Restaurant",
     },
-    {
+ /*    {
       icon: SiGoogleclassroom,
       text: "Conferencing",
-    },
+    }, */
     {
       icon: MdOutlineDesk,
       text: "Co-workspace",

@@ -27,8 +27,8 @@ const TOP_ATTRACTIONS = [
     distance: "5 km",
   },
   {
-    title: "Mainland Market",
-    distance: "1 km",
+    title: "Yaba College of Technology",
+    distance: "1.5 km",
   },
 ];
 
@@ -38,16 +38,16 @@ const SUPERMARKETS = [
     distance: "2 km",
   },
   {
-    title: "Park 'n' Shop",
-    distance: "1 km",
+    title: "ShopRite - Yaba",
+    distance: "1.5 km",
   },
   {
     title: "Justrite Supermarket",
     distance: "3 km",
   },
   {
-    title: "ShopRite - Surulere",
-    distance: "5 km",
+    title: "Spar - Surulere",
+    distance: "4 km",
   },
 ];
 
@@ -61,8 +61,8 @@ const TRANSPORTATION = [
     distance: "2 km",
   },
   {
-    title: "Lagos Mainland Railway Station",
-    distance: "3 km",
+    title: "Oshodi Bus Terminal",
+    distance: "6 km",
   },
 ];
 
@@ -76,8 +76,8 @@ const BEACHES = [
     distance: "15 km",
   },
   {
-    title: "Bar Beach",
-    distance: "12 km",
+    title: "Landmark Beach",
+    distance: "20 km",
   },
 ];
 
@@ -124,13 +124,13 @@ export default function HotelSurroundingsSection() {
                 >
                   <p
                     data-component="HotelSurroundingContentItemTitle"
-                    className="text-2xl w-[80%]"
+                    className="text-3xl w-[80%]"
                   >
                     {attraction.title}
                   </p>
                   <p
                     data-component="HotelSurroundingContentItemDistance"
-                    className="text-2xl text-right"
+                    className="text-3xl text-right"
                   >
                     {attraction.distance}
                   </p>
@@ -170,13 +170,13 @@ export default function HotelSurroundingsSection() {
                 >
                   <p
                     data-component="HotelSurroundingContentItemTitle"
-                    className="text-2xl w-[80%]"
+                    className="text-3xl w-[80%]"
                   >
                     {supermarket.title}
                   </p>
                   <p
                     data-component="HotelSurroundingContentItemDistance"
-                    className="text-2xl text-right"
+                    className="text-3xl text-right"
                   >
                     {supermarket.distance}
                   </p>
@@ -216,7 +216,7 @@ export default function HotelSurroundingsSection() {
                 >
                   <p
                     data-component="HotelSurroundingContentItemTitle"
-                    className="text-2xl w-[80%]"
+                    className="text-3xl w-[80%]"
                   >
                     {option.title}
                   </p>
@@ -263,13 +263,13 @@ export default function HotelSurroundingsSection() {
                 >
                   <p
                     data-component="HotelSurroundingContentItemTitle"
-                    className="text-2xl w-[80%]"
+                    className="text-3xl w-[80%]"
                   >
                     {beach.title}
                   </p>
                   <p
                     data-component="HotelSurroundingContentItemDistance"
-                    className="text-2xl text-right"
+                    className="text-3xl text-right"
                   >
                     {beach.distance}
                   </p>
