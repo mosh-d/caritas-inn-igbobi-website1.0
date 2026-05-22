@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { SOCKET_SERVER_URL } from '../utils/server-config';
 
 
 const WebSocketContext = createContext(null);
-
-const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
 
 const BRANCH_ID = import.meta.env.VITE_BRANCH_ID || '3';
 
@@ -15,7 +14,7 @@ function WebSocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socketUrl = PRODUCTION_URL;
+    const socketUrl = SOCKET_SERVER_URL;
 
     console.log('🔌 [WebSocketProvider] Connecting to:', socketUrl);
 

@@ -3,12 +3,12 @@ import axios from "axios";
 import { IoClose } from "react-icons/io5";
 import Button from "../components/shared/Button";
 import { useWebSocketContext } from "../context/WebSocketContext";
+import { canManageRoomPrices, getAuthHeaders } from "../utils/auth";
+import { SERVER_BASE_URL } from "../utils/server-config";
 
 // ─── API Setup ────────────────────────────────────────────────────────────────
 
-const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
-
-let API_BASE_URL = PRODUCTION_URL;
+let API_BASE_URL = SERVER_BASE_URL;
 
 // ─── Igbobi branch_id = 3 (Caritas Inn Igbobi) ───────────────────────────────
 // Source of truth: auth.js, room-data.js, WebSocketContext.jsx all use BRANCH_ID = 3
@@ -284,7 +284,15 @@ function AddRoomModal({ onClose, onSuccess, onError }) {
 
 // ─── View / Edit Room Modal ────────────────────────────────────────────────────
 
-function ViewRoomModal({ room, onClose, onSuccess, onError, onRoomDeleted, onRefreshRoom }) {
+function ViewRoomModal({
+  room,
+  onClose,
+  onSuccess,
+  onError,
+  onRoomDeleted,
+  onRefreshRoom,
+  canManagePrices,
+}) {
   const modalRef = useRef(null);
 
   const [priceInput, setPriceInput] = useState(String(room.base_rate ?? ""));
@@ -357,6 +365,11 @@ function ViewRoomModal({ room, onClose, onSuccess, onError, onRoomDeleted, onRef
   }, [onClose, confirmDelete]);
 
   const handleUpdatePrice = async () => {
+    if (!canManagePrices) {
+      onError("Only managers can update room prices.");
+      return;
+    }
+
     const newPrice = Number(priceInput);
     if (isNaN(newPrice) || newPrice <= 0) {
       onError("Please enter a valid price.");
@@ -373,7 +386,7 @@ function ViewRoomModal({ room, onClose, onSuccess, onError, onRoomDeleted, onRef
         `${getBaseUrl()}/api/rooms/price`,
         { room_type_id: room.room_type_id, new_price: newPrice },
         {
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           withCredentials: true,
         }
       );
@@ -552,23 +565,27 @@ function ViewRoomModal({ room, onClose, onSuccess, onError, onRoomDeleted, onRef
           {/* Editable: Base Price */}
           <div className={fieldClass}>
             <span className={labelClass}>Base Price (₦)</span>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-                className={editableInputClass}
-                min="0"
-              />
-              <Button
-                onClick={handleUpdatePrice}
-                variant="emphasis"
-                disabled={updatingPrice}
-                className={`text-xl pt-2 pb-0.5 px-4 ${updatingPrice ? "opacity-60 cursor-not-allowed" : ""}`}
-              >
-                {updatingPrice ? "..." : "UPDATE"}
-              </Button>
-            </div>
+            {canManagePrices ? (
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  className={editableInputClass}
+                  min="0"
+                />
+                <Button
+                  onClick={handleUpdatePrice}
+                  variant="emphasis"
+                  disabled={updatingPrice}
+                  className={`text-xl pt-2 pb-0.5 px-4 ${updatingPrice ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  {updatingPrice ? "..." : "UPDATE"}
+                </Button>
+              </div>
+            ) : (
+              <span className={valueClass}>NGN {formatPrice(room.base_rate ?? 0)}</span>
+            )}
           </div>
 
           {/* Editable: Max Capacity (physical rooms) */}
@@ -689,6 +706,7 @@ function ViewRoomModal({ room, onClose, onSuccess, onError, onRoomDeleted, onRef
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminRoomsPage() {
+  const canManagePrices = canManageRoomPrices();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -856,6 +874,11 @@ export default function AdminRoomsPage() {
 
   // Handle inline price update (desktop table)
   const handleInlinePriceUpdate = async (room) => {
+    if (!canManagePrices) {
+      showError("Only managers can update room prices.");
+      return;
+    }
+
     const newPrice = Number(inlinePriceEdits[room.room_type_id]);
     if (isNaN(newPrice) || newPrice <= 0) {
       showError("Please enter a valid price.");
@@ -872,7 +895,7 @@ export default function AdminRoomsPage() {
         `${getBaseUrl()}/api/rooms/price`,
         { room_type_id: room.room_type_id, new_price: newPrice },
         {
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           withCredentials: true,
         }
       );
@@ -990,37 +1013,43 @@ export default function AdminRoomsPage() {
 
                     {/* Desktop: Inline price input + UPDATE button */}
                     <td className="px-8 py-4 text-left hidden md:table-cell">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          value={inlinePriceEdits[room.room_type_id] ?? ""}
-                          onChange={(e) =>
-                            setInlinePriceEdits((prev) => ({
-                              ...prev,
-                              [room.room_type_id]: e.target.value,
-                            }))
-                          }
-                          className="border border-[color:var(--text-color)]/30 bg-transparent text-[color:var(--text-color)] text-2xl px-3 py-1 w-[13rem] outline-none focus:border-[color:var(--emphasis)] transition-colors rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                          min="0"
-                          disabled={webSocketUpdating}
-                        />
-                        <Button
-                          onClick={() => handleInlinePriceUpdate(room)}
-                          variant="emphasis"
-                          disabled={updatingInlinePrice === room.room_type_id || webSocketUpdating}
-                          className={`text-xl pt-2 pb-0.5 px-4 ${
-                            updatingInlinePrice === room.room_type_id || webSocketUpdating
-                              ? "opacity-60 cursor-not-allowed"
-                              : ""
-                          }`}
-                        >
-                          {updatingInlinePrice === room.room_type_id
-                            ? "..."
-                            : webSocketUpdating
-                            ? "Syncing..."
-                            : "UPDATE"}
-                        </Button>
-                      </div>
+                      {canManagePrices ? (
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="number"
+                            value={inlinePriceEdits[room.room_type_id] ?? ""}
+                            onChange={(e) =>
+                              setInlinePriceEdits((prev) => ({
+                                ...prev,
+                                [room.room_type_id]: e.target.value,
+                              }))
+                            }
+                            className="border border-[color:var(--text-color)]/30 bg-transparent text-[color:var(--text-color)] text-2xl px-3 py-1 w-[13rem] outline-none focus:border-[color:var(--emphasis)] transition-colors rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            min="0"
+                            disabled={webSocketUpdating}
+                          />
+                          <Button
+                            onClick={() => handleInlinePriceUpdate(room)}
+                            variant="emphasis"
+                            disabled={updatingInlinePrice === room.room_type_id || webSocketUpdating}
+                            className={`text-xl pt-2 pb-0.5 px-4 ${
+                              updatingInlinePrice === room.room_type_id || webSocketUpdating
+                                ? "opacity-60 cursor-not-allowed"
+                                : ""
+                            }`}
+                          >
+                            {updatingInlinePrice === room.room_type_id
+                              ? "..."
+                              : webSocketUpdating
+                              ? "Syncing..."
+                              : "UPDATE"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-[color:var(--text-color)]">
+                          NGN {formatPrice(room.base_rate ?? 0)}
+                        </span>
+                      )}
                     </td>
 
                     {/* Action: View (+ mobile delete) */}
@@ -1087,6 +1116,7 @@ export default function AdminRoomsPage() {
             setSelectedRoom(null);
           }}
           onRefreshRoom={fetchRoomById}
+          canManagePrices={canManagePrices}
         />
       )}
 

@@ -9,8 +9,9 @@ import { generateHotelSchema } from "../utils/seoUtils";
 import SEO from "../components/seo/SEO";
 import SafeHelmet from "../components/seo/SafeHelmet";
 import SchemaMarkup from "../components/shared/SchemaMarkup";
+import { SERVER_BASE_URL } from "../utils/server-config";
 
-const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
+const API_BASE_URL = SERVER_BASE_URL;
 
 // Generate structured data for the hotel
 const hotelStructuredData = generateHotelSchema();

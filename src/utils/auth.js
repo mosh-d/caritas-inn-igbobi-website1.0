@@ -1,16 +1,42 @@
 // Using environment variables with fallbacks
-const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
+import { SERVER_BASE_URL } from "./server-config";
+
+const API_BASE_URL = SERVER_BASE_URL;
 const API_URL = `${API_BASE_URL}/api/users`; // Added /api to match backend routes
 const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || "auth_token";
+const USER_KEY = "admin_user";
+const BRANCH_INFO_KEY = "branch_info";
 const BRANCH_ID = 3; // Caritas Inn Igbobi branch ID
 
+const persistSession = (data) => {
+  localStorage.setItem(TOKEN_KEY, data.token);
+
+  if (data.branch) {
+    localStorage.setItem(BRANCH_INFO_KEY, JSON.stringify(data.branch));
+  }
+
+  if (data.user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  }
+};
+
+const clearStoredSession = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(BRANCH_INFO_KEY);
+};
+
 // Login and get token
-export const login = async (password) => {
+export const login = async (staffRole, password) => {
+  const resolvedRole = password === undefined ? null : staffRole;
+  const resolvedPassword = password === undefined ? staffRole : password;
+
   try {
     console.log("Making request to:", `${API_URL}/login`); // Debug log
     const loginData = {
       branch_id: BRANCH_ID,
-      password: password,
+      password: resolvedPassword,
+      ...(resolvedRole ? { role: resolvedRole } : {}),
     };
 
     const response = await fetch(`${API_URL}/login`, {
@@ -25,12 +51,7 @@ export const login = async (password) => {
     }
 
     const data = await response.json();
-    // data.token contains your JWT
-    // data.branch contains branch info
-    localStorage.setItem(TOKEN_KEY, data.token);
-    if (data.branch) {
-      localStorage.setItem("branch_info", JSON.stringify(data.branch));
-    }
+    persistSession(data);
     return data;
   } catch (error) {
     console.error("Login error details:", {
@@ -53,21 +74,31 @@ export const verifyToken = async () => {
     });
 
     if (!response.ok) {
-      logout();
+      clearStoredSession();
       return null;
     }
 
-    return await response.json();
+    const data = await response.json();
+
+    if (data?.branch) {
+      localStorage.setItem(BRANCH_INFO_KEY, JSON.stringify(data.branch));
+    }
+
+    if (data?.user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    }
+
+    return data?.user || null;
   } catch (error) {
     console.error("Token verification failed:", error);
-    logout();
+    clearStoredSession();
     return null;
   }
 };
 
 // Logout
 export const logout = () => {
-  localStorage.removeItem(TOKEN_KEY);
+  clearStoredSession();
   window.location.href = "/admin";
 };
 
@@ -85,3 +116,28 @@ export const isAuthenticated = async () => {
   const user = await verifyToken();
   return !!user;
 };
+
+export const getStoredAdminUser = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawUser = localStorage.getItem(USER_KEY);
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawUser);
+  } catch (error) {
+    console.error("Failed to parse stored admin user:", error);
+    return null;
+  }
+};
+
+export const getStoredStaffRole = () =>
+  getStoredAdminUser()?.staff_role || null;
+
+export const canManageRoomPrices = () =>
+  getStoredStaffRole() === "manager";
+

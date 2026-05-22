@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
+import { SERVER_BASE_URL } from "../../utils/server-config";
 
 /**
  * Schema Component - Fetches and injects JSON-LD schema markup
@@ -13,7 +14,7 @@ export default function SchemaMarkup({ branchId }) {
     const fetchSchema = async () => {
       try {
         const response = await fetch(
-          "https://five-clover-shared-backend.onrender.com/api/schema",
+          `${SERVER_BASE_URL}/api/schema`,
           {
             method: "POST",
             headers: {

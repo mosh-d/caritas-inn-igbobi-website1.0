@@ -3,9 +3,9 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 import axios from "axios";
 import { IoRefresh, IoClose, IoFilter } from "react-icons/io5";
 import Button from "../components/shared/Button";
+import { SERVER_BASE_URL } from "../utils/server-config";
 
-const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
-let API_BASE_URL = PRODUCTION_URL;
+let API_BASE_URL = SERVER_BASE_URL;
 
 export default function AdminBookingsPage() {
   const { subscribe } = useWebSocketContext();

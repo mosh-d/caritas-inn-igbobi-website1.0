@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { IoEyeOffOutline, IoEyeOutline } from "react-icons/io5";
 
 export default function CustomInput({
   variant,
@@ -9,9 +10,12 @@ export default function CustomInput({
   value,
   onFocus,
   onBlur,
+  className = "",
   ...props
 }) {
   const isTextarea = type === "textarea";
+  const isPasswordInput = type === "password";
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const handleFocus = (e) => {
     if (onFocus) onFocus(e);
@@ -43,6 +47,14 @@ export default function CustomInput({
   };
 
   const placeholder = children || (type === "date" ? "dd/mm/yyyy" : undefined);
+  const resolvedInputType = isPasswordInput
+    ? isPasswordVisible
+      ? "text"
+      : "password"
+    : type;
+  const inputClassName = `w-full text-lg focus:outline-none focus:ring-0 border-b border-b-[color:var(--text-color)]/50 ${
+    isPasswordInput ? "pr-12" : ""
+  } ${className}`.trim();
 
   return (
     <>
@@ -69,7 +81,7 @@ export default function CustomInput({
         {isTextarea ? (
           <textarea
             id={id}
-            className="w-full text-lg focus:outline-none focus:ring-0 border-b border-b-[color:var(--text-color)]/50 resize-none"
+            className={`w-full text-lg focus:outline-none focus:ring-0 border-b border-b-[color:var(--text-color)]/50 resize-none ${className}`.trim()}
             placeholder={placeholder}
             style={{
               verticalAlign: "top",
@@ -83,19 +95,38 @@ export default function CustomInput({
             {...props}
           />
         ) : (
-          <input
-            type={type}
-            id={id}
-            className="w-full text-lg focus:outline-none focus:ring-0 border-b border-b-[color:var(--text-color)]/50"
-            placeholder={placeholder}
-            value={value}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onClick={handleClick}
-            {...props}
-          />
+          <div className="relative">
+            <input
+              type={resolvedInputType}
+              id={id}
+              className={inputClassName}
+              placeholder={placeholder}
+              value={value}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onClick={handleClick}
+              {...props}
+            />
+            {isPasswordInput && (
+              <button
+                type="button"
+                onClick={() => setIsPasswordVisible((current) => !current)}
+                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label={
+                  isPasswordVisible ? "Hide password" : "Show password"
+                }
+              >
+                {isPasswordVisible ? (
+                  <IoEyeOffOutline size={20} />
+                ) : (
+                  <IoEyeOutline size={20} />
+                )}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </>
   );
 }
+

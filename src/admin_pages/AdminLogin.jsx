@@ -5,6 +5,7 @@ import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
 
 export default function AdminLoginPage() {
+  const [selectedRole, setSelectedRole] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,22 +15,29 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!selectedRole) {
+      setError("Please select a role before signing in.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await login(password);
+      await login(selectedRole, password);
       // Redirect to the intended page or dashboard
       const from = location.state?.from?.pathname || "/admin/overview";
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || "Invalid password. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md space-y-8">
+      <div className="w-full max-w-xl space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900">
             Caritas Inn Igbobi
@@ -49,6 +57,27 @@ export default function AdminLoginPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
+                htmlFor="staff-role"
+                className="block text-2xl font-medium text-gray-700 mb-1"
+              >
+                Role
+              </label>
+              <select
+                id="staff-role"
+                name="staff-role"
+                required
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] focus:border-[color:var(--emphasis)] bg-white text-xl"
+              >
+                <option value="">Select your role</option>
+                <option value="receptionist">Receptionist</option>
+                <option value="manager">Manager</option>
+              </select>
+            </div>
+
+            <div>
+              <label
                 htmlFor="password"
                 className="block text-2xl font-medium text-gray-700 mb-1"
               >
@@ -62,7 +91,7 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter admin password"
+                placeholder="Enter your password"
                 autoComplete="current-password"
               />
             </div>
@@ -83,3 +112,4 @@ export default function AdminLoginPage() {
     </div>
   );
 }
+

@@ -64,6 +64,7 @@ import mobileExecutiveImage2 from "../../assets/mobile-room-images/executive/exe
 import mobileExecutiveImage3 from "../../assets/mobile-room-images/executive/executive-3.jpg";
 import mobileExecutiveImage4 from "../../assets/mobile-room-images/executive/executive-4.jpg";
 import mobileExecutiveImage5 from "../../assets/mobile-room-images/executive/executive-5.jpg";
+import { SERVER_BASE_URL } from "../../utils/server-config";
 
 // Desktop standard room images
 const standardRoomImages = [
@@ -141,7 +142,7 @@ const useSharedContext = () => {
   return context;
 };
 
-const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
+const API_BASE_URL = SERVER_BASE_URL;
 
 const amenityIcons = {
   free_wifi: <IoWifiOutline size="2.5rem" />,

@@ -3,13 +3,12 @@ import { fetchRoomDetails, fetchMaintenanceMode } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { IoClose } from "react-icons/io5";
 import axios from "axios";
+import { SERVER_BASE_URL } from "../utils/server-config";
 
 import Button from "../components/shared/Button";
 
-const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
-
 export default function AdminOverviewPage() {
-  const [apiUrl, setApiUrl] = useState(PRODUCTION_URL);
+  const [apiUrl, setApiUrl] = useState(SERVER_BASE_URL);
   const [roomType, setRoomType] = useState("");
   const [roomTypes, setRoomTypes] = useState([]);
   const [roomDetails, setRoomDetails] = useState({
