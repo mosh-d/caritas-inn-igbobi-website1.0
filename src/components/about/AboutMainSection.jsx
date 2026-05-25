@@ -19,10 +19,10 @@ export default function AboutMainSection() {
             Caritas Inn, Igbobi seamlessly blends modern comfort with the warmth
             of West African hospitality, offering a unique and inviting
             experience for our esteemed guests. Located in the serene and
-            accessible Yaba area of Lagos, our hotel offers a balanced mix of
+            accessible Igbobi area of Lagos, our hotel offers a balanced mix of
             relaxation, workspaces, and proximity to popular destinations,
             making it a top choice for travelers seeking comfort and convenience
-            in Yaba.
+            in Igbobi.
           </p>
         </div>
         <div data-component="Block2" className="flex flex-col w-full">
@@ -45,7 +45,7 @@ export default function AboutMainSection() {
                 Your Ideal Retreat for Comfort and Convenience
               </h1>
               <p className="text-3xl">
-                Welcome to a new standard of hospitality in Yaba. Caritas Inn is
+                Welcome to a new standard of hospitality in Igbobi. Caritas Inn is
                 a modern hotel located in the peaceful Igbobi area with few
                 minutes' drive from the University of Lagos. It offers a perfect
                 environment for both business and leisure travelers by combining
@@ -67,7 +67,7 @@ export default function AboutMainSection() {
                 Experience Tranquil Stays with Unmatched Security
               </h1>
               <p className="text-3xl">
-                Caritas Inn is a modern hotel located in the peaceful Yaba area.
+                Caritas Inn is a modern hotel located in the peaceful Igbobi area.
                 We ensure a secure environment with advanced surveillance
                 systems and a dedicated team, providing peace of mind throughout
                 your stay. We offer more than just a place to stay; we provide a
