@@ -52,7 +52,10 @@ export default function AdminOverviewPage() {
         totalAvailableRooms: roomTypeData.available_rooms || 0,
         activeBookings: 0,
         expiredBookings: 0 });
-      setTempRoomCount(roomTypeData.available_rooms?.toString() || "0");
+
+      if (!isEditingRef.current) {
+        setTempRoomCount(roomTypeData.available_rooms?.toString() || "0");
+      }
     } catch (error) {
       console.error("Error loading room data:", error);
     } finally {
@@ -85,7 +88,11 @@ export default function AdminOverviewPage() {
     loadRoomData(true);
     checkMaintenanceMode();
     const unsubscribe = subscribe(handleRoomsUpdated, 'rooms');
-    const roomsInterval = setInterval(() => loadRoomData(false), 5000);
+    const roomsInterval = setInterval(() => {
+      if (!isEditingRef.current) {
+        loadRoomData(false);
+      }
+    }, 5000);
     const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 5000);
     return () => {
       if (unsubscribe) unsubscribe();
