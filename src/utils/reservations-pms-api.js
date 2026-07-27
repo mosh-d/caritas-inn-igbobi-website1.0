@@ -76,6 +76,15 @@ export const undoNoShow = async (id) => {
   return response.data;
 };
 
+export const undoExpiredHold = async (id) => {
+  const response = await axios.post(
+    `${baseUrl}/api/reservations/${id}/undo-expired-hold`,
+    {},
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+};
+
 // Ported from the legacy Bookings page so Reservations can fully replace it.
 export const confirmReservation = async (reservation_id) => {
   const response = await axios.post(

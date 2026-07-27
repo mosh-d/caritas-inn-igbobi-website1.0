@@ -18,6 +18,7 @@ import {
   cancelReservationById,
   markNoShow,
   undoNoShow,
+  undoExpiredHold,
   confirmReservation,
   emergencyCheckout,
   buildReservationsExportUrl,
@@ -365,6 +366,22 @@ export default function AdminReservationsPage() {
     }
   };
 
+  const handleReclaimExpiredHold = async () => {
+    if (!selectedReservation) return;
+    try {
+      setActionLoading(true);
+      await undoExpiredHold(selectedReservation.id);
+      setSuccessMessage("Hold reclaimed — room re-reserved for this guest.");
+      setTimeout(() => setSuccessMessage(""), 5000);
+      closeDetail();
+      loadReservations();
+    } catch (err) {
+      setModalError(err.response?.data?.message || "Failed to reclaim hold.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleCreateFolio = async () => {
     if (!selectedReservation) return;
     try {
@@ -593,13 +610,17 @@ export default function AdminReservationsPage() {
     pendingRoomSlots.length !== savedRoomNumbers.length ||
     pendingRoomSlots.some((v, i) => v !== savedRoomNumbers[i]);
   const roomAssignmentIncomplete = savedRoomNumbers.length < roomsBookedCount;
-  const confirmBlockedReason = hasUnsavedDeposit
-    ? "Record the deposit (or clear the amount field) before confirming."
-    : hasUnsavedRoomAssignment
-      ? "Save the room assignment changes (or revert them) before confirming."
-      : roomAssignmentIncomplete
-        ? `Assign a room number to all ${roomsBookedCount} room(s) before confirming.`
-        : null;
+  const confirmBlockedReason = res?.is_no_show
+    ? "This reservation is marked as no-show — undo the no-show first if the guest still needs this booking honored."
+    : res?.is_expired_hold
+    ? "This hold expired and its room was released — reclaim the hold first if the guest still wants this booking."
+    : hasUnsavedDeposit
+      ? "Record the deposit (or clear the amount field) before confirming."
+      : hasUnsavedRoomAssignment
+        ? "Save the room assignment changes (or revert them) before confirming."
+        : roomAssignmentIncomplete
+          ? `Assign a room number to all ${roomsBookedCount} room(s) before confirming.`
+          : null;
 
   return (
     <>
@@ -689,6 +710,9 @@ export default function AdminReservationsPage() {
                           {r.is_no_show && (
                             <span className="text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">No-Show</span>
                           )}
+                          {r.is_expired_hold && (
+                            <span className="text-sm font-bold uppercase tracking-wide text-orange-700 bg-orange-100 px-2 py-1 rounded-full whitespace-nowrap">Hold Expired</span>
+                          )}
                           {r.guest?.is_blacklisted && (
                             <span className="text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
                           )}
@@ -745,6 +769,9 @@ export default function AdminReservationsPage() {
               {res.is_no_show && (
                 <span className="inline-block px-3 py-1 rounded-full text-lg font-bold leading-tight whitespace-nowrap bg-red-100 text-red-700">No-Show</span>
               )}
+              {res.is_expired_hold && (
+                <span className="inline-block px-3 py-1 rounded-full text-lg font-bold leading-tight whitespace-nowrap bg-orange-100 text-orange-700">Hold Expired</span>
+              )}
             </span>
           )}
           size="lg"
@@ -777,14 +804,25 @@ export default function AdminReservationsPage() {
                   {res.is_no_show ? "Undo No-Show" : "Mark No-Show"}
                 </button>
               )}
+              {canModify && res.is_expired_hold && (
+                <button onClick={handleReclaimExpiredHold} disabled={actionLoading} className={btn.secondary}>
+                  Reclaim Hold
+                </button>
+              )}
               {canModify && (
                 <button onClick={() => setShowEarlyCheckoutConfirm(true)} disabled={actionLoading} className={btn.danger}>Early Checkout</button>
               )}
               {!res.actual_check_in && canModify && (
-                res.status === "confirmed" ? (
+                res.status === "confirmed" && !res.is_no_show ? (
                   <button onClick={handleCheckIn} disabled={actionLoading} className={btn.success}>Check In</button>
                 ) : (
-                  <button disabled title="Awaiting payment — confirm reservation first" className={btn.success}>Check In</button>
+                  <button
+                    disabled
+                    title={res.is_no_show ? "Marked as no-show — undo the no-show first if the guest is actually here" : "Awaiting payment — confirm reservation first"}
+                    className={btn.success}
+                  >
+                    Check In
+                  </button>
                 )
               )}
               {res.actual_check_in && !res.actual_check_out && (

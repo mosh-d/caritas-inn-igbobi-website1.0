@@ -275,7 +275,7 @@ export default function AdminAlertsPage() {
               ) : (
                 <div className="w-full flex flex-col gap-4">
                   <p className="text-xl text-[color:var(--text-color)]/76">
-                    Awaiting payment confirmation — auto-cancelled and released back to availability if left unconfirmed for too long.
+                    Awaiting payment confirmation — the room releases automatically if left unconfirmed for too long, but the booking itself stays retrievable (Reclaim Hold) until someone else books that room.
                   </p>
                   <div className={table.card}>
                     <div className={table.scroll}>
@@ -285,7 +285,7 @@ export default function AdminAlertsPage() {
                             <th className={table.th}>Guest</th>
                             <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
                             <th className={`${table.th} hidden md:table-cell`}>Booked</th>
-                            <th className={table.th}>Auto-Cancels</th>
+                            <th className={table.th}>Hold Expires</th>
                             <th className={table.th}>Actions</th>
                           </tr>
                         </thead>
@@ -299,7 +299,11 @@ export default function AdminAlertsPage() {
                               <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                               <td className={`${table.td} hidden md:table-cell`}>{daysAgo(r.created_at)}</td>
                               <td className={table.td}>
-                                <span className="text-base text-orange-600 font-semibold">{timeUntil(r.expires_at, now)}</span>
+                                {r.is_expired_hold ? (
+                                  <span className="text-base text-orange-700 font-bold uppercase tracking-wide">Expired — reclaimable</span>
+                                ) : (
+                                  <span className="text-base text-orange-600 font-semibold">{timeUntil(r.expires_at, now)}</span>
+                                )}
                               </td>
                               <td className={table.td}>
                                 <div className={table.actions}>
