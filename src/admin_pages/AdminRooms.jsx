@@ -1248,7 +1248,7 @@ export default function AdminRoomsPage() {
                                   [room.room_type_id]: e.target.value,
                                 }))
                               }
-                              className={`${field.input} text-xl! w-[14rem] py-2!`}
+                              className={`${field.input} text-xl! w-52! py-2!`}
                               min="0"
                               disabled={webSocketUpdating}
                             />
