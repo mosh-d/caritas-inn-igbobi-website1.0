@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { login } from "../utils/auth";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
@@ -11,6 +11,20 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Set by the global axios interceptor (utils/axios-interceptor.js) when a
+  // request from an already-open admin page comes back 401 — tells staff
+  // clearly why they landed back here instead of leaving them to wonder why
+  // the page just silently stopped working.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [sessionExpired, setSessionExpired] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("sessionExpired") === "true") {
+      setSessionExpired(true);
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,6 +62,11 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="bg-white py-8 px-6 shadow rounded-lg sm:px-10">
+          {sessionExpired && (
+            <div className="mb-4 p-3 bg-orange-50 text-orange-700 text-sm rounded-md border border-orange-200">
+              Your session has expired. Please log in again.
+            </div>
+          )}
           {error && (
             <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-md">
               {error}

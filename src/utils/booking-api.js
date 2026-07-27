@@ -34,3 +34,13 @@ export const createReservation = async (reservationData) => {
   }
 };
 
+export const fetchBlockedDates = async (roomTypeId, from, to) => {
+  const baseUrl = API_BASE_URL.endsWith("/")
+    ? API_BASE_URL.slice(0, -1)
+    : API_BASE_URL;
+  const response = await axios.get(`${baseUrl}/api/reservations/blocked-dates`, {
+    params: { room_type_id: roomTypeId, from, to },
+  });
+  return response.data; // string[] of "YYYY-MM-DD"
+};
+

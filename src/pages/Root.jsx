@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Helmet } from "react-helmet";
 import { fetchRoomDetails } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
+import { localTodayISO } from "../utils/date-utils";
 import MainNavBar from "../components/shared/MainNavBar";
 import axios from "axios";
 import { generateHotelSchema } from "../utils/seoUtils";
@@ -38,7 +39,7 @@ export default function RootLayout() {
 
   // Validated setter for check-in date
   const handleSetCheckInDate = (date) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = localTodayISO();
     const selected = new Date(date);
     const todayDate = new Date(today);
 

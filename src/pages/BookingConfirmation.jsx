@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
+import DatePicker from "../components/shared/DatePicker";
 import Footer from "../components/shared/Footer";
-import { createReservation } from "../utils/booking-api";
+import { createReservation, fetchBlockedDates } from "../utils/booking-api";
+import { localTodayISO } from "../utils/date-utils";
 import { toast } from "react-toastify";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
@@ -62,6 +64,44 @@ export default function BookingConfirmationPage() {
     (room) => room.room_type_name === roomType
   );
 
+  // Blocked dates for the selected room type (fetched from backend)
+  const [blockedDates, setBlockedDates] = useState([]);
+
+  useEffect(() => {
+    if (!roomTypeId) { setBlockedDates([]); return; }
+    const from = localTodayISO();
+    const toDate = new Date();
+    toDate.setFullYear(toDate.getFullYear() + 1);
+    const to = toDate.toISOString().split("T")[0];
+    fetchBlockedDates(roomTypeId, from, to)
+      .then((dates) => setBlockedDates(Array.isArray(dates) ? dates : []))
+      .catch(() => setBlockedDates([]));
+  }, [roomTypeId]);
+
+  // For the check-out picker: cap at the first blocked date that falls after check-in,
+  // since any range that crosses a blocked night is unselectable.
+  const maxCheckOutDate = useMemo(() => {
+    if (!checkInDate || blockedDates.length === 0) return null;
+    const future = blockedDates.filter((d) => d > checkInDate).sort();
+    return future.length > 0 ? future[0] : null;
+  }, [checkInDate, blockedDates]);
+
+  // Earliest valid check-out is the day after check-in
+  const minCheckOutDate = useMemo(() => {
+    if (!checkInDate) return localTodayISO();
+    const d = new Date(checkInDate + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  }, [checkInDate]);
+
+  // True when dates + room type are all set but the room type is fully booked for that range
+  const hasDateConflict =
+    !isLoadingRooms &&
+    !!roomType &&
+    !!checkInDate &&
+    !!checkOutDate &&
+    selectedRoom?.total_rooms === 0;
+
   // Form state
   const [formData, setFormData] = useState({
     firstName: "",
@@ -107,14 +147,12 @@ export default function BookingConfirmationPage() {
   // Handle room type change
   const handleRoomTypeChange = (selectedRoomType) => {
     setRoomType(selectedRoomType);
-    // Reset number of rooms when room type changes
     setNumberOfRooms("");
-    if (validationError.show) {
-      clearFormError();
-    }
-
-    // Update total payment with the new room type
-    updateTotalPayment(selectedRoomType, 1); // Default to 1 room when changing room type
+    // Reset dates so the guest picks fresh dates scoped to the new room type
+    setCheckInDate("");
+    setCheckOutDate("");
+    clearFormError();
+    updateTotalPayment(selectedRoomType, 1);
   };
 
   // Handle number of rooms change
@@ -187,7 +225,17 @@ export default function BookingConfirmationPage() {
 
   // Handle booking confirmation
   const handleConfirmBooking = async () => {
+    console.log("=== CONFIRM BOOKING CLICKED ===");
+    console.log("Form data:", formData);
+    console.log("Room type:", roomType);
+    console.log("Number of rooms:", numberOfRooms);
+    console.log("Check-in:", checkInDate);
+    console.log("Check-out:", checkOutDate);
+    console.log("Is form valid?", isFormValid());
+
     if (!isFormValid()) {
+      console.log("Form validation failed");
+      console.log("Missing fields:", getMissingFields());
       setFormError("Please fill in all required fields");
       return;
     }
@@ -200,10 +248,13 @@ export default function BookingConfirmationPage() {
 
     try {
       setIsSubmitting(true);
+      console.log("Starting booking submission...");
 
       // Format dates
       const checkIn = formatDate(checkInDate);
       const checkOut = formatDate(checkOutDate);
+      console.log("Formatted check-in:", checkIn);
+      console.log("Formatted check-out:", checkOut);
 
       if (!checkIn || !checkOut) {
         throw new Error(
@@ -223,8 +274,8 @@ export default function BookingConfirmationPage() {
       };
 
       console.log("Sending reservation payload:", reservationPayload);
-      console.log("Phone number: " + reservationPayload.phone);
       const response = await createReservation(reservationPayload);
+      console.log("Reservation response:", response);
 
       if (response.reservation_id) {
         setReservationData({
@@ -237,10 +288,7 @@ export default function BookingConfirmationPage() {
           totalAmount: totalPayment,
         });
         setShowSuccessModal(true);
-
-        // Immediately refresh room availability to show updated counts
         await fetchAvailableRooms(checkInDate, checkOutDate);
-
         console.log("Success modal shown");
       }
     } catch (error) {
@@ -268,6 +316,7 @@ export default function BookingConfirmationPage() {
       }
     } finally {
       setIsSubmitting(false);
+      console.log("=== BOOKING PROCESS COMPLETE ===");
     }
   };
 
@@ -455,33 +504,38 @@ export default function BookingConfirmationPage() {
                   </div>
 
                   <div className="flex flex-row gap-[2.4rem]">
-                    <CustomInput
-                      variant="default"
+                    <DatePicker
                       label="Check in"
-                      id="check-in"
-                      type="date"
                       value={checkInDate}
-                      onChange={(e) => {
-                        setCheckInDate(e.target.value);
-                        if (validationError.show) {
-                          clearFormError();
-                        }
+                      onChange={(date) => {
+                        setCheckInDate(date);
+                        if (validationError.show) clearFormError();
                       }}
+                      minDate={localTodayISO()}
+                      blockedDates={blockedDates}
+                      placeholder="Select check-in"
                     />
-                    <CustomInput
-                      variant="default"
+                    <DatePicker
                       label="Check out"
-                      id="check-out"
-                      type="date"
                       value={checkOutDate}
-                      onChange={(e) => {
-                        setCheckOutDate(e.target.value);
-                        if (validationError.show) {
-                          clearFormError();
-                        }
+                      onChange={(date) => {
+                        setCheckOutDate(date);
+                        if (validationError.show) clearFormError();
                       }}
+                      minDate={minCheckOutDate}
+                      maxDate={maxCheckOutDate}
+                      blockedDates={blockedDates}
+                      placeholder="Select check-out"
                     />
                   </div>
+
+                  {hasDateConflict && (
+                    <div className="p-[1.6rem] bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-lg text-orange-800">
+                        Some dates in your selected range are already booked for this room type. Please choose different dates, or come back to create a new booking when future dates become available.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
               <div
@@ -546,12 +600,12 @@ export default function BookingConfirmationPage() {
                   </div>
 
                   <Button
-                    variant={isFormValid() ? "emphasis" : "disabled"}
+                    variant={isFormValid() && !hasDateConflict ? "emphasis" : "disabled"}
                     className={`mt-[3rem] text-xl py-3 ${
-                      !isFormValid() ? "cursor-pointer hover:bg-gray-300" : ""
+                      !isFormValid() || hasDateConflict ? "cursor-pointer hover:bg-gray-300" : ""
                     }`}
                     onClick={handleConfirmBooking}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || hasDateConflict}
                   >
                     {isSubmitting ? (
                       <div className="flex items-center gap-2">

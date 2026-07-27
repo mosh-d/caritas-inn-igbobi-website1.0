@@ -1,8 +1,12 @@
 import { useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { FiX } from "react-icons/fi";
+import { ADMIN_NAV_ITEMS } from "./adminNavItems";
+import { useWebSocketContext } from "../../context/WebSocketContext";
 
 export default function AdminMobileMenu({ isOpen, onClose }) {
+  const { alertCount } = useWebSocketContext();
+
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
     if (isOpen) {
@@ -43,54 +47,40 @@ export default function AdminMobileMenu({ isOpen, onClose }) {
           <FiX size="4rem" />
         </button>
 
-        <nav className="w-full">
-          <ul className="flex flex-col items-center gap-8 text-2xl">
-            <li>
-              <NavLink
-                to="/admin/overview"
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `block py-2 cursor-pointer ${
-                    isActive
-                      ? "text-[color:var(--emphasis)] font-bold"
-                      : "text-gray-800"
-                  }`
-                }
-                end
-              >
-                OVERVIEW
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/admin/rooms"
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `block py-2 cursor-pointer ${
-                    isActive
-                      ? "text-[color:var(--emphasis)] font-bold"
-                      : "text-gray-800"
-                  }`
-                }
-              >
-                ROOMS
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to="/admin/bookings"
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `block py-2 cursor-pointer ${
-                    isActive
-                      ? "text-[color:var(--emphasis)] font-bold"
-                      : "text-gray-800"
-                  }`
-                }
-              >
-                BOOKINGS
-              </NavLink>
-            </li>
+        <nav className="w-full max-w-sm overflow-y-auto max-h-full py-8">
+          <ul className="flex flex-col gap-3 text-2xl">
+            {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, end, showAlertBadge }) => (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  end={end}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-4 px-5 pt-[1.1rem] pb-[0.7rem] rounded-xl font-bold tracking-wide cursor-pointer transition-all ${
+                      isActive
+                        ? "bg-[color:var(--emphasis)] text-white shadow-md"
+                        : "text-gray-800 hover:bg-black/5"
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon size={22} className="shrink-0 -mt-1" />
+                      <span>{label}</span>
+                      {showAlertBadge && alertCount > 0 && (
+                        <span
+                          className={`ml-auto text-xl font-bold rounded-full px-1 pt-1.5 pb-.7 min-w-[2rem] text-center leading-tight ${
+                            isActive ? "bg-white text-[color:var(--emphasis)]" : "bg-red-600 text-white"
+                          }`}
+                        >
+                          {alertCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
           </ul>
         </nav>
       </div>

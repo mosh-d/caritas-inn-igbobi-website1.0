@@ -1,10 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
-import { IoClose } from "react-icons/io5";
-import Button from "../components/shared/Button";
+import { IoClose, IoBedOutline } from "react-icons/io5";
+import Modal from "../components/shared/Modal";
+import PageHeading from "../components/shared/PageHeading";
+import LoadingSpinner from "../components/shared/LoadingSpinner";
+import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { canManageRoomPrices, getAuthHeaders } from "../utils/auth";
 import { SERVER_BASE_URL } from "../utils/server-config";
+import RoomStatusTag from "../components/shared/RoomStatusTag";
 
 // ─── API Setup ────────────────────────────────────────────────────────────────
 
@@ -22,6 +26,9 @@ const getBaseUrl = () =>
 const formatPrice = (price) =>
   Number(price).toLocaleString("en-NG", { minimumFractionDigits: 0 });
 
+const formatDateTime = (d) =>
+  d ? new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+
 // ─── Add Room Modal ────────────────────────────────────────────────────────────
 
 const EMPTY_FORM = {
@@ -36,20 +43,8 @@ const EMPTY_FORM = {
 };
 
 function AddRoomModal({ onClose, onSuccess, onError }) {
-  const modalRef = useRef(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
-
-  // Close on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (modalRef.current && !modalRef.current.contains(e.target)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,7 +52,7 @@ function AddRoomModal({ onClose, onSuccess, onError }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
 
     // Basic validation
     if (
@@ -90,7 +85,7 @@ function AddRoomModal({ onClose, onSuccess, onError }) {
 
     try {
       const res = await axios.post(`${getBaseUrl()}/api/rooms/type`, payload, {
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         withCredentials: true,
       });
       console.log("AdminRooms: Add room response:", res.data);
@@ -111,174 +106,128 @@ function AddRoomModal({ onClose, onSuccess, onError }) {
     }
   };
 
-  const inputClass =
-    "w-full border-b border-[color:var(--text-color)]/40 bg-transparent py-2 text-[color:var(--text-color)] text-2xl outline-none focus:border-[color:var(--emphasis)] transition-colors placeholder:text-white/25";
-
-  const labelClass =
-    "block text-xl font-primary font-semibold uppercase tracking-widest text-[color:var(--emphasis)] mb-1";
-
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 overflow-y-auto">
-      <div
-        ref={modalRef}
-        className="w-full max-w-2xl bg-white shadow-2xl flex flex-col font-secondary rounded-lg overflow-hidden my-8"
-      >
-        {/* Header */}
-        <div className="p-8 text-center bg-[var(--white)] relative">
-          <h2 className="font-bold text-3xl tracking-[0.2em] font-primary text-[var(--text-color)]">
-            ADD NEW ROOM TYPE
-          </h2>
-          <button
-            onClick={onClose}
-            className="absolute top-6 right-6 text-[color:var(--text-color)]/50 hover:text-[color:var(--emphasis)] transition-colors"
-            aria-label="Close modal"
-          >
-            <IoClose size={28} />
+    <Modal
+      onClose={onClose}
+      title="Add New Room Type"
+      subtitle="Creates a bookable room category with its own rate and inventory."
+      size="md"
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={btn.secondary}>Cancel</button>
+          <button type="button" onClick={handleSubmit} disabled={submitting} className={btn.primary}>
+            {submitting ? "Adding..." : "Add Room"}
           </button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>Room Type Name *</label>
+          <input
+            type="text"
+            name="name"
+            value={form.name}
+            onChange={handleChange}
+            placeholder="e.g. Diplomatic Suite"
+            className={field.input}
+          />
         </div>
 
-        {/* Body */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-[var(--text-color)] text-[var(--white)] p-8 flex flex-col gap-6 tracking-[0.05em] font-primary"
-        >
-          {/* Room Name */}
-          <div>
-            <label className={labelClass}>Room Type Name *</label>
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="e.g. Diplomatic Suite"
-              className={inputClass}
-              style={{ color: "var(--white)", borderColor: "rgba(255,255,255,0.3)" }}
-            />
-          </div>
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>Summary *</label>
+          <textarea
+            name="summary"
+            value={form.summary}
+            onChange={handleChange}
+            placeholder="Brief description of the room..."
+            rows={3}
+            className={field.textarea}
+          />
+        </div>
 
-          {/* Summary */}
-          <div>
-            <label className={labelClass}>Summary *</label>
-            <textarea
-              name="summary"
-              value={form.summary}
-              onChange={handleChange}
-              placeholder="Brief description of the room..."
-              rows={3}
-              className={`${inputClass} resize-none`}
-              style={{ color: "var(--white)", borderColor: "rgba(255,255,255,0.3)" }}
-            />
-          </div>
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>Amenities *</label>
+          <input
+            type="text"
+            name="amenities"
+            value={form.amenities}
+            onChange={handleChange}
+            placeholder="e.g. WiFi, AC, Jacuzzi, Breakfast, Smart TV"
+            className={field.input}
+          />
+        </div>
 
-          {/* Amenities */}
-          <div>
-            <label className={labelClass}>Amenities *</label>
-            <input
-              type="text"
-              name="amenities"
-              value={form.amenities}
-              onChange={handleChange}
-              placeholder="e.g. WiFi, AC, Jacuzzi, Breakfast, Smart TV"
-              className={inputClass}
-              style={{ color: "var(--white)", borderColor: "rgba(255,255,255,0.3)" }}
-            />
-          </div>
-
-          {/* Capacities row */}
-          <div className="grid grid-cols-2 gap-6 max-sm:grid-cols-1">
-            <div>
-              <label className={labelClass}>Adult Capacity *</label>
-              <input
-                type="number"
-                name="adult_capacity"
-                value={form.adult_capacity}
-                onChange={handleChange}
-                min="1"
-                placeholder="e.g. 2"
-                className={inputClass}
-                style={{ color: "var(--white)", borderColor: "rgba(255,255,255,0.3)" }}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Child Capacity *</label>
-              <input
-                type="number"
-                name="child_capacity"
-                value={form.child_capacity}
-                onChange={handleChange}
-                min="0"
-                placeholder="e.g. 2"
-                className={inputClass}
-                style={{ color: "var(--white)", borderColor: "rgba(255,255,255,0.3)" }}
-              />
-            </div>
-          </div>
-
-          {/* Price row */}
-          <div className="grid grid-cols-2 gap-6 max-sm:grid-cols-1">
-            <div>
-              <label className={labelClass}>Currency Symbol</label>
-              <input
-                type="text"
-                name="currency_symbol"
-                value={form.currency_symbol}
-                onChange={handleChange}
-                placeholder="₦"
-                className={inputClass}
-                style={{ color: "var(--white)", borderColor: "rgba(255,255,255,0.3)" }}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Room Rate/Price *</label>
-              <input
-                type="number"
-                name="base_rate"
-                value={form.base_rate}
-                onChange={handleChange}
-                min="0"
-                placeholder="e.g. 85000"
-                className={inputClass}
-                style={{ color: "var(--white)", borderColor: "rgba(255,255,255,0.3)" }}
-              />
-            </div>
-          </div>
-
-          {/* Max Capacity (physical rooms) */}
-          <div>
-            <label className={labelClass}>
-              Max Capacity (no. of physical rooms) *
-            </label>
+        <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+          <div className="flex flex-col gap-2">
+            <label className={field.label}>Adult Capacity *</label>
             <input
               type="number"
-              name="max_capacity"
-              value={form.max_capacity}
+              name="adult_capacity"
+              value={form.adult_capacity}
               onChange={handleChange}
               min="1"
-              placeholder="e.g. 5"
-              className={inputClass}
-              style={{ color: "var(--white)", borderColor: "rgba(255,255,255,0.3)" }}
+              placeholder="e.g. 2"
+              className={field.input}
             />
           </div>
-
-          {/* Footer actions */}
-          <div className="flex justify-center gap-4 pt-4">
-            <Button type="button" onClick={onClose} variant="white">
-              <p className="font-primary text-xl">Cancel</p>
-            </Button>
-            <Button
-              type="submit"
-              variant="emphasis"
-              disabled={submitting}
-              className={submitting ? "opacity-60 cursor-not-allowed" : ""}
-            >
-              <p className="font-primary text-xl">
-                {submitting ? "Adding..." : "Add Room"}
-              </p>
-            </Button>
+          <div className="flex flex-col gap-2">
+            <label className={field.label}>Child Capacity *</label>
+            <input
+              type="number"
+              name="child_capacity"
+              value={form.child_capacity}
+              onChange={handleChange}
+              min="0"
+              placeholder="e.g. 2"
+              className={field.input}
+            />
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+          <div className="flex flex-col gap-2">
+            <label className={field.label}>Currency Symbol</label>
+            <input
+              type="text"
+              name="currency_symbol"
+              value={form.currency_symbol}
+              onChange={handleChange}
+              placeholder="₦"
+              className={field.input}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className={field.label}>Room Rate/Price *</label>
+            <input
+              type="number"
+              name="base_rate"
+              value={form.base_rate}
+              onChange={handleChange}
+              min="0"
+              placeholder="e.g. 85000"
+              className={field.input}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>Max Capacity (no. of physical rooms) *</label>
+          <input
+            type="number"
+            name="max_capacity"
+            value={form.max_capacity}
+            onChange={handleChange}
+            min="1"
+            placeholder="e.g. 5"
+            className={field.input}
+          />
+        </div>
+
+        {/* Allow Enter key to submit */}
+        <button type="submit" className="hidden" aria-hidden="true" />
+      </form>
+    </Modal>
   );
 }
 
@@ -293,8 +242,6 @@ function ViewRoomModal({
   onRefreshRoom,
   canManagePrices,
 }) {
-  const modalRef = useRef(null);
-
   const [priceInput, setPriceInput] = useState(String(room.base_rate ?? ""));
   const [capacityInput, setCapacityInput] = useState(
     String(room.max_capacity ?? "")
@@ -304,15 +251,70 @@ function ViewRoomModal({
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Reducing capacity can delete room_inventory rows outright (see
+  // updateRoomCapacity on the backend) — confirm before firing, same as the
+  // room-status confirmation below.
+  const [confirmCapacityDecrease, setConfirmCapacityDecrease] = useState(false);
+
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [detailsForm, setDetailsForm] = useState({
+    summary: room.summary || "",
+    amenities: room.amenities || "",
+    adult_capacity: String(room.adult_capacity ?? ""),
+    child_capacity: String(room.child_capacity ?? ""),
+  });
+  const [savingDetails, setSavingDetails] = useState(false);
+
+  const [physicalRooms, setPhysicalRooms] = useState(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [statusUpdatingId, setStatusUpdatingId] = useState(null);
+  const [confirmStatusChange, setConfirmStatusChange] = useState(null); // { roomInventoryId, roomNumber, newStatus }
+  // Collapsed by default — a room type with many physical rooms otherwise
+  // makes this modal scroll a long way before reaching Delete/Close.
+  const [physicalRoomsExpanded, setPhysicalRoomsExpanded] = useState(false);
+
+  // Only shows the spinner on the true first load — a websocket-triggered
+  // refresh (below) updates the list silently in the background instead of
+  // flashing back to "loading" every time.
+  const hasLoadedRoomStatusRef = useRef(false);
+  const loadRoomStatusList = useCallback(async () => {
+    if (!hasLoadedRoomStatusRef.current) setLoadingStatus(true);
+    try {
+      const res = await axios.get(`${getBaseUrl()}/api/rooms/status`, {
+        headers: getAuthHeaders(),
+        withCredentials: true,
+      });
+      const match = (res.data?.room_types || []).find((rt) => rt.room_type_id === room.room_type_id);
+      setPhysicalRooms(match?.rooms || []);
+      hasLoadedRoomStatusRef.current = true;
+    } catch (err) {
+      console.error("AdminRooms: Failed to load room status list:", err);
+      setPhysicalRooms((prev) => prev ?? []);
+    } finally {
+      setLoadingStatus(false);
+    }
+  }, [room.room_type_id]);
+
+  useEffect(() => {
+    loadRoomStatusList();
+  }, [loadRoomStatusList]);
+
+  // Room numbers/status can arrive or change out from under an already-open
+  // modal (another tab assigns a number, capacity changes elsewhere, a
+  // reservation checks in) — re-fetch on the same 'rooms_updated' broadcast
+  // every other room-aware page already listens for, instead of only ever
+  // fetching once when the modal happens to open.
+  const { subscribe: subscribeRoomStatus } = useWebSocketContext();
+  useEffect(() => subscribeRoomStatus(loadRoomStatusList, "rooms"), [subscribeRoomStatus, loadRoomStatusList]);
 
   // Safety fetches after data update - ensures consistency
   const runSafetyFetches = async () => {
     console.log(`🔍 [ViewRoomModal] Starting safety fetches for room ${room.room_type_id}...`);
-    
+
     // Lock UI during entire safety fetch period (6 seconds total)
     setRefreshing(true);
     console.log('🔒 [ViewRoomModal] UI locked - safety fetches in progress');
-    
+
     // First refresh after 500ms (immediate)
     setTimeout(async () => {
       console.log(`🔄 [ViewRoomModal] First safety fetch for room ${room.room_type_id}...`);
@@ -344,25 +346,12 @@ function ViewRoomModal({
         setCapacityInput(String(freshData.max_capacity ?? ""));
         setPriceInput(String(freshData.base_rate ?? ""));
       }
-      
+
       // Unlock UI after all safety fetches complete
       setRefreshing(false);
       console.log('🔓 [ViewRoomModal] UI unlocked - safety fetches complete');
     }, 6000);
   };
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      // If the confirmation dialog is showing, let it handle its own clicks
-      if (confirmDelete) return;
-
-      if (modalRef.current && !modalRef.current.contains(e.target)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose, confirmDelete]);
 
   const handleUpdatePrice = async () => {
     if (!canManagePrices) {
@@ -416,6 +405,12 @@ function ViewRoomModal({
       return;
     }
 
+    if (newCapacity < Number(room.max_capacity) && !confirmCapacityDecrease) {
+      setConfirmCapacityDecrease(true);
+      return;
+    }
+    setConfirmCapacityDecrease(false);
+
     console.log(
       `AdminRooms: Updating capacity for room_type_id=${room.room_type_id} to ${newCapacity}`
     );
@@ -426,7 +421,7 @@ function ViewRoomModal({
         `${getBaseUrl()}/api/rooms/capacity`,
         { room_type_id: room.room_type_id, new_capacity: newCapacity },
         {
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           withCredentials: true,
         }
       );
@@ -461,6 +456,56 @@ function ViewRoomModal({
     }
   };
 
+  const handleSaveDetails = async () => {
+    setSavingDetails(true);
+    try {
+      const res = await axios.patch(
+        `${getBaseUrl()}/api/rooms/type/${room.room_type_id}`,
+        {
+          summary: detailsForm.summary,
+          amenities: detailsForm.amenities,
+          adult_capacity: Number(detailsForm.adult_capacity),
+          child_capacity: Number(detailsForm.child_capacity),
+        },
+        { headers: getAuthHeaders(), withCredentials: true },
+      );
+      onSuccess("Room details updated.");
+      setEditingDetails(false);
+      // Formatting happens server-side (lowercase, spaces->underscores) —
+      // reflect the actual saved value, not the raw text just typed.
+      if (res.data?.amenities !== undefined) {
+        setDetailsForm((f) => ({ ...f, amenities: res.data.amenities }));
+      }
+      runSafetyFetches();
+    } catch (err) {
+      onError(err.response?.data?.message || "Failed to update room details.");
+    } finally {
+      setSavingDetails(false);
+    }
+  };
+
+  const handleSetRoomStatus = async (roomInventoryId, roomNumber, newStatus, currentDisplayStatus) => {
+    if (currentDisplayStatus === "occupied" && !confirmStatusChange) {
+      setConfirmStatusChange({ roomInventoryId, roomNumber, newStatus });
+      return;
+    }
+    setConfirmStatusChange(null);
+    setStatusUpdatingId(roomInventoryId);
+    try {
+      await axios.patch(
+        `${getBaseUrl()}/api/rooms/inventory/${roomInventoryId}/status`,
+        { status: newStatus },
+        { headers: getAuthHeaders(), withCredentials: true },
+      );
+      onSuccess(`Room ${roomNumber} marked ${newStatus.replace(/_/g, " ")}.`);
+      await loadRoomStatusList();
+    } catch (err) {
+      onError(err.response?.data?.message || "Failed to update room status.");
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirmDelete) {
       setConfirmDelete(true);
@@ -475,7 +520,7 @@ function ViewRoomModal({
     try {
       const res = await axios.delete(
         `${getBaseUrl()}/api/rooms/type/${room.room_type_id}`,
-        { withCredentials: true }
+        { headers: getAuthHeaders(), withCredentials: true }
       );
       console.log("AdminRooms: Delete room response:", res.data);
       onRoomDeleted(
@@ -498,122 +543,14 @@ function ViewRoomModal({
     }
   };
 
-  const fieldClass =
-    "flex justify-between items-center border-b border-[var(--emphasis)]/30 pb-3 gap-4";
-  const labelClass =
-    "font-semibold uppercase text-xl text-[var(--emphasis)] min-w-[12rem]";
-  const valueClass = "text-2xl text-right";
-
-  const editableInputClass =
-    "bg-transparent border border-[var(--emphasis)]/50 text-[var(--white)] text-2xl px-3 py-1 w-[14rem] max-sm:w-[10rem] outline-none focus:border-[var(--emphasis)] transition-colors rounded-sm";
-
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 overflow-y-auto">
-      <div
-        ref={modalRef}
-        className="w-full max-w-2xl bg-white shadow-2xl flex flex-col font-secondary rounded-lg overflow-hidden my-8"
-      >
-        {/* Header */}
-        <div className="p-8 text-center bg-[var(--white)] relative">
-          <h2 className="font-bold text-3xl tracking-[0.2em] font-primary text-[var(--text-color)]">
-            {room.room_type_name}
-          </h2>
-          {/* <p className="text-xl text-[color:var(--text-color)]/60 font-primary mt-1">
-            Room Type ID: {room.room_type_id}
-          </p> */}
-          <button
-            onClick={onClose}
-            className="absolute top-6 right-6 text-[color:var(--text-color)]/50 hover:text-[color:var(--emphasis)] transition-colors"
-            aria-label="Close modal"
-          >
-            <IoClose size={28} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="bg-[var(--text-color)] text-[var(--white)] p-8 flex flex-col gap-5 tracking-[0.1em] text-sm font-primary">
-          {/* Read-only fields */}
-          <div className={fieldClass}>
-            <span className={labelClass}>Available Rooms</span>
-            <span className={valueClass}>{room.available_rooms ?? "N/A"}</span>
-          </div>
-
-          {room.summary && (
-            <div className="border-b border-[var(--emphasis)]/30 pb-3">
-              <span className={labelClass}>Summary</span>
-              <p className="text-xl mt-2 leading-relaxed">{room.summary}</p>
-            </div>
-          )}
-
-          {room.amenities && (
-            <div className="border-b border-[var(--emphasis)]/30 pb-3">
-              <span className={labelClass}>Amenities</span>
-              <p className="text-xl mt-2 leading-relaxed">{room.amenities}</p>
-            </div>
-          )}
-
-          <div className={fieldClass}>
-            <span className={labelClass}>Adult Capacity</span>
-            <span className={valueClass}>{room.adult_capacity ?? "N/A"}</span>
-          </div>
-
-          <div className={fieldClass}>
-            <span className={labelClass}>Child Capacity</span>
-            <span className={valueClass}>{room.child_capacity ?? "N/A"}</span>
-          </div>
-
-          {/* Editable: Base Price */}
-          <div className={fieldClass}>
-            <span className={labelClass}>Base Price (₦)</span>
-            {canManagePrices ? (
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  value={priceInput}
-                  onChange={(e) => setPriceInput(e.target.value)}
-                  className={editableInputClass}
-                  min="0"
-                />
-                <Button
-                  onClick={handleUpdatePrice}
-                  variant="emphasis"
-                  disabled={updatingPrice}
-                  className={`text-xl pt-2 pb-0.5 px-4 ${updatingPrice ? "opacity-60 cursor-not-allowed" : ""}`}
-                >
-                  {updatingPrice ? "..." : "UPDATE"}
-                </Button>
-              </div>
-            ) : (
-              <span className={valueClass}>NGN {formatPrice(room.base_rate ?? 0)}</span>
-            )}
-          </div>
-
-          {/* Editable: Max Capacity (physical rooms) */}
-          <div className={fieldClass}>
-            <span className={labelClass}>Max Capacity</span>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                value={capacityInput}
-                onChange={(e) => setCapacityInput(e.target.value)}
-                className={`${editableInputClass} ${refreshing ? "opacity-70" : ""}`}
-                disabled={refreshing}
-                min="1"
-              />
-              <Button
-                onClick={handleUpdateCapacity}
-                variant="emphasis"
-                disabled={updatingCapacity || refreshing}
-                className={`text-xl pt-2 pb-0.5 px-4 ${updatingCapacity || refreshing ? "opacity-60 cursor-not-allowed" : ""}`}
-              >
-                {updatingCapacity ? "..." : refreshing ? "Syncing..." : "UPDATE"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-[var(--text-color)] p-6 flex justify-between items-center gap-4 flex-wrap">
+    <Modal
+      onClose={onClose}
+      title={room.room_type_name}
+      subtitle={`${room.available_rooms ?? "N/A"} room(s) currently available`}
+      size="lg"
+      footer={
+        <>
           <button
             onClick={() => {
               console.log(
@@ -622,16 +559,287 @@ function ViewRoomModal({
               setConfirmDelete(true);
             }}
             disabled={deleting}
-            className="font-primary text-xl tracking-widest px-6 py-3 border border-red-400/50 text-red-300/70 hover:border-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all cursor-pointer"
+            className={`${btn.danger} mr-auto`}
           >
             Delete Room
           </button>
-
-          <Button onClick={onClose} variant="white">
-            <p className="font-primary text-xl">Close</p>
-          </Button>
-        </div>
+          <button onClick={onClose} className={btn.secondary}>Close</button>
+        </>
+      }
+    >
+      {/* Available Rooms is always live/computed — Adult/Child capacity, Summary,
+          and Amenities are editable via updateRoomTypeDetails (previously
+          settable only at creation time). */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <StatCard label="Available Rooms" value={room.available_rooms ?? "N/A"} />
+        <StatCard label="Adult Capacity" value={editingDetails ? "—" : room.adult_capacity ?? "N/A"} />
+        <StatCard label="Child Capacity" value={editingDetails ? "—" : room.child_capacity ?? "N/A"} />
       </div>
+
+      <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-2xl font-bold text-[color:var(--black)]">Summary, Amenities & Capacity</h3>
+          {!editingDetails && (
+            <button onClick={() => setEditingDetails(true)} className={btn.secondary}>Edit</button>
+          )}
+        </div>
+
+        {editingDetails ? (
+          <>
+            <div className="flex flex-col gap-2">
+              <label className={field.label}>Summary</label>
+              <textarea
+                value={detailsForm.summary}
+                onChange={(e) => setDetailsForm({ ...detailsForm, summary: e.target.value })}
+                className={field.textarea}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className={field.label}>Amenities (comma-separated)</label>
+              <input
+                type="text"
+                placeholder="e.g. Free WiFi, AC, King Size Bed"
+                value={detailsForm.amenities}
+                onChange={(e) => setDetailsForm({ ...detailsForm, amenities: e.target.value })}
+                className={field.input}
+              />
+              <p className="text-base text-[color:var(--text-color)]/60">
+                Auto-formatted to match the public site's icon set — "Free WiFi" is saved as "free_wifi".
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className={field.label}>Adult Capacity</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={detailsForm.adult_capacity}
+                  onChange={(e) => setDetailsForm({ ...detailsForm, adult_capacity: e.target.value })}
+                  className={field.input}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className={field.label}>Child Capacity</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={detailsForm.child_capacity}
+                  onChange={(e) => setDetailsForm({ ...detailsForm, child_capacity: e.target.value })}
+                  className={field.input}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setEditingDetails(false);
+                  setDetailsForm({
+                    summary: room.summary || "",
+                    amenities: room.amenities || "",
+                    adult_capacity: String(room.adult_capacity ?? ""),
+                    child_capacity: String(room.child_capacity ?? ""),
+                  });
+                }}
+                className={btn.secondary}
+              >
+                Cancel
+              </button>
+              <button onClick={handleSaveDetails} disabled={savingDetails} className={btn.primary}>
+                {savingDetails ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {room.summary && <p className="text-xl leading-relaxed">{room.summary}</p>}
+            {room.amenities ? (
+              <div className="flex flex-wrap gap-2">
+                {String(room.amenities).split(",").map((a, i) => (
+                  <span key={i} className="text-lg bg-[color:var(--text-color)]/5 px-4 py-1.5 rounded-full capitalize">
+                    {a.trim().replace(/_/g, " ")}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xl text-[color:var(--text-color)]/60">No amenities listed yet.</p>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* Physical Rooms — persistent status per numbered room. Occupied is
+          always live-derived (never a manual flag) so it can't drift from
+          reality; Out of Order / Complementary are the manual flags staff
+          set here. */}
+      <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+        <button
+          type="button"
+          onClick={() => setPhysicalRoomsExpanded((v) => !v)}
+          className="flex items-center justify-between w-full cursor-pointer"
+        >
+          <h3 className="text-2xl font-bold text-[color:var(--black)]">
+            Physical Rooms {physicalRooms && <span className="text-lg font-normal text-[color:var(--text-color)]/60">({physicalRooms.length})</span>}
+          </h3>
+          <span className="text-lg text-[color:var(--text-color)]/60">{physicalRoomsExpanded ? "Hide ▲" : "Show ▼"}</span>
+        </button>
+        {physicalRoomsExpanded && (
+        loadingStatus ? (
+          <LoadingSpinner />
+        ) : !physicalRooms || physicalRooms.length === 0 ? (
+          <p className="text-xl text-[color:var(--text-color)]/76">No numbered rooms yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {physicalRooms.map((r) => (
+              <div
+                key={r.room_inventory_id}
+                className="flex items-center justify-between gap-4 flex-wrap bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3"
+              >
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xl font-semibold">{r.room_number}</span>
+                  <RoomStatusTag status={r.display_status} />
+                  {r.status_changed_at && r.manual_status !== "available" && (
+                    <span className="text-base text-[color:var(--text-color)]/60">
+                      since {formatDateTime(r.status_changed_at)}
+                    </span>
+                  )}
+                </div>
+                <select
+                  value={r.manual_status}
+                  disabled={statusUpdatingId === r.room_inventory_id}
+                  onChange={(e) =>
+                    handleSetRoomStatus(r.room_inventory_id, r.room_number, e.target.value, r.display_status)
+                  }
+                  className={`${field.select} w-auto`}
+                >
+                  <option value="available">Available</option>
+                  <option value="out_of_order">Out of Order</option>
+                  <option value="complementary">Complementary</option>
+                </select>
+              </div>
+            ))}
+          </div>
+        )
+        )}
+      </section>
+
+      {/* Editable: Base Price */}
+      <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+        <h3 className="text-2xl font-bold text-[color:var(--black)]">Base Price (₦)</h3>
+        {canManagePrices ? (
+          <div className="flex gap-3 flex-nowrap items-center">
+            <input
+              type="number"
+              value={priceInput}
+              onChange={(e) => setPriceInput(e.target.value)}
+              className={field.input}
+              min="0"
+            />
+            <button
+              onClick={handleUpdatePrice}
+              disabled={updatingPrice}
+              className={`${btn.primary} whitespace-nowrap`}
+            >
+              {updatingPrice ? "..." : "Update"}
+            </button>
+          </div>
+        ) : (
+          <p className="text-2xl font-bold">NGN {formatPrice(room.base_rate ?? 0)}</p>
+        )}
+      </section>
+
+      {/* Editable: Max Capacity (physical rooms) */}
+      <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+        <h3 className="text-2xl font-bold text-[color:var(--black)]">Max Capacity (physical rooms)</h3>
+        <div className="flex gap-3 flex-nowrap items-center">
+          <input
+            type="number"
+            value={capacityInput}
+            onChange={(e) => setCapacityInput(e.target.value)}
+            className={`${field.input} ${refreshing ? "opacity-70" : ""}`}
+            disabled={refreshing}
+            min="1"
+          />
+          <button
+            onClick={handleUpdateCapacity}
+            disabled={updatingCapacity || refreshing}
+            className={`${btn.primary} whitespace-nowrap`}
+          >
+            {updatingCapacity ? "..." : refreshing ? "Syncing..." : "Update"}
+          </button>
+        </div>
+      </section>
+
+      {/* ── Capacity Decrease Confirmation ── */}
+      {confirmCapacityDecrease && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmCapacityDecrease(false)} />
+          <div className="relative z-10 bg-white rounded-2xl shadow-2xl max-w-md w-full p-10 flex flex-col gap-6 text-center font-primary">
+            <div className="text-orange-500 flex justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-16 h-16">
+                <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-3xl font-bold text-[color:var(--text-color)] tracking-wide mb-2">Reduce Room Count?</h3>
+              <p className="text-xl text-[color:var(--text-color)]/84 leading-relaxed">
+                Reducing capacity from <span className="font-bold">{room.max_capacity}</span> to{" "}
+                <span className="font-bold">{capacityInput}</span> can permanently delete physical room rows (never
+                one a guest is currently in or has booked). This cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-4 justify-center pt-2">
+              <button onClick={() => setConfirmCapacityDecrease(false)} className={btn.secondary}>Cancel</button>
+              <button onClick={handleUpdateCapacity} disabled={updatingCapacity} className={btn.dangerSolid}>
+                {updatingCapacity ? "Reducing..." : "Yes, Reduce"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Occupied-Room Status-Change Confirmation ── */}
+      {confirmStatusChange && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmStatusChange(null)} />
+          <div className="relative z-10 bg-white rounded-2xl shadow-2xl max-w-md w-full p-10 flex flex-col gap-6 text-center font-primary">
+            <div className="text-orange-500 flex justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-16 h-16">
+                <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-3xl font-bold text-[color:var(--text-color)] tracking-wide mb-2">
+                Room {confirmStatusChange.roomNumber} is Occupied
+              </h3>
+              <p className="text-xl text-[color:var(--text-color)]/84 leading-relaxed">
+                {confirmStatusChange.newStatus === "complementary"
+                  ? "Marking this room complementary while a guest is staying in it will zero out their room charge on this stay's folio."
+                  : "This room currently has a guest checked in. Marking it out of order won't remove them, but flags the room for maintenance once they leave."}
+              </p>
+            </div>
+            <div className="flex gap-4 justify-center pt-2">
+              <button onClick={() => setConfirmStatusChange(null)} className={btn.secondary}>Cancel</button>
+              <button
+                onClick={() =>
+                  // confirmStatusChange is already set, so handleSetRoomStatus's
+                  // guard is skipped regardless of what's passed here — this call
+                  // is the "already confirmed" path.
+                  handleSetRoomStatus(
+                    confirmStatusChange.roomInventoryId,
+                    confirmStatusChange.roomNumber,
+                    confirmStatusChange.newStatus,
+                    null,
+                  )
+                }
+                disabled={statusUpdatingId === confirmStatusChange.roomInventoryId}
+                className={btn.dangerSolid}
+              >
+                {statusUpdatingId === confirmStatusChange.roomInventoryId ? "Applying..." : "Yes, Continue"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Delete Confirmation Dialog ── */}
       {confirmDelete && (
@@ -643,7 +851,7 @@ function ViewRoomModal({
           />
 
           {/* Dialog box */}
-          <div className="relative z-10 bg-white rounded-lg shadow-2xl max-w-md w-full p-10 flex flex-col gap-6 text-center font-primary">
+          <div className="relative z-10 bg-white rounded-2xl shadow-2xl max-w-md w-full p-10 flex flex-col gap-6 text-center font-primary">
             {/* Warning icon */}
             <div className="text-red-500 flex justify-center">
               <svg
@@ -664,7 +872,7 @@ function ViewRoomModal({
               <h3 className="text-3xl font-bold text-[color:var(--text-color)] tracking-wide mb-2">
                 Delete Room Type?
               </h3>
-              <p className="text-xl text-[color:var(--text-color)]/70 leading-relaxed">
+              <p className="text-xl text-[color:var(--text-color)]/84 leading-relaxed">
                 You are about to permanently remove{" "}
                 <span className="font-bold text-[color:var(--text-color)]">
                   {room.room_type_name}
@@ -680,7 +888,7 @@ function ViewRoomModal({
                   setConfirmDelete(false);
                 }}
                 disabled={deleting}
-                className="font-primary text-xl tracking-widest px-8 py-4 border border-[color:var(--text-color)]/30 text-[color:var(--text-color)]/70 hover:bg-gray-100 transition-all cursor-pointer rounded-sm"
+                className={btn.secondary}
               >
                 Cancel
               </button>
@@ -688,9 +896,7 @@ function ViewRoomModal({
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className={`font-primary text-xl tracking-widest px-8 py-4 bg-red-600 text-white hover:bg-red-700 active:bg-red-800 transition-all rounded-sm ${
-                  deleting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-                }`}
+                className={btn.dangerSolid}
               >
                 {deleting ? "Deleting..." : "Yes, Delete"}
               </button>
@@ -698,10 +904,18 @@ function ViewRoomModal({
           </div>
         </div>
       )}
-    </div>
+    </Modal>
   );
 }
 
+function StatCard({ label, value }) {
+  return (
+    <div className="bg-[color:var(--text-color)]/3 rounded-lg px-5 py-4">
+      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-1">{label}</p>
+      <p className="text-2xl font-bold text-[color:var(--black)]">{value}</p>
+    </div>
+  );
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -825,26 +1039,24 @@ export default function AdminRoomsPage() {
 
   useEffect(() => {
     fetchRooms();
-    const interval = setInterval(() => fetchRooms(true), 60000);
-    return () => clearInterval(interval);
   }, []);
 
   // WebSocket handler - refetch data when rooms are updated (with multiple safety fetches for reliability)
   const handleRoomsUpdated = useCallback((data) => {
     console.log('📡 [AdminRooms] WebSocket update received at:', new Date().toISOString());
     console.log('📡 [AdminRooms] WebSocket data:', data);
-    
+
     // Lock editing during WebSocket updates
     setWebSocketUpdating(true);
     console.log('🔒 [AdminRooms] Editing locked - WebSocket update in progress');
-    
+
     // First fetch after 2 seconds (immediate response)
     setTimeout(() => {
       console.log('🔄 [AdminRooms] Starting first safety fetch...');
       fetchRooms(true);
       console.log('🔄 [AdminRooms] First safety fetch triggered');
     }, 2000);
-    
+
     // Second verification fetch after 6 seconds (ensure consistency)
     setTimeout(() => {
       console.log('🔄 [AdminRooms] Starting verification fetch...');
@@ -857,7 +1069,7 @@ export default function AdminRoomsPage() {
       console.log('🔄 [AdminRooms] Starting final safety fetch...');
       fetchRooms(true);
       console.log('🔄 [AdminRooms] Final safety fetch triggered');
-      
+
       // Unlock editing after all safety fetches complete
       setWebSocketUpdating(false);
       console.log('🔓 [AdminRooms] Editing unlocked - WebSocket update complete');
@@ -865,12 +1077,31 @@ export default function AdminRoomsPage() {
   }, []);
 
   // Subscribe to WebSocket updates
-  const { subscribe } = useWebSocketContext();
-  
+  const { subscribe, isConnected, disconnectedRefreshTick } = useWebSocketContext();
+
   useEffect(() => {
     const unsubscribe = subscribe(handleRoomsUpdated);
     return unsubscribe;
   }, [handleRoomsUpdated, subscribe]);
+
+  // Re-sync whenever the socket (re)connects — closes the gap where a
+  // rooms_updated event broadcast while this client was disconnected
+  // (network blip, laptop sleep, a backend redeploy) would otherwise be
+  // lost for good, since Socket.IO's default emit has no queue/replay.
+  // Replaces the old 60s poll; the subscription above already handles
+  // live updates while connected.
+  useEffect(() => {
+    if (isConnected) fetchRooms(true);
+  }, [isConnected]);
+
+  // Fallback: if the socket stays disconnected, keep refreshing via plain
+  // HTTP every 30s anyway (see WebSocketContext.jsx) — the websocket and the
+  // REST API are separate transports, so this can recover even when the
+  // socket itself won't reconnect quickly.
+  useEffect(() => {
+    if (disconnectedRefreshTick === 0) return;
+    fetchRooms(true);
+  }, [disconnectedRefreshTick]);
 
   // Handle inline price update (desktop table)
   const handleInlinePriceUpdate = async (room) => {
@@ -932,11 +1163,11 @@ export default function AdminRoomsPage() {
     <>
       {/* ── Notifications ── */}
       {successMessage && (
-        <div className="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded z-50 flex items-center gap-4 max-w-sm shadow-lg">
+        <div className="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-xl z-50 flex items-center gap-4 max-w-sm shadow-lg">
           <span className="text-xl">{successMessage}</span>
           <button
             onClick={() => setSuccessMessage("")}
-            className="text-green-700 hover:text-green-900 flex-shrink-0"
+            className="text-green-700 hover:text-green-900 flex-shrink-0 cursor-pointer"
           >
             <IoClose size={20} />
           </button>
@@ -944,11 +1175,11 @@ export default function AdminRoomsPage() {
       )}
 
       {error && (
-        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded z-50 flex items-center gap-4 max-w-sm shadow-lg">
+        <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-xl z-50 flex items-center gap-4 max-w-sm shadow-lg">
           <span className="text-xl">{error}</span>
           <button
             onClick={() => setError(null)}
-            className="text-red-700 hover:text-red-900 flex-shrink-0"
+            className="text-red-700 hover:text-red-900 flex-shrink-0 cursor-pointer"
           >
             <IoClose size={20} />
           </button>
@@ -958,149 +1189,109 @@ export default function AdminRoomsPage() {
       {/* ── Page ── */}
       <div
         data-component="AdminRooms"
-        className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[4rem]"
+        className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]"
       >
-        <div className="w-full flex justify-between items-center">
-          <h1 className="text-6xl font-secondary font-bold text-[color:var(--black)]">
-            Rooms
-          </h1>
-        </div>
-
-        {/* ── Table ── */}
-        <div className="w-full overflow-x-auto">
-          <table className="min-w-full border-collapse text-2xl">
-            <thead>
-              <tr className="border-b border-[color:var(--text-color)]/50">
-                {/* Always visible */}
-                <th className="px-8 py-4 text-left whitespace-nowrap">
-                  Room Type
-                </th>
-
-                {/* Desktop only: price as editable cell */}
-                <th className="px-8 py-4 text-left whitespace-nowrap hidden md:table-cell">
-                  Price (₦)
-                </th>
-
-                <th className="px-8 py-4 text-left whitespace-nowrap">
-                  Action
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="3" className="px-8 py-8 text-center">
-                    Loading rooms...
-                  </td>
-                </tr>
-              ) : rooms.length === 0 ? (
-                <tr>
-                  <td colSpan="3" className="px-8 py-8 text-center">
-                    No rooms found for this branch.
-                  </td>
-                </tr>
-              ) : (
-                rooms.map((room) => (
-                  <tr
-                    key={room.room_type_id}
-                    className="border-b border-[color:var(--text-color)]/50"
-                  >
-                    {/* Room Type Name */}
-                    <td className="px-8 py-4 text-left font-medium">
-                      {room.room_type_name}
-                    </td>
-
-                    {/* Desktop: Inline price input + UPDATE button */}
-                    <td className="px-8 py-4 text-left hidden md:table-cell">
-                      {canManagePrices ? (
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="number"
-                            value={inlinePriceEdits[room.room_type_id] ?? ""}
-                            onChange={(e) =>
-                              setInlinePriceEdits((prev) => ({
-                                ...prev,
-                                [room.room_type_id]: e.target.value,
-                              }))
-                            }
-                            className="border border-[color:var(--text-color)]/30 bg-transparent text-[color:var(--text-color)] text-2xl px-3 py-1 w-[13rem] outline-none focus:border-[color:var(--emphasis)] transition-colors rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            min="0"
-                            disabled={webSocketUpdating}
-                          />
-                          <Button
-                            onClick={() => handleInlinePriceUpdate(room)}
-                            variant="emphasis"
-                            disabled={updatingInlinePrice === room.room_type_id || webSocketUpdating}
-                            className={`text-xl pt-2 pb-0.5 px-4 ${
-                              updatingInlinePrice === room.room_type_id || webSocketUpdating
-                                ? "opacity-60 cursor-not-allowed"
-                                : ""
-                            }`}
-                          >
-                            {updatingInlinePrice === room.room_type_id
-                              ? "..."
-                              : webSocketUpdating
-                              ? "Syncing..."
-                              : "UPDATE"}
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-[color:var(--text-color)]">
-                          NGN {formatPrice(room.base_rate ?? 0)}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Action: View (+ mobile delete) */}
-                    <td className="px-8 py-4 text-left">
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <Button
-                          onClick={() => {
-                            console.log(
-                              "AdminRooms: Opening view modal for room:",
-                              room
-                            );
-                            setSelectedRoom(room);
-                          }}
-                          variant="emphasis"
-                        >
-                          View
-                        </Button>
-
-                        {/* Mobile only: delete button */}
-                        {/* <button
-                          onClick={() => {
-                            console.log(
-                              "AdminRooms: Quick-delete clicked for room_type_id:",
-                              room.room_type_id
-                            );
-                            setSelectedRoom(room);
-                          }}
-                          className="md:hidden text-xl font-primary tracking-widest text-red-500 border border-red-300 px-4 py-3 outline hover:bg-red-50 transition-colors"
-                        >
-                          Delete
-                        </button> */}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* ── Add Room Button ── */}
-        <div className="w-full flex justify-end">
-          <Button
+        <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
+          <PageHeading icon={IoBedOutline}>Rooms</PageHeading>
+          <button
             onClick={() => {
               console.log("AdminRooms: Opening Add Room modal");
               setShowAddModal(true);
             }}
-            variant="emphasis"
+            className={`${btn.primary} whitespace-nowrap`}
           >
-            <p className="text-2xl font-primary">Add Room</p>
-          </Button>
+            + Add Room
+          </button>
+        </div>
+
+        {/* ── Table ── */}
+        <div className={table.card}>
+          <div className={table.scroll}>
+            <table className={table.el}>
+              <thead>
+                <tr className={table.headRow}>
+                  <th className={table.th}>Room Type</th>
+                  <th className={`${table.th} hidden md:table-cell`}>Price (₦)</th>
+                  <th className={table.th}>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="3" className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td>
+                  </tr>
+                ) : rooms.length === 0 ? (
+                  <tr>
+                    <td colSpan="3" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">
+                      No rooms found for this branch.
+                    </td>
+                  </tr>
+                ) : (
+                  rooms.map((room) => (
+                    <tr key={room.room_type_id} className={table.row}>
+                      {/* Room Type Name */}
+                      <td className={`${table.td} font-medium`}>
+                        {room.room_type_name}
+                      </td>
+
+                      {/* Desktop: Inline price input + Update button */}
+                      <td className={`${table.td} hidden md:table-cell`}>
+                        {canManagePrices ? (
+                          <div className="flex items-center gap-2 flex-nowrap">
+                            <input
+                              type="number"
+                              value={inlinePriceEdits[room.room_type_id] ?? ""}
+                              onChange={(e) =>
+                                setInlinePriceEdits((prev) => ({
+                                  ...prev,
+                                  [room.room_type_id]: e.target.value,
+                                }))
+                              }
+                              className={`${field.input} text-xl! w-[14rem] py-2!`}
+                              min="0"
+                              disabled={webSocketUpdating}
+                            />
+                            <button
+                              onClick={() => handleInlinePriceUpdate(room)}
+                              disabled={updatingInlinePrice === room.room_type_id || webSocketUpdating}
+                              className={btn.rowPrimary}
+                            >
+                              {updatingInlinePrice === room.room_type_id
+                                ? "..."
+                                : webSocketUpdating
+                                ? "Syncing..."
+                                : "Update"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span>NGN {formatPrice(room.base_rate ?? 0)}</span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className={table.td}>
+                        <div className={table.actions}>
+                          <button
+                            onClick={() => {
+                              console.log(
+                                "AdminRooms: Opening view modal for room:",
+                                room
+                              );
+                              setSelectedRoom(room);
+                            }}
+                            className={btn.rowPrimary}
+                          >
+                            View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

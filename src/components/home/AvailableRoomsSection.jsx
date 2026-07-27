@@ -1,11 +1,10 @@
 import { useOutletContext } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
-import { useWebSocketContext } from "../../context/WebSocketContext";
-import axios from "axios";
-import CustomInput from "../shared/CustomInput";
+import { useState, useMemo } from "react";
+import DatePicker from "../shared/DatePicker";
 import Button from "../shared/Button";
 import GalleryModal from "../shared/GalleryModal";
+import { localTodayISO } from "../../utils/date-utils";
 
 //React icons
 import { LiaShowerSolid, LiaToiletPaperSolid } from "react-icons/lia";
@@ -64,7 +63,6 @@ import mobileExecutiveImage2 from "../../assets/mobile-room-images/executive/exe
 import mobileExecutiveImage3 from "../../assets/mobile-room-images/executive/executive-3.jpg";
 import mobileExecutiveImage4 from "../../assets/mobile-room-images/executive/executive-4.jpg";
 import mobileExecutiveImage5 from "../../assets/mobile-room-images/executive/executive-5.jpg";
-import { SERVER_BASE_URL } from "../../utils/server-config";
 
 // Desktop standard room images
 const standardRoomImages = [
@@ -142,8 +140,6 @@ const useSharedContext = () => {
   return context;
 };
 
-const API_BASE_URL = SERVER_BASE_URL;
-
 const amenityIcons = {
   free_wifi: <IoWifiOutline size="2.5rem" />,
   ac: <TbAirConditioning size="2.5rem" />,
@@ -171,23 +167,11 @@ const getAmenityDisplayName = (amenity) => {
 
 export default function AvailableRoomsSection() {
   const navigate = useNavigate();
-  const [roomTypes, setRoomTypes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedRooms, setSelectedRooms] = useState({});
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [currentGalleryImages, setCurrentGalleryImages] = useState([]);
-  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 640 : false);
 
-  // Update mobile state on window resize
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const today = localTodayISO();
 
   // Room type to gallery images mapping (Desktop)
   const desktopRoomGalleryImages = {
@@ -227,10 +211,12 @@ export default function AvailableRoomsSection() {
   const handleViewImages = (images) => {
     if (!images || images.length === 0) return;
 
-    const formattedImages = images.map((img, index) => ({
-      src: img,
-      alt: `Room Image ${index + 1}`,
-    }));
+    const formattedImages = images
+      .filter((img) => img !== undefined)
+      .map((img, index) => ({
+        src: img,
+        alt: `Room Image ${index + 1}`,
+      }));
     setCurrentGalleryImages(formattedImages);
     setIsGalleryOpen(true);
   };
@@ -243,125 +229,16 @@ export default function AvailableRoomsSection() {
     setNumberOfRooms,
     setRoomType,
     updateTotalPayment,
-    branchId,
+    roomTypes,
+    isLoadingRooms,
   } = useSharedContext();
 
- const fetchRoomData = useCallback(async () => {
-    try {
-      console.log('🔄 [AvailableRoomsSection] Starting fetchRoomData at:', new Date().toISOString());
-      setLoading(true);
-      
-      // Ensure API_BASE_URL doesn't end with a slash to prevent double slashes
-      const baseUrl = API_BASE_URL.endsWith("/")
-        ? API_BASE_URL.slice(0, -1)
-        : API_BASE_URL;
-      const response = await axios.post(`${baseUrl}/api/rooms/details`, {
-        branch_id: branchId,
-      });
-
-      console.log("📊 [AvailableRoomsSection] API Response at:", new Date().toISOString(), response.data);
-
-      if (response.data && response.data.room_types) {
-        // Log room details for debugging
-        response.data.room_types.forEach((room) => {
-          console.log(`🏠 [AvailableRoomsSection] Room ${room.room_type_id} (${room.room_type_name}): ${room.available_rooms}/${room.total_rooms} available`);
-        });
-        
-        setRoomTypes(response.data.room_types);
-      }
-    } catch (err) {
-      console.error("❌ [AvailableRoomsSection] Error fetching room data:", err);
-      setError("Failed to load room data. Please refresh the page or try again later.");
-    } finally {
-      setLoading(false);
-    }
-  }, [branchId]);
-
-  // WebSocket handler - refetch data when rooms are updated (with dual fetch for reliability)
-  const handleRoomsUpdated = useCallback((data) => {
-    console.log('🔄 [AvailableRoomsSection] WebSocket update received at:', new Date().toISOString());
-    console.log('📡 [AvailableRoomsSection] WebSocket data:', data);
-    
-    // Check if we have a manual update response with room count data
-    if (data.new_available !== undefined || data.requested_count !== undefined) {
-      const updatedCount = data.new_available || data.requested_count;
-      console.log(`🔄 [AvailableRoomsSection] Using manual update response: ${updatedCount}`);
-      
-      // If response includes room_type_id, update that specific room type
-      if (data.room_type_id) {
-        console.log(`🎯 [AvailableRoomsSection] Updating specific room type ${data.room_type_id} with count ${updatedCount}`);
-        setRoomTypes(prev => prev.map(room => {
-          if (room.room_type_id === data.room_type_id) {
-            return {
-              ...room,
-              total_rooms: updatedCount,
-              available_rooms: updatedCount
-            };
-          }
-          return room;
-        }));
-        console.log('✅ [AvailableRoomsSection] UI updated with manual update response for specific room type');
-      } else {
-        // If no room_type_id in response, fetch fresh data to ensure accuracy
-        console.log('🔄 [AvailableRoomsSection] No room_type_id in response, fetching fresh data for accuracy...');
-        fetchRoomData();
-        console.log('✅ [AvailableRoomsSection] Fresh data fetch triggered for manual update');
-      }
-    }
-    // If we only get branch_id, it's a basic notification - fetch to get actual data
-    else if (data.branch_id) {
-      console.log('🔄 [AvailableRoomsSection] Basic WebSocket notification, fetching updated data...');
-      // Immediate fetch to get the latest data
-      fetchRoomData();
-      console.log('🔄 [AvailableRoomsSection] Immediate fetch triggered for basic notification');
-    }
-    // Update UI immediately with WebSocket data if available
-    else if (data.room_types && Array.isArray(data.room_types)) {
-      console.log('🔄 [AvailableRoomsSection] Updating UI immediately with WebSocket data');
-      setRoomTypes(data.room_types);
-      console.log('✅ [AvailableRoomsSection] UI updated with WebSocket data');
-    }
-    else {
-      // Fallback: fetch fresh data for any other WebSocket message types
-      console.log('🔄 [AvailableRoomsSection] Unknown WebSocket message type, fetching fresh data...');
-      fetchRoomData();
-      console.log('✅ [AvailableRoomsSection] Fallback fetch triggered');
-    }
-    
-    // First fetch after 2 seconds (immediate response)
-    setTimeout(() => {
-      console.log('🔄 [AvailableRoomsSection] Starting first fetch...');
-      fetchRoomData();
-      console.log('🔄 [AvailableRoomsSection] First fetch triggered');
-    }, 2000);
-    
-    // Second verification fetch after 5 seconds (ensure consistency)
-    setTimeout(() => {
-      console.log('🔄 [AvailableRoomsSection] Starting verification fetch...');
-      fetchRoomData();
-      console.log('🔄 [AvailableRoomsSection] Verification fetch triggered');
-    }, 5000);
-
-    // Final safety fetch after 10 seconds (ensure consistency)
-    setTimeout(() => {
-      console.log('🔄 [AvailableRoomsSection] Starting safety fetch...');
-      fetchRoomData();
-      console.log('🔄 [AvailableRoomsSection] Safety fetch triggered');
-    }, 10000);
-  }, [fetchRoomData]);
-
-  // Subscribe to WebSocket updates
-  const { isConnected, subscribe } = useWebSocketContext();
-  
-  useEffect(() => {
-    const unsubscribe = subscribe(handleRoomsUpdated);
-    return unsubscribe;
-  }, [handleRoomsUpdated, subscribe]);
-
-  // Initial fetch only
-  useEffect(() => {
-    fetchRoomData();
-  }, [fetchRoomData]);
+  const minCheckOutDate = useMemo(() => {
+    if (!checkInDate) return today;
+    const d = new Date(checkInDate + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  }, [checkInDate, today]);
 
   const handleRoomsChange = (roomTypeId, value) => {
     setSelectedRooms((prev) => ({
@@ -422,7 +299,7 @@ export default function AvailableRoomsSection() {
     );
   };
 
-  if (loading && roomTypes.length === 0) {
+  if (isLoadingRooms && roomTypes.length === 0) {
     return <div className="p-12 text-center">Loading room information...</div>;
   }
 
@@ -435,29 +312,21 @@ export default function AvailableRoomsSection() {
         <h2 className="text-6xl font-secondary font-bold">Available Rooms</h2>
       </div>
 
-      {error && (
-        <div className="p-4 text-xl text-center text-red-500 bg-red-50 rounded">
-          {error}
-        </div>
-      )}
-
       <div className="flex w-full max-sm:flex-col max-sm:gap-[2.4rem] gap-[6rem] justify-between">
-        <div className="flex gap-[4.8rem]">
-          <CustomInput
+        <div className="flex gap-[4.8rem] max-sm:flex-col max-sm:gap-[2.4rem]">
+          <DatePicker
             label="Check in"
-            id="check-in"
-            type="date"
             value={checkInDate}
-            onChange={(e) => setCheckInDate(e.target.value)}
-            style={{ cursor: "text" }}
+            onChange={setCheckInDate}
+            minDate={today}
+            placeholder="Select check-in"
           />
-          <CustomInput
+          <DatePicker
             label="Check out"
-            id="check-out"
-            type="date"
             value={checkOutDate}
-            onChange={(e) => setCheckOutDate(e.target.value)}
-            style={{ cursor: "text" }}
+            onChange={setCheckOutDate}
+            minDate={minCheckOutDate}
+            placeholder="Select check-out"
           />
         </div>
       </div>
@@ -523,7 +392,7 @@ export default function AvailableRoomsSection() {
                       handleRoomsChange(room.room_type_id, e.target.value)
                     }
                     className="w-full p-2 border rounded focus:outline-none hover:cursor-pointer text-xl"
-                    disabled={loading || !room.total_rooms}
+                    disabled={isLoadingRooms || !room.total_rooms}
                   >
                     <option value="0" className="text-xl">
                       {room.total_rooms === 0 ? "Unavailable" : "0"}
@@ -566,7 +435,7 @@ export default function AvailableRoomsSection() {
                     onClick={() => handleBookRoom(room)}
                     className="w-full text-xl"
                     disabled={
-                      loading ||
+                      isLoadingRooms ||
                       !parseInt(selectedRooms[room.room_type_id] || "0")
                     }
                   >
@@ -642,13 +511,15 @@ export default function AvailableRoomsSection() {
                     handleRoomsChange(room.room_type_id, e.target.value)
                   }
                   className="w-full p-2 border rounded focus:outline-none cursor-pointer text-lg text-white"
-                  disabled={loading || !room.total_rooms}
+                  disabled={isLoadingRooms || !room.total_rooms}
                 >
                   <option
                     value="0"
                     className="text-lg cursor-pointer text-[color:var(--text-color)]"
                   >
-                    {room.total_rooms === 0 ? "Unavailable" : "0 (Select rooms)"}
+                    {room.total_rooms === 0
+                      ? "Unavailable"
+                      : "0 (Select rooms)"}
                   </option>
                   {Array.from({ length: room.total_rooms || 0 }, (_, i) => (
                     <option
@@ -693,7 +564,7 @@ export default function AvailableRoomsSection() {
                   onClick={() => handleBookRoom(room)}
                   className="w-full text-lg py-3"
                   disabled={
-                    loading ||
+                    isLoadingRooms ||
                     !parseInt(selectedRooms[room.room_type_id] || "0")
                   }
                 >
