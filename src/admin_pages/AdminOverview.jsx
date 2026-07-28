@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchRoomDetails, fetchMaintenanceMode } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import {
-  IoClose,
   IoGridOutline,
   IoLogInOutline,
   IoLogOutOutline,
@@ -18,14 +17,10 @@ import {
   IoGiftOutline,
   IoBriefcaseOutline,
 } from "react-icons/io5";
-import axios from "axios";
-import { SERVER_BASE_URL } from "../utils/server-config";
-import { getAuthHeaders } from "../utils/auth";
 
-import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
-import { table, field } from "../components/shared/ui";
+import { table } from "../components/shared/ui";
 import { fetchCheckInList, fetchCheckOutList, fetchInHouse } from "../utils/front-office-api";
 import { fetchRoomStatusList } from "../utils/reservations-pms-api";
 import { fetchAlerts } from "../utils/alerts-api";
@@ -56,37 +51,15 @@ const yesterdayISO = () => {
   d.setDate(d.getDate() - 1);
   return toLocalISO(d);
 };
-const tomorrowISO = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return toLocalISO(d);
-};
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "N/A";
 
 export default function AdminOverviewPage() {
   const navigate = useNavigate();
-  const [apiUrl] = useState(SERVER_BASE_URL);
-  const [roomType, setRoomType] = useState("");
   const [roomTypes, setRoomTypes] = useState([]);
-  const [roomDetails, setRoomDetails] = useState({
-    maxCapacity: 0,
-    totalAvailableRooms: 0,
-    activeBookings: 0,
-    expiredBookings: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isProcessingUpdate, setIsProcessingUpdate] = useState(false);
-  const [tempRoomCount, setTempRoomCount] = useState("");
-  const [updateMessage, setUpdateMessage] = useState("");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-  // Room Inventory manual editor's own date window — defaults to today →
-  // tomorrow. A manual deduction only blocks capacity for this window (see
-  // getBasePool/getRoomDetails on the backend), so picking a longer range
-  // here is what makes a manual hold "stick" past a single night.
-  const [invCheckIn, setInvCheckIn] = useState(todayISO());
-  const [invCheckOut, setInvCheckOut] = useState(tomorrowISO());
 
   // ── Dashboard data (composed from existing endpoints, all JWT branch-scoped) ──
   const [glance, setGlance] = useState({ arrivals: null, departures: null, inHouse: null });
@@ -104,46 +77,17 @@ export default function AdminOverviewPage() {
     reservedRoomNumbers: [], // shown inline on the banner — a manager reservation is worth naming, unlike a generic maintenance flag
   });
 
-  const isEditingRef = useRef(isEditing);
-  useEffect(() => { isEditingRef.current = isEditing; }, [isEditing]);
-
-  const initialLoadDone = useRef(false);
-
   const loadRoomData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setIsLoading(true);
-      const data = await fetchRoomDetails(invCheckIn, invCheckOut);
-      const types = data.room_types || [];
-      setRoomTypes(types);
-
-      // Default to first room type on initial load only
-      if (!initialLoadDone.current && types.length > 0) {
-        initialLoadDone.current = true;
-        if (!roomType) {
-          setRoomType(types[0].room_type_name);
-        }
-      }
-
-      const currentType = roomType || types[0]?.room_type_name || "";
-      const roomTypeData = types.find((rt) => rt.room_type_name === currentType) || {};
-      setRoomDetails({
-        maxCapacity: roomTypeData.max_capacity || 0,
-        totalAvailableRooms: roomTypeData.available_rooms || 0,
-        activeBookings: 0,
-        expiredBookings: 0 });
-
-      if (!isEditingRef.current) {
-        setTempRoomCount(roomTypeData.available_rooms?.toString() || "0");
-      }
+      const data = await fetchRoomDetails();
+      setRoomTypes(data.room_types || []);
     } catch (error) {
       console.error("Error loading room data:", error);
     } finally {
       if (showLoading) setIsLoading(false);
     }
-  }, [roomType, invCheckIn, invCheckOut]);
-
-  const loadRoomDataRef = useRef(loadRoomData);
-  useEffect(() => { loadRoomDataRef.current = loadRoomData; }, [loadRoomData]);
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     const today = todayISO();
@@ -217,9 +161,9 @@ export default function AdminOverviewPage() {
 
   const handleRoomsUpdated = useCallback((data) => {
     console.log('📡 [AdminOverview] WebSocket update received:', data);
-    if (!isEditingRef.current) loadRoomDataRef.current(false);
+    loadRoomData(false);
     loadRoomStatusCounts();
-  }, [loadRoomStatusCounts]);
+  }, [loadRoomData, loadRoomStatusCounts]);
 
   const { subscribe, isConnected, disconnectedRefreshTick } = useWebSocketContext();
 
@@ -258,7 +202,7 @@ export default function AdminOverviewPage() {
   // connection-state change, which is rare, not every few seconds.
   useEffect(() => {
     if (!isConnected) return;
-    if (!isEditingRef.current) loadRoomData(false);
+    loadRoomData(false);
     checkMaintenanceMode();
   }, [isConnected, loadRoomData, checkMaintenanceMode]);
 
@@ -270,51 +214,9 @@ export default function AdminOverviewPage() {
   // a real outage happens).
   useEffect(() => {
     if (disconnectedRefreshTick === 0) return;
-    if (!isEditingRef.current) loadRoomData(false);
+    loadRoomData(false);
     checkMaintenanceMode();
   }, [disconnectedRefreshTick, loadRoomData, checkMaintenanceMode]);
-
-  const handleUpdateRoomCount = async () => {
-    setIsProcessingUpdate(true);
-    setUpdateMessage("");
-
-    try {
-      const roomTypeData = roomTypes.find((rt) => rt.room_type_name === roomType);
-      const roomTypeId = roomTypeData?.room_type_id;
-      if (!roomTypeId) {
-        throw new Error("Could not find room type ID for the selected category");
-      }
-      const newCount = parseInt(tempRoomCount, 10);
-      const baseUrl = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
-
-      const response = await axios.post(
-        `${baseUrl}/api/rooms/manual-update`,
-        { room_type_id: roomTypeId, new_room_count: newCount, check_in: invCheckIn, check_out: invCheckOut },
-        { headers: getAuthHeaders() }
-      );
-
-      setRoomDetails(prev => ({ ...prev, totalAvailableRooms: response.data.new_available || newCount }));
-      setUpdateMessage(response.data.message);
-
-      // Safety Fetches
-      setTimeout(() => loadRoomData(false), 2000);
-      setTimeout(() => loadRoomData(false), 6000);
-
-      // FINAL SAFETY + UNBLOCK (10 SECONDS)
-      setTimeout(() => {
-        loadRoomData(false);
-        setIsProcessingUpdate(false);
-        setIsEditing(false);
-      }, 10000);
-
-      setTimeout(() => setUpdateMessage(""), 10000);
-    } catch (error) {
-      console.error("Error updating room count:", error);
-      setUpdateMessage(error.response?.data?.message || "Failed to update room count");
-      setIsProcessingUpdate(false);
-      setTimeout(() => setUpdateMessage(""), 5000);
-    }
-  };
 
   // ── Derived dashboard values ──
   const totalRooms = roomTypes.reduce((s, rt) => s + (rt.max_capacity || 0), 0);
@@ -557,136 +459,6 @@ export default function AdminOverviewPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-
-        {/* ── Room Inventory manual editor (emergencies only) ── */}
-        <div className="w-full flex flex-col gap-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <h2 className="text-3xl font-bold text-[color:var(--black)]">Room Inventory</h2>
-            <span className="text-lg font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-4 pt-1.5 pb-1">
-              Only use manual update for emergencies!
-            </span>
-          </div>
-          <div className="bg-white p-8 rounded-xl border border-[color:var(--text-color)]/10 flex flex-col gap-6 w-full">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
-              <div>
-                <label className={field.label}>From</label>
-                <input
-                  type="date"
-                  value={invCheckIn}
-                  disabled={isEditing}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setInvCheckIn(v);
-                    if (invCheckOut && v >= invCheckOut) {
-                      const d = new Date(`${v}T00:00:00`);
-                      d.setDate(d.getDate() + 1);
-                      setInvCheckOut(toLocalISO(d));
-                    }
-                  }}
-                  className={field.input}
-                />
-              </div>
-              <div>
-                <label className={field.label}>To</label>
-                <input
-                  type="date"
-                  value={invCheckOut}
-                  min={invCheckIn}
-                  disabled={isEditing}
-                  onChange={(e) => setInvCheckOut(e.target.value)}
-                  className={field.input}
-                />
-              </div>
-            </div>
-            <p className="text-lg text-[color:var(--text-color)]/68 -mt-2">
-              Manual changes below only block these rooms for the selected window — they're automatically released once the "To" date passes.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg">
-                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-2">Room Category</p>
-                <select
-                  value={roomType}
-                  onChange={(e) => setRoomType(e.target.value)}
-                  disabled={isEditing}
-                  className="w-full text-3xl font-bold text-[color:var(--black)] bg-transparent border-none focus:ring-0 cursor-pointer"
-                >
-                  {roomTypes.map((rt) => (
-                    <option key={rt.room_type_id} value={rt.room_type_name}>
-                      {rt.room_type_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg relative group">
-                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-2">Available Rooms</p>
-                {isEditing ? (
-                  <div className="flex items-center gap-4">
-                    <select
-                      value={tempRoomCount}
-                      onChange={(e) => setTempRoomCount(e.target.value)}
-                      disabled={isProcessingUpdate}
-                      className="border border-[color:var(--text-color)]/30 rounded-md px-4 py-2 text-3xl focus:outline-none focus:border-[color:var(--emphasis)] w-32 bg-[color:var(--background-color)]"
-                    >
-                      {[...Array(roomDetails.maxCapacity + 1).keys()].map(num => (
-                        <option key={num} value={num}>{num}</option>
-                      ))}
-                    </select>
-                    {isProcessingUpdate ? (
-                      <div className="flex items-center justify-center px-4">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[color:var(--emphasis)]"></div>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={handleUpdateRoomCount}
-                        className="!bg-[color:var(--emphasis)] !border-[color:var(--emphasis)] hover:!bg-[color:var(--emphasis)]/80 text-white !text-2xl"
-                      >
-                        Update
-                      </Button>
-                    )}
-                    <button
-                      onClick={() => setIsEditing(false)}
-                      disabled={isProcessingUpdate}
-                      className="p-2 text-[color:var(--text-color)] hover:text-red-600 transition-colors"
-                      title="Cancel"
-                    >
-                      <IoClose size={24} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p className="text-4xl font-bold text-[color:var(--black)]">
-                      {roomDetails.totalAvailableRooms}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setTempRoomCount(roomDetails.totalAvailableRooms.toString());
-                        setIsEditing(true);
-                      }}
-                      className="text-2xl text-[color:var(--emphasis)] hover:underline hover:cursor-pointer font-bold"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg">
-                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-2">Max Capacity</p>
-                <p className="text-4xl font-bold text-[color:var(--black)]">
-                  {roomDetails.maxCapacity}
-                </p>
-              </div>
-            </div>
-
-            {updateMessage && (
-              <div className={`p-4 rounded-lg text-xl mb-4 ${updateMessage.includes("Failed") ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
-                {updateMessage}
-              </div>
-            )}
           </div>
         </div>
 
