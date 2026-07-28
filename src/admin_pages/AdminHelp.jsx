@@ -39,11 +39,13 @@ const SECTIONS = [
     label: "Rooms",
     summary: "Manage room TYPES (Deluxe, Standard, etc.) — pricing, capacity, amenities — and the individual numbered rooms (inventory) within each type.",
     workflow: [
-      "Each physical room has one manual status: Available, Out of Order, Complementary, or Reserved (set aside for a branch/zonal manager). Out of Order and Reserved both remove the room from every availability count and picker immediately; Complementary stays bookable and only affects billing.",
-      "Complementary only zeroes the room-charge on a guest's folio once ALL of that reservation's assigned rooms are marked complementary — a partially-complementary multi-room stay keeps its manual flag but doesn't change the bill yet.",
-      "A room can also show \"Occupied\" — a real guest is assigned there right now, computed live, never set manually.",
+      "Each physical room has one manual status, set from its room type's Physical Rooms list: Available, Out of Order, Complementary, or Reserved (set aside for a branch/zonal manager).",
+      "Out of Order and Reserved both hide the room from every availability count and booking picker right away. Complementary is different — the room stays fully bookable and visible; only the bill changes.",
+      "Marking a room Complementary automatically lowers the bill from that point on — you never need to add a manual discount yourself. If the guest hasn't checked in yet, the first night is already billed correctly. If they're already checked in, tonight's Night Audit will bill only the non-complementary rooms from now on.",
+      "The one thing it won't do: fix nights that were already charged before you marked the room Complementary — those stay billed as they were. The one exception is if every room on that reservation ends up Complementary — then the system automatically wipes every night already charged for that stay.",
+      "A room can also show \"Occupied\" — a real guest is assigned there right now. This is worked out automatically and can never be set by hand.",
       "The Physical Rooms list inside a room type's detail view is collapsible — useful once a room type has a lot of numbered rooms.",
-      "Reducing a room type's physical room count can delete rows — you'll be asked to confirm first, and it's refused outright if any of the rooms that would be removed are currently occupied or have a future booking.",
+      "Reducing a room type's physical room count can delete rows — you'll be asked to confirm first, and it's refused outright if any of the rooms being removed are currently occupied or have a future booking.",
     ],
   },
   {
@@ -64,7 +66,7 @@ const SECTIONS = [
     workflow: [
       "Lifecycle: Hold (created, awaiting payment) → Confirmed (paid) → Active (checked in) → Completed (checked out). A Hold can also be Cancelled, or become a No-Show if the guest never arrives.",
       "A Hold auto-cancels itself if left unconfirmed too long (see Alerts → Unconfirmed) — always confirm a real booking promptly so it doesn't expire.",
-      "Confirming a reservation creates its guest profile (or reuses one already matching that email) and its folio — this is also when the accommodation charge is first posted.",
+      "Confirming a reservation creates its guest profile (or reuses one already matching that email) and its folio, ready for payment — no room charge is posted yet at this point. That happens night by night: the first night at check-in, then one more each night through Night Audit.",
       "Extending a stay checks real-time capacity for the extra nights before allowing it — it can be refused if another booking already has those rooms for that window.",
       "Room Assignments here supports multiple room numbers per reservation for multi-room bookings.",
       "Early Checkout is for ending an active stay ahead of schedule — it releases the room immediately and asks for confirmation first since it can't be undone.",
