@@ -76,7 +76,7 @@ export default function AdminReportsPage() {
           ? "Arrivals and departures for a date range, with room price, receipt numbers, and deposits — the daily front-desk manifest, digitized."
           : activeTab === "analysis"
           ? "Every payment received in a date range, broken down by room, receipt number, and method."
-          : "A shift-handoff snapshot: room status (vacant/occupied/out-of-order/complementary) plus arrivals and departures — pick Evening for end-of-day or Morning to see the previous night's audit."}
+          : "A shift-handoff snapshot: room status (vacant/occupied/out-of-order/reserved/complementary) plus arrivals and departures — pick Evening for end-of-day or Morning to see the previous night's audit."}
       </p>
 
       {activeTab === "dashboard" && <DashboardTab />}
@@ -788,6 +788,7 @@ function PmsReportTab() {
               <RoomStatusLine label="Vacant" count={data.room_status.vacant.length} rooms={roomNumberList(data.room_status.vacant)} />
               <RoomStatusLine label="Occupied" count={data.room_status.occupied.length} rooms={roomNumberList(data.room_status.occupied)} />
               <RoomStatusLine label="Out of Order" count={data.room_status.out_of_order.length} rooms={roomNumberList(data.room_status.out_of_order)} />
+              <RoomStatusLine label="Reserved" count={data.room_status.reserved.length} rooms={roomNumberList(data.room_status.reserved)} />
               {/* Complementary always last, per the manual report's convention */}
               <RoomStatusLine label="Complementary" count={data.room_status.complementary.length} rooms={roomNumberList(data.room_status.complementary)} />
             </div>

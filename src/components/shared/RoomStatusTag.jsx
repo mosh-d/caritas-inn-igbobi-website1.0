@@ -6,6 +6,7 @@ export const ROOM_STATUS_META = {
   occupied: { label: "Occupied", className: "bg-blue-100 text-blue-700" },
   out_of_order: { label: "Out of Order", className: "bg-red-100 text-red-700" },
   complementary: { label: "Complementary", className: "bg-purple-100 text-purple-700" },
+  reserved: { label: "Reserved", className: "bg-indigo-100 text-indigo-700" },
   manual_hold: { label: "Manual Hold", className: "bg-orange-100 text-orange-700" },
 };
 

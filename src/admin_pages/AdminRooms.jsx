@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { IoClose, IoBedOutline } from "react-icons/io5";
 import Modal from "../components/shared/Modal";
@@ -15,7 +16,7 @@ import RoomStatusTag from "../components/shared/RoomStatusTag";
 let API_BASE_URL = SERVER_BASE_URL;
 
 // ─── Igbobi branch_id = 3 (Caritas Inn Igbobi) ───────────────────────────────
-// Source of truth: auth.js, room-data.js, WebSocketContext.jsx all use BRANCH_ID = 3
+// Source of truth: auth.js, room-data.js, WebSocketContext.jsx all use BRANCH_ID = 4
 const BRANCH_ID = 3;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -241,6 +242,8 @@ function ViewRoomModal({
   onRoomDeleted,
   onRefreshRoom,
   canManagePrices,
+  initiallyExpandPhysicalRooms,
+  highlightRoomInventoryId,
 }) {
   const [priceInput, setPriceInput] = useState(String(room.base_rate ?? ""));
   const [capacityInput, setCapacityInput] = useState(
@@ -270,13 +273,23 @@ function ViewRoomModal({
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
   const [confirmStatusChange, setConfirmStatusChange] = useState(null); // { roomInventoryId, roomNumber, newStatus }
   // Collapsed by default — a room type with many physical rooms otherwise
-  // makes this modal scroll a long way before reaching Delete/Close.
-  const [physicalRoomsExpanded, setPhysicalRoomsExpanded] = useState(false);
+  // makes this modal scroll a long way before reaching Delete/Close. Deep
+  // links from the Overview page's status banners force it open instead.
+  const [physicalRoomsExpanded, setPhysicalRoomsExpanded] = useState(!!initiallyExpandPhysicalRooms);
 
   // Only shows the spinner on the true first load — a websocket-triggered
   // refresh (below) updates the list silently in the background instead of
   // flashing back to "loading" every time.
   const hasLoadedRoomStatusRef = useRef(false);
+  // Scrolls the deep-linked room into view once its row exists in the DOM
+  // (Physical Rooms is collapsed by default, so this only ever fires when
+  // initiallyExpandPhysicalRooms forced it open).
+  const highlightedRoomRef = useRef(null);
+  useEffect(() => {
+    if (highlightRoomInventoryId && highlightedRoomRef.current) {
+      highlightedRoomRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightRoomInventoryId, physicalRooms]);
   const loadRoomStatusList = useCallback(async () => {
     if (!hasLoadedRoomStatusRef.current) setLoadingStatus(true);
     try {
@@ -692,7 +705,12 @@ function ViewRoomModal({
             {physicalRooms.map((r) => (
               <div
                 key={r.room_inventory_id}
-                className="flex items-center justify-between gap-4 flex-wrap bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3"
+                ref={r.room_inventory_id === highlightRoomInventoryId ? highlightedRoomRef : null}
+                className={`flex items-center justify-between gap-4 flex-wrap rounded-lg px-5 py-3 ${
+                  r.room_inventory_id === highlightRoomInventoryId
+                    ? "bg-[color:var(--emphasis)]/5 ring-1 ring-[color:var(--emphasis)]/50"
+                    : "bg-[color:var(--text-color)]/3"
+                }`}
               >
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="text-xl font-semibold">{r.room_number}</span>
@@ -714,6 +732,7 @@ function ViewRoomModal({
                   <option value="available">Available</option>
                   <option value="out_of_order">Out of Order</option>
                   <option value="complementary">Complementary</option>
+                  <option value="reserved">Reserved</option>
                 </select>
               </div>
             ))}
@@ -814,6 +833,8 @@ function ViewRoomModal({
               <p className="text-xl text-[color:var(--text-color)]/84 leading-relaxed">
                 {confirmStatusChange.newStatus === "complementary"
                   ? "Marking this room complementary while a guest is staying in it will zero out their room charge on this stay's folio."
+                  : confirmStatusChange.newStatus === "reserved"
+                  ? "This room currently has a guest checked in. Marking it reserved won't remove them, but flags the room as set aside for a manager once they leave."
                   : "This room currently has a guest checked in. Marking it out of order won't remove them, but flags the room for maintenance once they leave."}
               </p>
             </div>
@@ -921,12 +942,19 @@ function StatCard({ label, value }) {
 
 export default function AdminRoomsPage() {
   const canManagePrices = canManageRoomPrices();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  // Deep link from the Overview page's out-of-order/complementary/reserved banners
+  // (location.state: { openRoomTypeId, expandPhysicalRooms, highlightRoomInventoryId })
+  const [modalExpandPhysicalRooms, setModalExpandPhysicalRooms] = useState(false);
+  const [modalHighlightRoomInventoryId, setModalHighlightRoomInventoryId] = useState(null);
+  const appliedDeepLinkRef = useRef(false);
 
   // Inline price editing per row (desktop)
   const [inlinePriceEdits, setInlinePriceEdits] = useState({});
@@ -1040,6 +1068,25 @@ export default function AdminRoomsPage() {
   useEffect(() => {
     fetchRooms();
   }, []);
+
+  // Consume the Overview page's out-of-order/complementary/reserved banner deep link
+  // once rooms have loaded, then clear the state so a later back-navigation
+  // to this page doesn't reopen the modal. Applied only once per visit —
+  // `rooms` also refreshes on every websocket update, which shouldn't
+  // reopen a modal the staff member already closed.
+  useEffect(() => {
+    if (appliedDeepLinkRef.current || loading || rooms.length === 0) return;
+    const targetTypeId = location.state?.openRoomTypeId;
+    if (!targetTypeId) return;
+    appliedDeepLinkRef.current = true;
+    const match = rooms.find((r) => r.room_type_id === targetTypeId);
+    if (match) {
+      setSelectedRoom(match);
+      setModalExpandPhysicalRooms(!!location.state?.expandPhysicalRooms);
+      setModalHighlightRoomInventoryId(location.state?.highlightRoomInventoryId ?? null);
+    }
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [loading, rooms, location, navigate]);
 
   // WebSocket handler - refetch data when rooms are updated (with multiple safety fetches for reliability)
   const handleRoomsUpdated = useCallback((data) => {
@@ -1308,6 +1355,8 @@ export default function AdminRoomsPage() {
           }}
           onRefreshRoom={fetchRoomById}
           canManagePrices={canManagePrices}
+          initiallyExpandPhysicalRooms={modalExpandPhysicalRooms}
+          highlightRoomInventoryId={modalHighlightRoomInventoryId}
         />
       )}
 

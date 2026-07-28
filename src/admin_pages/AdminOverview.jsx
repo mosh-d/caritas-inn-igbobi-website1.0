@@ -14,6 +14,9 @@ import {
   IoMoonOutline,
   IoWarningOutline,
   IoCheckmarkCircleOutline,
+  IoConstructOutline,
+  IoGiftOutline,
+  IoBriefcaseOutline,
 } from "react-icons/io5";
 import axios from "axios";
 import { SERVER_BASE_URL } from "../utils/server-config";
@@ -24,6 +27,7 @@ import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
 import { table, field } from "../components/shared/ui";
 import { fetchCheckInList, fetchCheckOutList, fetchInHouse } from "../utils/front-office-api";
+import { fetchRoomStatusList } from "../utils/reservations-pms-api";
 import { fetchAlerts } from "../utils/alerts-api";
 import { fetchReportsDashboard } from "../utils/reports-api";
 import { fetchNightAuditHistory } from "../utils/night-audit-api";
@@ -90,6 +94,15 @@ export default function AdminOverviewPage() {
   const [reportSummary, setReportSummary] = useState(null);
   const [lastAudit, setLastAudit] = useState(undefined); // undefined = loading, null = none yet
   const [recentBookings, setRecentBookings] = useState([]);
+  const [roomStatusCounts, setRoomStatusCounts] = useState({
+    outOfOrder: 0,
+    complementary: 0,
+    reserved: 0,
+    outOfOrderFirst: null, // { roomTypeId, roomInventoryId } — for the "take me there" deep link
+    complementaryFirst: null,
+    reservedFirst: null,
+    reservedRoomNumbers: [], // shown inline on the banner — a manager reservation is worth naming, unlike a generic maintenance flag
+  });
 
   const isEditingRef = useRef(isEditing);
   useEffect(() => { isEditingRef.current = isEditing; }, [isEditing]);
@@ -156,6 +169,41 @@ export default function AdminOverviewPage() {
     if (bookings.status === "fulfilled") setRecentBookings(bookings.value.data || []);
   }, []);
 
+  // Counts of physical rooms manually flagged out-of-order/complementary
+  // (see RoomInventory.status) — separate from loadDashboard since the only
+  // thing that changes it is a 'rooms' websocket event (setRoomStatus),
+  // not the reservation/alert events that drive the rest of the dashboard.
+  const loadRoomStatusCounts = useCallback(async () => {
+    try {
+      const data = await fetchRoomStatusList();
+      let outOfOrder = 0;
+      let complementary = 0;
+      let reserved = 0;
+      let outOfOrderFirst = null;
+      let complementaryFirst = null;
+      let reservedFirst = null;
+      const reservedRoomNumbers = [];
+      for (const rt of data.room_types || []) {
+        for (const room of rt.rooms || []) {
+          if (room.display_status === "out_of_order") {
+            outOfOrder++;
+            if (!outOfOrderFirst) outOfOrderFirst = { roomTypeId: rt.room_type_id, roomInventoryId: room.room_inventory_id };
+          } else if (room.display_status === "complementary") {
+            complementary++;
+            if (!complementaryFirst) complementaryFirst = { roomTypeId: rt.room_type_id, roomInventoryId: room.room_inventory_id };
+          } else if (room.display_status === "reserved") {
+            reserved++;
+            if (!reservedFirst) reservedFirst = { roomTypeId: rt.room_type_id, roomInventoryId: room.room_inventory_id };
+            reservedRoomNumbers.push(room.room_number);
+          }
+        }
+      }
+      setRoomStatusCounts({ outOfOrder, complementary, reserved, outOfOrderFirst, complementaryFirst, reservedFirst, reservedRoomNumbers });
+    } catch (error) {
+      console.error("Error loading room status counts:", error);
+    }
+  }, []);
+
   const checkMaintenanceMode = useCallback(async () => {
     try {
       const data = await fetchMaintenanceMode();
@@ -170,13 +218,15 @@ export default function AdminOverviewPage() {
   const handleRoomsUpdated = useCallback((data) => {
     console.log('📡 [AdminOverview] WebSocket update received:', data);
     if (!isEditingRef.current) loadRoomDataRef.current(false);
-  }, []);
+    loadRoomStatusCounts();
+  }, [loadRoomStatusCounts]);
 
   const { subscribe, isConnected, disconnectedRefreshTick } = useWebSocketContext();
 
   useEffect(() => {
     loadRoomData(true);
     loadDashboard();
+    loadRoomStatusCounts();
     checkMaintenanceMode();
     const unsubscribeRooms = subscribe(handleRoomsUpdated, 'rooms');
     // Live refresh of the dashboard when bookings or alerts change
@@ -187,14 +237,17 @@ export default function AdminOverviewPage() {
     // underlying mutation to trigger a websocket event. Room data and
     // maintenance mode don't have that problem (see the isConnected effect
     // below), so they no longer poll.
-    const dashboardInterval = setInterval(loadDashboard, 60000);
+    const dashboardInterval = setInterval(() => {
+      loadDashboard();
+      loadRoomStatusCounts();
+    }, 60000);
     return () => {
       if (unsubscribeRooms) unsubscribeRooms();
       if (unsubscribeReservations) unsubscribeReservations();
       if (unsubscribeAlerts) unsubscribeAlerts();
       clearInterval(dashboardInterval);
     };
-  }, [loadRoomData, loadDashboard, checkMaintenanceMode, handleRoomsUpdated, subscribe]);
+  }, [loadRoomData, loadDashboard, loadRoomStatusCounts, checkMaintenanceMode, handleRoomsUpdated, subscribe]);
 
   // Re-sync room data + maintenance mode whenever the socket (re)connects.
   // Socket.IO's default emit has no queue/replay — an event broadcast while
@@ -340,6 +393,57 @@ export default function AdminOverviewPage() {
               All clear — no outstanding alerts.
             </div>
           )
+        )}
+
+        {/* ── Rooms needing attention (manual out-of-order/complementary/reserved flags) ── */}
+        {(roomStatusCounts.outOfOrder > 0 || roomStatusCounts.complementary > 0 || roomStatusCounts.reserved > 0) && (
+          <div className="w-full flex flex-col sm:flex-row gap-4">
+            {roomStatusCounts.outOfOrder > 0 && (
+              <StatusBanner
+                icon={IoConstructOutline}
+                boldText={`${roomStatusCounts.outOfOrder} room${roomStatusCounts.outOfOrder !== 1 ? "s" : ""} out of order`}
+                detail="needs maintenance before it can be sold"
+                color="red"
+                onClick={() => navigate("/admin/rooms", {
+                  state: {
+                    openRoomTypeId: roomStatusCounts.outOfOrderFirst?.roomTypeId,
+                    expandPhysicalRooms: true,
+                    highlightRoomInventoryId: roomStatusCounts.outOfOrderFirst?.roomInventoryId,
+                  },
+                })}
+              />
+            )}
+            {roomStatusCounts.complementary > 0 && (
+              <StatusBanner
+                icon={IoGiftOutline}
+                boldText={`${roomStatusCounts.complementary} room${roomStatusCounts.complementary !== 1 ? "s" : ""} complementary`}
+                detail="no room charge applied"
+                color="purple"
+                onClick={() => navigate("/admin/rooms", {
+                  state: {
+                    openRoomTypeId: roomStatusCounts.complementaryFirst?.roomTypeId,
+                    expandPhysicalRooms: true,
+                    highlightRoomInventoryId: roomStatusCounts.complementaryFirst?.roomInventoryId,
+                  },
+                })}
+              />
+            )}
+            {roomStatusCounts.reserved > 0 && (
+              <StatusBanner
+                icon={IoBriefcaseOutline}
+                boldText={`${roomStatusCounts.reserved} room${roomStatusCounts.reserved !== 1 ? "s" : ""} reserved (${roomStatusCounts.reservedRoomNumbers.join(", ")})`}
+                detail="set aside for a branch/zonal manager"
+                color="indigo"
+                onClick={() => navigate("/admin/rooms", {
+                  state: {
+                    openRoomTypeId: roomStatusCounts.reservedFirst?.roomTypeId,
+                    expandPhysicalRooms: true,
+                    highlightRoomInventoryId: roomStatusCounts.reservedFirst?.roomInventoryId,
+                  },
+                })}
+              />
+            )}
+          </div>
         )}
 
         {/* ── Today at a glance ── */}
@@ -707,6 +811,36 @@ function GlanceCard({ icon: Icon, label, value, sub, onClick, accent, warn }) {
       {sub && (
         <p className={`text-lg mt-1 ${accent ? "text-white/60" : "text-[color:var(--text-color)]/60"}`}>{sub}</p>
       )}
+    </button>
+  );
+}
+
+// Mimics the alerts strip above (colored border, faint/opaque background,
+// bold lead-in) so manager-facing status flags read consistently at a
+// glance — used for out-of-order/complementary/reserved room counts.
+const STATUS_BANNER_THEMES = {
+  red: "bg-red-50 border-red-200 text-red-800 hover:bg-red-100",
+  purple: "bg-purple-50 border-purple-200 text-purple-800 hover:bg-purple-100",
+  indigo: "bg-indigo-50 border-indigo-200 text-indigo-800 hover:bg-indigo-100",
+};
+const STATUS_BANNER_ICON_THEMES = {
+  red: "text-red-600",
+  purple: "text-purple-600",
+  indigo: "text-indigo-600",
+};
+
+// eslint-disable-next-line no-unused-vars
+function StatusBanner({ icon: Icon, boldText, detail, color, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 flex items-center gap-4 border rounded-xl px-6 py-4 text-left text-xl cursor-pointer transition-colors ${STATUS_BANNER_THEMES[color]}`}
+    >
+      <Icon size={24} className={`shrink-0 ${STATUS_BANNER_ICON_THEMES[color]}`} />
+      <span>
+        <strong className="font-bold">{boldText}</strong>
+        {detail && <> — {detail}</>}
+      </span>
     </button>
   );
 }

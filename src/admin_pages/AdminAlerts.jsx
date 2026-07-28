@@ -275,7 +275,7 @@ export default function AdminAlertsPage() {
               ) : (
                 <div className="w-full flex flex-col gap-4">
                   <p className="text-xl text-[color:var(--text-color)]/76">
-                    Awaiting payment confirmation — the room releases automatically if left unconfirmed for too long, but the booking itself stays retrievable (Reclaim Hold) until someone else books that room.
+                    Awaiting payment confirmation — the room releases automatically if left unconfirmed for too long, but the booking itself stays retrievable (Reclaim Hold) until someone else books that room, or until 24 hours after it expires, whichever comes first.
                   </p>
                   <div className={table.card}>
                     <div className={table.scroll}>
