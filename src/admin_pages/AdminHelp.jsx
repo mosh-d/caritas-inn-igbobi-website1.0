@@ -29,9 +29,8 @@ const SECTIONS = [
     workflow: [
       "\"MTD\" on Payments Received means Month-to-Date — total collected so far this calendar month.",
       "Clicking a number (e.g. \"Outstanding\") jumps to the matching page with the right tab pre-selected.",
-      "The Room Inventory card at the bottom is a manual emergency override, not the normal booking flow — use it only when a room needs to be pulled from availability outside of a real reservation (e.g. a burst pipe).",
-      "It now has its own From/To date range (defaults to today → tomorrow): reducing a room type's count only blocks that many rooms for the chosen window, and the block releases itself automatically once the \"To\" date passes — you don't need to manually undo it later.",
-      "Increasing the count back releases the oldest manual block(s) first.",
+      "A colored banner appears here whenever any room is flagged Out of Order, Complementary, or Reserved — showing the count, and for Reserved, the room number(s) too. Clicking a banner jumps straight to Rooms with that room type open and the room highlighted.",
+      "Room status (Out of Order/Complementary/Reserved, set from the Rooms page) is the only way to pull a room out of availability — there's no separate manual room-count override.",
     ],
   },
   {
@@ -40,12 +39,11 @@ const SECTIONS = [
     label: "Rooms",
     summary: "Manage room TYPES (Deluxe, Standard, etc.) — pricing, capacity, amenities — and the individual numbered rooms (inventory) within each type.",
     workflow: [
-      "Amenities you type are auto-formatted to match the public site's icon list (lowercase, spaces → underscores) — the preview shown is exactly what guests will see.",
-      "Each physical room has one manual status: Available, Out of Order, or Complementary. Out of Order removes it from every availability count and picker immediately.",
+      "Each physical room has one manual status: Available, Out of Order, Complementary, or Reserved (set aside for a branch/zonal manager). Out of Order and Reserved both remove the room from every availability count and picker immediately; Complementary stays bookable and only affects billing.",
       "Complementary only zeroes the room-charge on a guest's folio once ALL of that reservation's assigned rooms are marked complementary — a partially-complementary multi-room stay keeps its manual flag but doesn't change the bill yet.",
-      "A room can also show \"Occupied\" (a real guest is assigned there right now, computed live — never set manually) or \"Manual Hold\" (blocked via Overview's Edit Room Count tool, not a real booking).",
+      "A room can also show \"Occupied\" — a real guest is assigned there right now, computed live, never set manually.",
       "The Physical Rooms list inside a room type's detail view is collapsible — useful once a room type has a lot of numbered rooms.",
-      "Reducing a room type's physical room count can delete rows — you'll be asked to confirm first.",
+      "Reducing a room type's physical room count can delete rows — you'll be asked to confirm first, and it's refused outright if any of the rooms that would be removed are currently occupied or have a future booking.",
     ],
   },
   {
@@ -55,7 +53,7 @@ const SECTIONS = [
     summary: "A calendar-style grid — room numbers down the side, dates across the top — for seeing who's booked into which room over a date range at a glance.",
     workflow: [
       "Best for spotting a scheduling conflict or a gap in a room's booking visually, faster than reading a list of reservations one at a time.",
-      "Each room's live status tag (Occupied, Manual Hold, Out of Order, Complementary) shows here too, so you can tell a real stay apart from an admin block without leaving the chart.",
+      "Each room's live status tag (Occupied, Out of Order, Complementary, Reserved) shows here too, so you can tell a real stay apart from an admin flag without leaving the chart.",
     ],
   },
   {
