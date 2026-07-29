@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import Logo from '../../assets/caritas-logo-2.png';
-import { logout, getStoredStaffRole, getStoredBranch } from '../../utils/auth';
+import { logout, getStoredStaffRole, getStoredBranch, getStoredDisplayName } from '../../utils/auth';
 import StatusBadge from './StatusBadge';
 
 // Branch names in the DB are stored as "<Brand> <Location>" (e.g. "Caritas Inn
@@ -20,6 +20,7 @@ export default function AdminTopBar() {
   const isLogin = window.location.pathname === '/admin';
   const staffRole = getStoredStaffRole();
   const branch = getStoredBranch();
+  const displayName = getStoredDisplayName();
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -37,10 +38,15 @@ export default function AdminTopBar() {
         {staffRole && (
           <NavLink
             to='/admin/account'
-            className='flex items-center gap-2 text-lg text-white/70 hover:text-white transition-colors'
+            className='flex flex-col gap-1 text-lg text-white/70 hover:text-white transition-colors'
           >
-            <div className='max-sm:hidden'>Signed in as</div>
-            <StatusBadge status={staffRole} />
+            {displayName && (
+              <div className='text-xl font-semibold text-white'>{displayName}</div>
+            )}
+            <div className='flex items-center gap-2'>
+              <div className='max-sm:hidden'>Signed in as</div>
+              <StatusBadge status={staffRole} />
+            </div>
           </NavLink>
         )}
         <button

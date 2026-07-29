@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { login } from "../utils/auth";
+import { loginStaff } from "../utils/auth";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
 
 export default function AdminLoginPage() {
-  const [selectedRole, setSelectedRole] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,15 +30,15 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError("");
 
-    if (!selectedRole) {
-      setError("Please select a role before signing in.");
+    if (!username.trim()) {
+      setError("Please enter your username.");
       return;
     }
 
     setLoading(true);
 
     try {
-      await login(selectedRole, password);
+      await loginStaff(username.trim(), password);
       // Redirect to the intended page or dashboard
       const from = location.state?.from?.pathname || "/admin/overview";
       navigate(from, { replace: true });
@@ -76,23 +76,22 @@ export default function AdminLoginPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
-                htmlFor="staff-role"
+                htmlFor="staff-username"
                 className="block text-2xl font-medium text-gray-700 mb-1"
               >
-                Role
+                Username
               </label>
-              <select
-                id="staff-role"
-                name="staff-role"
+              <CustomInput
+                id="staff-username"
+                name="staff-username"
+                type="text"
                 required
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] focus:border-[color:var(--emphasis)] bg-white text-xl"
-              >
-                <option value="">Select your role</option>
-                <option value="receptionist">Receptionist</option>
-                <option value="manager">Manager</option>
-              </select>
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your username"
+                autoComplete="username"
+              />
             </div>
 
             <div>
@@ -131,4 +130,3 @@ export default function AdminLoginPage() {
     </div>
   );
 }
-

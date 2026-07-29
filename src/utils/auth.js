@@ -71,6 +71,37 @@ export const login = async (staffRole, password) => {
   }
 };
 
+// Individual-account login, additive alongside the shared branch/role login()
+// above — see docs/STAFF-ACCOUNTS-PLAN.md and docs/TERMINAL-SCRIPTS.md in the
+// backend repo. branch_id is still the hardcoded BRANCH_ID for this site,
+// same as every other login call — it's also how a "developer" account's
+// session gets scoped to this branch, since developer accounts have no
+// branch of their own.
+export const loginStaff = async (username, password) => {
+  try {
+    const response = await fetch(`${API_URL}/staff-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, branch_id: BRANCH_ID }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Login failed");
+    }
+
+    persistSession(data);
+    return data;
+  } catch (error) {
+    console.error("Staff login error details:", {
+      message: error.message,
+      url: `${API_URL}/staff-login`,
+      error: error,
+    });
+    throw error;
+  }
+};
+
 // Silently exchanges the stored refresh token for a new access token (and a
 // rotated refresh token). Used by the global axios interceptor so an expired
 // access token doesn't have to mean an interrupted admin session — only a
@@ -223,6 +254,16 @@ export const getStoredAdminUser = () => {
 export const getStoredStaffRole = () =>
   getStoredAdminUser()?.staff_role || null;
 
+// Only set for an individual staff_accounts login (loginStaff above) — null
+// for the shared branch/role login.
+export const getStoredStaffAccountId = () =>
+  getStoredAdminUser()?.staff_account_id || null;
+
+// Only set for an individual staff_accounts login — null for the shared
+// branch/role login, since there's no per-person name to show there.
+export const getStoredDisplayName = () =>
+  getStoredAdminUser()?.display_name || null;
+
 export const getStoredBranch = () => {
   if (typeof window === "undefined") {
     return null;
@@ -241,7 +282,14 @@ export const getStoredBranch = () => {
   }
 };
 
-export const isManager = () => getStoredStaffRole() === "manager";
+// A developer account should pass every manager-gated UI check too — the
+// backend's RolesGuard already grants it everything; without this, a
+// developer login would be silently blocked from manager-only screens on
+// the frontend even though the API would accept the request.
+export const isManager = () => {
+  const role = getStoredStaffRole();
+  return role === "manager" || role === "developer";
+};
 
 export const canManageRoomPrices = () => isManager();
 

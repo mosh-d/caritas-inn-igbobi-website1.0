@@ -9,7 +9,7 @@ import {
 } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
 import { btn, field } from "../components/shared/ui";
-import { changePassword, getStoredStaffRole, isManager } from "../utils/auth";
+import { changePassword, getStoredStaffRole, getStoredStaffAccountId, isManager } from "../utils/auth";
 
 const EMPTY_OWN = { current_password: "", new_password: "", confirm_password: "" };
 const EMPTY_RESET = { current_password: "", new_password: "", confirm_password: "" };
@@ -47,6 +47,12 @@ function PasswordField({ label, value, onChange, autoComplete, minLength, requir
 export default function AdminAccountPage() {
   const staffRole = getStoredStaffRole();
   const manager = isManager();
+  // Reset-someone-else's-password is script-only for individual staff
+  // accounts for now (see docs/TERMINAL-SCRIPTS.md in the backend repo) —
+  // the backend's changePassword only ever changes the CALLER's own
+  // staff_account row on this login path, so this section would be
+  // misleading (and silently change the wrong password) if shown here.
+  const isIndividualAccount = !!getStoredStaffAccountId();
 
   return (
     <div data-component="AdminAccount" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[4.5rem]">
@@ -54,7 +60,7 @@ export default function AdminAccountPage() {
 
       <ChangeOwnPassword staffRole={staffRole} />
 
-      {manager && <ResetReceptionistPassword />}
+      {manager && !isIndividualAccount && <ResetReceptionistPassword />}
     </div>
   );
 }
