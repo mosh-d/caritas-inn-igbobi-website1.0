@@ -129,7 +129,7 @@ function ChangeOwnPassword({ staffRole }) {
 
         <PasswordField
           label="Current Password"
-          autoComplete="current-password"
+          autoComplete="off"
           value={form.current_password}
           onChange={(e) => setForm({ ...form, current_password: e.target.value })}
           required
@@ -224,7 +224,7 @@ function ResetReceptionistPassword() {
 
         <PasswordField
           label="Your Current Password (Manager)"
-          autoComplete="current-password"
+          autoComplete="off"
           value={form.current_password}
           onChange={(e) => setForm({ ...form, current_password: e.target.value })}
           required
