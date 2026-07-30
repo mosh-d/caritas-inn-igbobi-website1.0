@@ -11,7 +11,7 @@ import { markNoShow } from "../utils/reservations-pms-api";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
 const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+  d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
 
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 

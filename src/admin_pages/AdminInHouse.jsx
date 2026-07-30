@@ -24,7 +24,7 @@ import RoomStatusTag from "../components/shared/RoomStatusTag";
 
 const roomStatusKey = (roomTypeId, roomNumber) => `${roomTypeId}::${roomNumber}`;
 
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A");
+const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const isOverdue = (checkOut) => checkOut && hasPassedNoonCutoff(checkOut);
 

@@ -11,7 +11,7 @@ import { fetchFolios } from "../utils/folios-api";
 import { localTodayISO } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A");
+const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const todayISO = () => localTodayISO();
 

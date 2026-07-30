@@ -688,12 +688,12 @@ export default function BookingConfirmationPage() {
 
                     <div>Check-in:</div>
                     <div>
-                      {new Date(reservationData.checkIn).toLocaleDateString()}
+                      {new Date(reservationData.checkIn).toLocaleDateString(undefined, { timeZone: "Africa/Lagos" })}
                     </div>
 
                     <div>Check-out:</div>
                     <div>
-                      {new Date(reservationData.checkOut).toLocaleDateString()}
+                      {new Date(reservationData.checkOut).toLocaleDateString(undefined, { timeZone: "Africa/Lagos" })}
                     </div>
 
                     <div>Rooms:</div>

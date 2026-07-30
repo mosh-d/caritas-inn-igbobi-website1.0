@@ -53,7 +53,7 @@ const yesterdayISO = () => {
 };
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "N/A";
+  d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric" }) : "N/A";
 
 export default function AdminOverviewPage() {
   const navigate = useNavigate();

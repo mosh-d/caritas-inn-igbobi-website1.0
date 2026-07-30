@@ -47,6 +47,7 @@ const BAR_STYLES = {
 
 const dateLabel = (d) =>
   d.toLocaleDateString('en-US', {
+    timeZone: 'Africa/Lagos',
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -370,7 +371,7 @@ function RoomRow({
               <button
                 key={`${bar.reservation_id}-${i}`}
                 onClick={() => onSelectBar(bar)}
-                title={`${bar.guest_name} · ${new Date(bar.check_in).toLocaleDateString()} → ${new Date(bar.check_out).toLocaleDateString()}${bar.rooms_needed ? ` · ${bar.rooms_needed} room(s) needed` : ''}`}
+                title={`${bar.guest_name} · ${new Date(bar.check_in).toLocaleDateString(undefined, { timeZone: 'Africa/Lagos' })} → ${new Date(bar.check_out).toLocaleDateString(undefined, { timeZone: 'Africa/Lagos' })}${bar.rooms_needed ? ` · ${bar.rooms_needed} room(s) needed` : ''}`}
                 className={`m-1 px-3 py-1 rounded-md text-lg font-semibold truncate text-left cursor-pointer transition-opacity hover:opacity-80 ${BAR_STYLES[bar.status] || 'bg-gray-400 text-white'}`}
                 style={{ gridColumn: `${startCol + 1} / ${endCol + 1}` }}
               >

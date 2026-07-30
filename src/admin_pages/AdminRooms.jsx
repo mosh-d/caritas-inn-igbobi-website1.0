@@ -28,7 +28,7 @@ const formatPrice = (price) =>
   Number(price).toLocaleString("en-NG", { minimumFractionDigits: 0 });
 
 const formatDateTime = (d) =>
-  d ? new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+  d ? new Date(d).toLocaleString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
 
 // ─── Add Room Modal ────────────────────────────────────────────────────────────
 

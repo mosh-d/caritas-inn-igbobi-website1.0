@@ -22,7 +22,7 @@ const money = (v) =>
 const pct = (v) => `${Number(v || 0).toFixed(1)}%`;
 
 const formatDateTime = (d) =>
-  d ? new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
+  d ? new Date(d).toLocaleString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
 
 // check_in/check_out are stored as a UTC-midnight marker for the scheduled
 // calendar date, not a real point in time — formatting them with a time
@@ -31,7 +31,7 @@ const formatDateTime = (d) =>
 // scheduled checkout still in the future); use formatDateTime with the
 // actual_check_in/actual_check_out timestamp once it's a real past event.
 const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+  d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";
 
 function currentMonthRange() {
   const now = new Date();

@@ -617,8 +617,8 @@ export default function AdminGuestsPage() {
                     <span className='truncate'>
                       {r.booking_reference || r.id}
                       <span className='text-[color:var(--text-color)]/68 ml-3'>
-                        {new Date(r.check_in).toLocaleDateString()} –{' '}
-                        {new Date(r.check_out).toLocaleDateString()}
+                        {new Date(r.check_in).toLocaleDateString(undefined, { timeZone: "Africa/Lagos" })} –{' '}
+                        {new Date(r.check_out).toLocaleDateString(undefined, { timeZone: "Africa/Lagos" })}
                       </span>
                     </span>
                     <StatusBadge status={r.status} />

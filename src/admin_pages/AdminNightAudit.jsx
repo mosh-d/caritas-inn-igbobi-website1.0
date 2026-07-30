@@ -13,6 +13,7 @@ const money = (v) =>
 const formatDate = (d) =>
   d
     ? new Date(d).toLocaleDateString("en-GB", {
+        timeZone: "Africa/Lagos",
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -221,7 +222,7 @@ export default function AdminNightAudit() {
                       <td className="px-6 py-4 text-right font-bold text-green-700">{money(a.total_posted)}</td>
                       <td className="px-6 py-4 hidden md:table-cell text-[color:var(--text-color)]/84 text-xl">
                         {a.audited_at
-                          ? new Date(a.audited_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+                          ? new Date(a.audited_at).toLocaleTimeString("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", minute: "2-digit" })
                           : "—"}
                       </td>
                       <td className="px-6 py-4 hidden md:table-cell">
