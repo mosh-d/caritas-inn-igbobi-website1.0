@@ -12,9 +12,11 @@ import {
   IoBarChartOutline,
   IoMoonOutline,
   IoNotificationsOutline,
+  IoDocumentTextOutline,
   IoKeyOutline,
 } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
+import { isManager } from "../utils/auth";
 
 // Mirrors ADMIN_NAV_ITEMS' order (adminNavItems.js) so the quick-jump chips
 // and section order match the sidebar exactly — this page exists so a new
@@ -166,6 +168,27 @@ const SECTIONS = [
     ],
   },
   {
+    id: "audit-trail",
+    icon: IoDocumentTextOutline,
+    label: "Audit Trail",
+    managerOnly: true,
+    summary: "A record of every action taken by staff on this branch's account — who did what, and when. Manager and developer visibility only.",
+    workflow: [
+      "Filter by Staff, Role, or Action to narrow the list — all three can be combined at once.",
+      "Some actions link straight to the specific record affected (e.g. \"View folio →\") — for a payment, this opens the folio and highlights that exact payment line.",
+      "Not every action is logged with a full readable sentence yet — anything not listed below still shows up, just as a plain \"METHOD /route\" entry.",
+      "Payment recorded / Payment refunded — money paid or refunded directly against an existing folio.",
+      "Charge posted — a new charge (room service, damages, etc.) added to a folio. This is the opposite direction from a payment: it's what the guest now owes, not what they've paid.",
+      "Deposit recorded — money collected as an advance/security deposit before a folio exists yet (at the hold/booking stage).",
+      "Deposit applied — a previously-recorded deposit converted into a real payment once the guest's folio exists (usually at confirmation or check-in). No new money changes hands at this point — it's reclassifying money already collected.",
+      "Deposit refunded — a previously-recorded deposit given back to the guest instead of being applied.",
+      "Room price updated / Room status changed — a room type's price, or a specific room's status (Out of Order, Complementary, Reserved, Available), was changed.",
+      "Reservation confirmed / cancelled / extended — the reservation lifecycle actions taken from the Reservations or Bookings pages.",
+      "Check-in / Check-out — a guest was checked into or out of their room.",
+      "Folio closed — a folio was closed out once fully settled.",
+    ],
+  },
+  {
     id: "account",
     icon: IoKeyOutline,
     label: "Account",
@@ -177,6 +200,9 @@ const SECTIONS = [
 ];
 
 export default function AdminHelpPage() {
+  const manager = isManager();
+  const visibleSections = SECTIONS.filter((s) => !s.managerOnly || manager);
+
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -189,7 +215,7 @@ export default function AdminHelpPage() {
       </p>
 
       <div className="flex gap-3 text-xl flex-wrap">
-        {SECTIONS.map((s) => (
+        {visibleSections.map((s) => (
           <button
             key={s.id}
             onClick={() => scrollToSection(s.id)}
@@ -202,7 +228,7 @@ export default function AdminHelpPage() {
       </div>
 
       <div className="w-full flex flex-col gap-8">
-        {SECTIONS.map((s) => (
+        {visibleSections.map((s) => (
           <section key={s.id} id={s.id} className="w-full flex flex-col gap-4 scroll-mt-24">
             <div className="flex items-center gap-4">
               <span className="w-[3.6rem] h-[3.6rem] rounded-xl bg-[color:var(--emphasis)]/10 text-[color:var(--emphasis)] flex items-center justify-center shrink-0">

@@ -85,12 +85,26 @@ export const undoExpiredHold = async (id) => {
   return response.data;
 };
 
-// Ported from the legacy Bookings page so Reservations can fully replace it.
+// Public — used by the guest-facing booking flow, which has no staff
+// session. Kept for that caller; staff-initiated confirms use
+// confirmReservationById below instead, so they get audit attribution.
 export const confirmReservation = async (reservation_id) => {
   const response = await axios.post(
     `${baseUrl}/api/reservations/confirm`,
     { reservation_id },
     { headers: { "Content-Type": "application/json" } },
+  );
+  return response.data;
+};
+
+// Staff-initiated confirmation (Admin Bookings, Admin Reservations, walk-in
+// check-in) — guarded, so the resulting audit_logs entry is attributed to
+// the staff member who confirmed it.
+export const confirmReservationById = async (id) => {
+  const response = await axios.post(
+    `${baseUrl}/api/reservations/${id}/confirm`,
+    {},
+    { headers: getAuthHeaders() },
   );
   return response.data;
 };

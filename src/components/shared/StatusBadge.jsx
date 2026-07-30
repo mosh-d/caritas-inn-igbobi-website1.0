@@ -18,6 +18,7 @@ const STYLES = {
   // Staff roles
   manager: "bg-purple-100 text-purple-700",
   receptionist: "bg-blue-100 text-blue-700",
+  developer: "bg-slate-800 text-white",
 };
 
 export default function StatusBadge({ status, className = "" }) {

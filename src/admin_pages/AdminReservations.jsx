@@ -19,7 +19,7 @@ import {
   markNoShow,
   undoNoShow,
   undoExpiredHold,
-  confirmReservation,
+  confirmReservationById,
   emergencyCheckout,
   buildReservationsExportUrl,
   checkInReservation,
@@ -333,7 +333,7 @@ export default function AdminReservationsPage() {
       if (selectedReservation?.id === confirmTarget.id) {
         await updateReservation(confirmTarget.id, buildReservationUpdatePayload());
       }
-      await confirmReservation(confirmTarget.id);
+      await confirmReservationById(confirmTarget.id);
       setSuccessMessage("Reservation confirmed.");
       setTimeout(() => setSuccessMessage(""), 5000);
       closeConfirmModal();

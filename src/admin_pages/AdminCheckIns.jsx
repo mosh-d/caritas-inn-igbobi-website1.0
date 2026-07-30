@@ -16,7 +16,7 @@ import {
   assignRoom,
   checkAvailability,
   createAdminReservation,
-  confirmReservation,
+  confirmReservationById,
   fetchAvailableRoomNumbers,
 } from "../utils/reservations-pms-api";
 
@@ -205,7 +205,7 @@ export default function AdminCheckInsPage() {
       // checkIn both now require every booked room to already have a room
       // number (see reservations.service.ts), so this has to run first.
       await assignRoom(internalId, validRoomNumbers);
-      await confirmReservation(internalId);
+      await confirmReservationById(internalId);
       await checkInReservation(internalId);
 
       setWalkInSuccess({ bookingRef, guestName: walkIn.guestName.trim() });

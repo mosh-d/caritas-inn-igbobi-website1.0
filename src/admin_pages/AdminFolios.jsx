@@ -33,7 +33,7 @@ const emptyPaymentForm = { amount: "", payment_method: "cash", receipt_number: "
 const emptyRefundForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";
 
 export default function AdminFoliosPage() {
   const [subTab, setSubTab] = useState("all");
@@ -51,6 +51,17 @@ export default function AdminFoliosPage() {
 
   const [selectedFolio, setSelectedFolio] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  // Deep-linked from the Audit Trail page's "View folio" link
+  // (?highlight_payment_id=) — scrolls the specific payment/refund row into
+  // view once the folio modal's payments list exists in the DOM. Same
+  // pattern as AdminRooms.jsx's highlightRoomInventoryId.
+  const [highlightPaymentId, setHighlightPaymentId] = useState(null);
+  const highlightedPaymentRef = useRef(null);
+  useEffect(() => {
+    if (highlightPaymentId && highlightedPaymentRef.current) {
+      highlightedPaymentRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightPaymentId, selectedFolio]);
   const [itemForm, setItemForm] = useState(emptyItemForm);
   const [addingItem, setAddingItem] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -83,10 +94,11 @@ export default function AdminFoliosPage() {
       setLoading(true);
       let nextFolios, nextTotalPages;
       if (searchTerm.trim()) {
-        // A search-by-payment-reference overrides subTab/statusFilter
-        // entirely — it's a different question ("where is this specific
-        // transaction?") than "what's in this list right now?".
-        const result = await fetchFolios({ payment_reference: searchTerm.trim(), page, limit });
+        // A search by folio number or payment reference overrides
+        // subTab/statusFilter entirely — it's a different question ("where
+        // is this specific folio/transaction?") than "what's in this list
+        // right now?".
+        const result = await fetchFolios({ search: searchTerm.trim(), page, limit });
         nextFolios = result.data || [];
         nextTotalPages = result.totalPages || 1;
       } else if (subTab === "pending") {
@@ -164,8 +176,10 @@ export default function AdminFoliosPage() {
 
   // Lets other pages deep-link straight into a filtered view or a specific
   // guest's folio — e.g. the Overview page's "Outstanding" card links to
-  // ?tab=pending, and checking a guest in redirects to
-  // ?reservation_id=123 so a payment can be recorded right away.
+  // ?tab=pending, checking a guest in redirects to ?reservation_id=123 so a
+  // payment can be recorded right away, and the Audit Trail page's "View
+  // folio" links use ?folio_id=123 directly (the id is already known there,
+  // no need to look it up like the reservation_id case does).
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -181,7 +195,15 @@ export default function AdminFoliosPage() {
         })
         .catch(() => {});
     }
-    if (tab || reservationId) setSearchParams({}, { replace: true });
+    const folioId = searchParams.get("folio_id");
+    if (folioId) {
+      openFolioDetail({ id: Number(folioId) });
+    }
+    const highlightPaymentIdParam = searchParams.get("highlight_payment_id");
+    if (highlightPaymentIdParam) {
+      setHighlightPaymentId(Number(highlightPaymentIdParam));
+    }
+    if (tab || reservationId || folioId) setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -390,7 +412,7 @@ export default function AdminFoliosPage() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by payment reference (e.g. PAY-3F9A2B)"
+              placeholder="Search by folio # or payment reference (e.g. FOL-D7931B, PAY-3F9A2B)"
               className={`${field.input} w-auto text-xl!`}
             />
             <button type="submit" className={btn.secondary}>Search</button>
@@ -408,7 +430,7 @@ export default function AdminFoliosPage() {
 
         <p className="text-xl text-[color:var(--text-color)]/76">
           {searchTerm
-            ? `Folios with a payment/refund reference matching "${searchTerm}".`
+            ? `Folios matching folio # or payment/refund reference "${searchTerm}".`
             : subTab === "all"
             ? "Every folio across all guests, open and closed."
             : subTab === "pending"
@@ -438,7 +460,7 @@ export default function AdminFoliosPage() {
                 ) : error ? (
                   <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-red-600 text-xl">{error}</td></tr>
                 ) : folios.length === 0 ? (
-                  <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No folios match that payment reference." : "No folios match filter."}</td></tr>
+                  <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No folios match that folio # or payment reference." : "No folios match filter."}</td></tr>
                 ) : (
                   folios.map((f) => (
                     <tr key={f.id} className={table.row}>
@@ -640,8 +662,17 @@ export default function AdminFoliosPage() {
                   <div className="flex flex-col gap-2">
                     {selectedFolio.payments.map((p) => {
                       const isRefund = p.status === "refunded";
+                      const isHighlighted = p.id === highlightPaymentId;
                       return (
-                        <div key={p.id} className="flex justify-between items-center gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl">
+                        <div
+                          key={p.id}
+                          ref={isHighlighted ? highlightedPaymentRef : null}
+                          className={`flex justify-between items-center gap-4 rounded-lg px-5 py-3 text-xl ${
+                            isHighlighted
+                              ? "bg-[color:var(--emphasis)]/5 ring-1 ring-[color:var(--emphasis)]/50"
+                              : "bg-[color:var(--text-color)]/3"
+                          }`}
+                        >
                           <div className="min-w-0">
                             <span className="capitalize font-medium">{isRefund ? "Refund" : "Payment"} · {p.payment_method}</span>
                             {p.notes && <span className="text-[color:var(--text-color)]/68 ml-2">· {p.notes}</span>}
