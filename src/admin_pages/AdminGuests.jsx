@@ -237,7 +237,7 @@ export default function AdminGuestsPage() {
           <div className='relative flex flex-col items-start gap-3'>
             <input
               type='text'
-              placeholder='Search by name, email, or phone...'
+              placeholder='Search by name (partial), or full email/phone...'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`${field.input} text-xl! w-72 max-sm:w-full`}
