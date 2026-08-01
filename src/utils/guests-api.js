@@ -50,6 +50,15 @@ export const updateGuest = async (id, payload) => {
   return response.data;
 };
 
+// Account-standing/financial fields (is_blacklisted, blacklist_reason,
+// loyalty_points, total_revenue, total_stays) — manager-only on the backend.
+export const updateGuestStatus = async (id, payload) => {
+  const response = await axios.patch(`${baseUrl}/api/guests/${id}/status`, payload, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
 export const fetchGuestNotes = async (id) => {
   const response = await axios.get(`${baseUrl}/api/guests/${id}/notes`, {
     headers: getAuthHeaders(),

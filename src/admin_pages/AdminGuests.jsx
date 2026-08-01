@@ -11,14 +11,25 @@ import {
   fetchGuestReservations,
   createGuest,
   updateGuest,
+  updateGuestStatus,
   fetchGuestNotes,
   addGuestNote,
   deleteGuestNote,
 } from '../utils/guests-api';
+import { isManager } from '../utils/auth';
 import { useWebSocketContext } from '../context/WebSocketContext';
 
 const GUEST_TYPES = ['walk-in', 'corporate', 'group', 'VIP'];
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+// Ordinary contact-info fields, saved via PUT /api/guests/:id (any staff).
+// Blacklist status/reason are saved separately via PATCH /:id/status
+// (manager-only on the backend) — see handleSaveEdit below.
+const CONTACT_INFO_FIELDS = [
+  'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'country',
+  'id_type', 'id_number', 'date_of_birth', 'nationality', 'guest_type',
+  'company_name', 'tax_id',
+];
 
 const emptyGuestForm = {
   first_name: '',
@@ -37,6 +48,7 @@ const emptyGuestForm = {
 };
 
 export default function AdminGuestsPage() {
+  const canManageGuestStatus = isManager();
   const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -185,7 +197,17 @@ export default function AdminGuestsPage() {
     if (!selectedGuest) return;
     try {
       setSavingEdit(true);
-      await updateGuest(selectedGuest.id, editForm);
+      const contactInfo = {};
+      for (const key of CONTACT_INFO_FIELDS) {
+        contactInfo[key] = editForm[key];
+      }
+      await updateGuest(selectedGuest.id, contactInfo);
+      if (canManageGuestStatus) {
+        await updateGuestStatus(selectedGuest.id, {
+          is_blacklisted: editForm.is_blacklisted,
+          blacklist_reason: editForm.blacklist_reason,
+        });
+      }
       setSuccessMessage('Guest profile updated.');
       setTimeout(() => setSuccessMessage(''), 5000);
       closeGuestDetail();
@@ -524,31 +546,42 @@ export default function AdminGuestsPage() {
           </section>
 
           <section className='flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6'>
-            <label className='flex items-center gap-3 text-xl cursor-pointer'>
-              <input
-                type='checkbox'
-                checked={!!editForm.is_blacklisted}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, is_blacklisted: e.target.checked })
-                }
-                className='w-6 h-6 accent-[var(--emphasis)] cursor-pointer'
-              />
-              Blacklisted
-            </label>
-            {editForm.is_blacklisted && (
-              <div className='flex flex-col gap-2'>
-                <label className={field.label}>Blacklist Reason</label>
-                <textarea
-                  value={editForm.blacklist_reason || ''}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      blacklist_reason: e.target.value,
-                    })
-                  }
-                  className={field.textarea}
-                />
-              </div>
+            {canManageGuestStatus ? (
+              <>
+                <label className='flex items-center gap-3 text-xl cursor-pointer'>
+                  <input
+                    type='checkbox'
+                    checked={!!editForm.is_blacklisted}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, is_blacklisted: e.target.checked })
+                    }
+                    className='w-6 h-6 accent-[var(--emphasis)] cursor-pointer'
+                  />
+                  Blacklisted
+                </label>
+                {editForm.is_blacklisted && (
+                  <div className='flex flex-col gap-2'>
+                    <label className={field.label}>Blacklist Reason</label>
+                    <textarea
+                      value={editForm.blacklist_reason || ''}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          blacklist_reason: e.target.value,
+                        })
+                      }
+                      className={field.textarea}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className='text-xl text-[color:var(--text-color)]/76'>
+                {editForm.is_blacklisted
+                  ? `Blacklisted${editForm.blacklist_reason ? `: ${editForm.blacklist_reason}` : ''}`
+                  : 'Not blacklisted.'}{' '}
+                <span className='text-lg text-[color:var(--text-color)]/50'>(Only managers can change blacklist status.)</span>
+              </p>
             )}
           </section>
 
