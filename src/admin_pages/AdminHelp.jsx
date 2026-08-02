@@ -97,6 +97,7 @@ const SECTIONS = [
       "Tabs: All (every folio), Outstanding Balance (open folios with money still owed), Overdue (guests who are supposed to have checked out by now but still owe money — checks the scheduled checkout date, not whether they've actually left).",
       "Overdue only starts counting from noon on the scheduled checkout date — matches the hotel's actual noon checkout time, same rule Alerts uses.",
       "Discount on a charge is always a percentage. Tax can be switched between a fixed amount or a percentage — both convert to a real amount before saving.",
+      "For a discount of a specific amount rather than a percentage, post a charge with a negative amount instead (e.g. -2,000) — it reduces the balance by exactly that much.",
       "Recording a payment, refund, or deposit shows a popup with the reference number large and in monospace — write it down or read it to the guest before dismissing it (it won't auto-hide).",
       "Receipt number is always optional — the system-generated payment/deposit reference works as the record on its own if there's no physical receipt book entry.",
       "A folio only auto-closes once its balance reaches zero AND the guest has actually checked out — an open balance keeps it open as a receivable even after checkout.",
