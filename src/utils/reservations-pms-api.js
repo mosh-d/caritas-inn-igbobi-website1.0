@@ -152,6 +152,13 @@ export const fetchRoomStatusList = async () => {
   return response.data;
 };
 
+export const fetchHouseStatus = async () => {
+  const response = await axios.get(`${baseUrl}/api/rooms/house-status`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
 export const createAdminReservation = async (payload) => {
   const response = await axios.post(`${baseUrl}/api/reservations`, payload, {
     headers: { ...getAuthHeaders(), "Content-Type": "application/json" },

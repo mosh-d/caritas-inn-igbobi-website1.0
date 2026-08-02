@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchRoomDetails, fetchMaintenanceMode } from "../utils/room-data";
+import { fetchMaintenanceMode } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import {
   IoGridOutline,
@@ -22,7 +22,7 @@ import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
 import { table } from "../components/shared/ui";
 import { fetchCheckInList, fetchCheckOutList, fetchInHouse } from "../utils/front-office-api";
-import { fetchRoomStatusList } from "../utils/reservations-pms-api";
+import { fetchRoomStatusList, fetchHouseStatus } from "../utils/reservations-pms-api";
 import { fetchAlerts } from "../utils/alerts-api";
 import { fetchReportsDashboard } from "../utils/reports-api";
 import { fetchNightAuditHistory } from "../utils/night-audit-api";
@@ -80,7 +80,7 @@ export default function AdminOverviewPage() {
   const loadRoomData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setIsLoading(true);
-      const data = await fetchRoomDetails();
+      const data = await fetchHouseStatus();
       setRoomTypes(data.room_types || []);
     } catch (error) {
       console.error("Error loading room data:", error);
@@ -219,9 +219,14 @@ export default function AdminOverviewPage() {
   }, [disconnectedRefreshTick, loadRoomData, checkMaintenanceMode]);
 
   // ── Derived dashboard values ──
-  const totalRooms = roomTypes.reduce((s, rt) => s + (rt.max_capacity || 0), 0);
-  const totalAvailable = roomTypes.reduce((s, rt) => s + (rt.available_rooms || 0), 0);
-  const occupancyPct = totalRooms > 0 ? Math.round(((totalRooms - totalAvailable) / totalRooms) * 100) : 0;
+  // occupied/held only ever reflect real guest activity (a checked-in guest,
+  // or a hold/confirmed reservation for tonight not yet checked in) — never
+  // out-of-order or manager-reserved rooms, which are a maintenance/admin
+  // block with no guest attached (see RoomsService.getHouseStatusSummary).
+  const totalRooms = roomTypes.reduce((s, rt) => s + (rt.total_rooms || 0), 0);
+  const totalOccupiedOrHeld = roomTypes.reduce((s, rt) => s + (rt.occupied || 0) + (rt.held || 0), 0);
+  const totalAvailable = roomTypes.reduce((s, rt) => s + (rt.available || 0), 0);
+  const occupancyPct = totalRooms > 0 ? Math.round((totalOccupiedOrHeld / totalRooms) * 100) : 0;
 
   const alertTotal = alertsSummary?.total ?? 0;
   const alertParts = alertsSummary
@@ -431,9 +436,13 @@ export default function AdminOverviewPage() {
                     <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No room types configured.</td></tr>
                   ) : (
                     roomTypes.map((rt) => {
-                      const total = rt.max_capacity || 0;
-                      const available = rt.available_rooms || 0;
-                      const occupied = Math.max(total - available, 0);
+                      const total = rt.total_rooms || 0;
+                      const available = rt.available || 0;
+                      // Out-of-order/reserved rooms are excluded here on
+                      // purpose — they're a maintenance/admin block, not a
+                      // guest, and shouldn't inflate this figure (see
+                      // RoomsService.getHouseStatusSummary).
+                      const occupied = (rt.occupied || 0) + (rt.held || 0);
                       const pct = total > 0 ? Math.round((occupied / total) * 100) : 0;
                       return (
                         <tr key={rt.room_type_id} className={table.row}>
