@@ -6,10 +6,10 @@ const baseUrl = SERVER_BASE_URL.endsWith("/")
   ? SERVER_BASE_URL.slice(0, -1)
   : SERVER_BASE_URL;
 
-export const checkGuestBlacklist = async (email) => {
+export const checkGuestBlacklist = async ({ email, phone } = {}) => {
   const response = await axios.get(`${baseUrl}/api/guests/blacklist-check`, {
     headers: getAuthHeaders(),
-    params: { email },
+    params: { email, phone },
   });
   return response.data;
 };

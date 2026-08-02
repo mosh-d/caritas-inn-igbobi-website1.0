@@ -68,7 +68,7 @@ const SECTIONS = [
     workflow: [
       "Lifecycle: Hold (created, awaiting payment) → Confirmed (paid) → Active (checked in) → Completed (checked out). A Hold can also be Cancelled, or become a No-Show if the guest never arrives.",
       "A Hold auto-cancels itself if left unconfirmed too long (see Alerts → Unconfirmed) — always confirm a real booking promptly so it doesn't expire.",
-      "Confirming a reservation creates its guest profile (or reuses one already matching that email) and its folio, ready for payment — no room charge is posted yet at this point. That happens night by night: the first night at check-in, then one more each night through Night Audit.",
+      "Confirming a reservation creates its guest profile (or reuses one already matching that phone number) and its folio, ready for payment — no room charge is posted yet at this point. That happens night by night: the first night at check-in, then one more each night through Night Audit.",
       "Extending a stay checks real-time capacity for the extra nights before allowing it — it can be refused if another booking already has those rooms for that window.",
       "Room Assignments here supports multiple room numbers per reservation for multi-room bookings.",
       "Early Checkout is for ending an active stay ahead of schedule — it releases the room immediately and asks for confirmation first since it can't be undone.",
@@ -82,7 +82,7 @@ const SECTIONS = [
     label: "Guests",
     summary: "The guest profile directory — contact details plus lifetime stay history.",
     workflow: [
-      "A profile is created automatically the first time a reservation under that email is confirmed — there's no separate \"add guest\" step.",
+      "A profile is created automatically the first time a reservation under that phone number is confirmed — there's no separate \"add guest\" step.",
       "Total Stays and Total Revenue update automatically on every completed checkout; they're a read-only running history, not something to edit by hand.",
       "Notes here are a list of independent, addable/deletable items about the guest as a person — e.g. \"VIP\", \"Fish allergy\" — and follow the guest across every stay. Compare to In-House's Notes, which are about one specific stay only.",
       "Blacklisting a guest only sets a flag and shows a tag on this page — it currently has no effect on booking, check-in, or anywhere else.",

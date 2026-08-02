@@ -108,23 +108,26 @@ export default function AdminCheckInsPage() {
     return () => { cancelled = true; };
   }, [walkIn.roomTypeId, walkIn.checkOut]);
 
-  // Live blacklist check as the receptionist types the email — there's no
-  // reservation (or guest_id link) yet at this point, so this has to match
-  // by email directly rather than relying on the usual guest association.
-  // Debounced so it's not firing on every keystroke. Also surfaces the
-  // account's known names (if any), for the "someone booking on someone
-  // else's behalf using their own email" case — same response payload
-  // AdminGuests.jsx's edit-modal dropdown reads.
+  // Live blacklist check as the receptionist types the phone number —
+  // there's no reservation (or guest_id link) yet at this point, so this has
+  // to match by phone directly rather than relying on the usual guest
+  // association. Phone (not email) since that's the identity key guests are
+  // actually matched on at confirmation — see confirmReservation. Debounced
+  // so it's not firing on every keystroke, and gated on a minimum length
+  // rather than a "looks like a phone number" check since formats vary.
+  // Also surfaces the account's known names (if any), for the "someone
+  // booking on someone else's behalf using their own phone" case — same
+  // response payload AdminGuests.jsx's edit-modal dropdown reads.
   useEffect(() => {
-    const email = walkIn.email.trim();
-    if (!email.includes("@")) {
+    const phone = walkIn.phone.trim();
+    if (phone.length < 7) {
       setWalkInBlacklisted(false);
       setWalkInKnownNames([]);
       return;
     }
     let cancelled = false;
     const timer = setTimeout(() => {
-      checkGuestBlacklist(email)
+      checkGuestBlacklist({ phone })
         .then((data) => {
           if (cancelled) return;
           setWalkInBlacklisted(Boolean(data?.is_blacklisted));
@@ -135,7 +138,7 @@ export default function AdminCheckInsPage() {
         .catch(() => { if (!cancelled) { setWalkInBlacklisted(false); setWalkInKnownNames([]); } });
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [walkIn.email]);
+  }, [walkIn.phone]);
 
   const handleCheckIn = async () => {
     if (!selected) return;
@@ -177,8 +180,8 @@ export default function AdminCheckInsPage() {
 
   const handleWalkIn = async (e) => {
     e.preventDefault();
-    if (!walkIn.roomTypeId || !walkIn.guestFirstName.trim() || !walkIn.phone.trim() || !walkIn.email.trim() || !walkIn.checkOut) {
-      setWalkInError("Guest name, phone, email, room type, and check-out date are required.");
+    if (!walkIn.roomTypeId || !walkIn.guestFirstName.trim() || !walkIn.phone.trim() || !walkIn.checkOut) {
+      setWalkInError("Guest name, phone, room type, and check-out date are required.");
       return;
     }
     const validRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
@@ -587,6 +590,9 @@ export default function AdminCheckInsPage() {
                     <div className="flex flex-col gap-2 flex-1 min-w-48">
                       <label className={field.label}>
                         Phone <span className="text-red-500">*</span>
+                        {walkInBlacklisted && (
+                          <span className="ml-3 text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
+                        )}
                       </label>
                       <input
                         type="tel"
@@ -599,9 +605,6 @@ export default function AdminCheckInsPage() {
                     <div className="flex flex-col gap-2 flex-1 min-w-48">
                       <label className={field.label}>
                         Email
-                        {walkInBlacklisted && (
-                          <span className="ml-3 text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
-                        )}
                       </label>
                       <input
                         type="email"
