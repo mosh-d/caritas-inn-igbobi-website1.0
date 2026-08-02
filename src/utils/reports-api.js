@@ -45,6 +45,9 @@ export const downloadAnalysisExport = (from, to) =>
 export const downloadPmsReportExport = (date, variant) =>
   downloadXlsx("/api/reports/pms/export", { date, variant }, `pms_report_${variant}_${date}.xlsx`);
 
+export const downloadAccommodationReportExport = (date, shift) =>
+  downloadXlsx("/api/reports/accommodation/export", { date, shift }, `accommodation_report_${date}.xlsx`);
+
 export const emailReportsDashboard = async (from, to, email) => {
   const response = await axios.post(
     `${baseUrl}/api/reports/email`,
@@ -74,6 +77,14 @@ export const fetchPmsReport = async (date, variant) => {
   const response = await axios.get(`${baseUrl}/api/reports/pms`, {
     headers: getAuthHeaders(),
     params: { date, variant },
+  });
+  return response.data;
+};
+
+export const fetchAccommodationReport = async (date) => {
+  const response = await axios.get(`${baseUrl}/api/reports/accommodation`, {
+    headers: getAuthHeaders(),
+    params: { date },
   });
   return response.data;
 };

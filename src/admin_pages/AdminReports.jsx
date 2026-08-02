@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { IoBarChartOutline, IoDownloadOutline, IoMailOutline } from "react-icons/io5";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
+import StatusBadge from "../components/shared/StatusBadge";
 import {
   fetchReportsDashboard,
   downloadReportsExport,
@@ -10,10 +11,13 @@ import {
   fetchManifest,
   fetchPaymentsAnalysis,
   fetchPmsReport,
+  fetchAccommodationReport,
   downloadManifestExport,
   downloadAnalysisExport,
   downloadPmsReportExport,
+  downloadAccommodationReportExport,
 } from "../utils/reports-api";
+import { fetchStaffAccounts } from "../utils/staff-accounts-api";
 import { localTodayISO } from "../utils/date-utils";
 
 const money = (v) =>
@@ -46,6 +50,7 @@ const TABS = [
   { key: "manifest", label: "Manifest" },
   { key: "analysis", label: "Analysis" },
   { key: "pms", label: "PMS Report" },
+  { key: "accommodation", label: "Accommodation" },
 ];
 
 export default function AdminReportsPage() {
@@ -76,13 +81,16 @@ export default function AdminReportsPage() {
           ? "Arrivals and departures for a date range, with room price, receipt numbers, and deposits — the daily front-desk manifest, digitized."
           : activeTab === "analysis"
           ? "Every payment received in a date range, broken down by room, receipt number, and method."
-          : "A shift-handoff snapshot: room status (vacant/occupied/out-of-order/reserved/complementary) plus arrivals and departures — pick Evening for end-of-day or Morning to see the previous night's audit."}
+          : activeTab === "pms"
+          ? "A shift-handoff snapshot: room status (vacant/occupied/out-of-order/reserved/complementary) plus arrivals and departures — pick Evening for end-of-day or Morning to see the previous night's audit."
+          : "One row per room in use on a given date — guest, room, tariff, payment, and whether they checked in, checked out, or are still in-house."}
       </p>
 
       {activeTab === "dashboard" && <DashboardTab />}
       {activeTab === "manifest" && <ManifestTab />}
       {activeTab === "analysis" && <AnalysisTab />}
       {activeTab === "pms" && <PmsReportTab />}
+      {activeTab === "accommodation" && <AccommodationReportTab />}
     </div>
   );
 }
@@ -799,6 +807,139 @@ function PmsReportTab() {
       {!loading && !data && !error && (
         <div className="text-center py-20 text-[color:var(--text-color)]/60 text-2xl w-full">
           Pick a date and variant, then click <strong>Generate Report</strong>.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Accommodation Report ───────────────────────────────────────────────────
+
+function AccommodationReportTab() {
+  const [date, setDate] = useState(localTodayISO());
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+
+  const [staff, setStaff] = useState([]);
+  const [shift, setShift] = useState("");
+
+  useEffect(() => {
+    fetchStaffAccounts()
+      .then((list) => setStaff(list || []))
+      .catch(() => setStaff([]));
+  }, []);
+
+  const load = useCallback(async () => {
+    if (!date) return;
+    try {
+      setLoading(true);
+      setError(null);
+      setData(await fetchAccommodationReport(date));
+    } catch (err) {
+      setError((err.response?.data?.message || "Failed to load accommodation report.") + " Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+  }, [date]);
+
+  const handleExport = async () => {
+    if (!date || !shift) return;
+    try {
+      setExporting(true);
+      setExportError(null);
+      await downloadAccommodationReportExport(date, shift);
+    } catch (err) {
+      setExportError(err.response?.data?.message || "Failed to export accommodation report.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col items-start gap-[2.5rem]">
+      <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
+        <div className="flex flex-col gap-2">
+          <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
+          />
+        </div>
+        <Button onClick={load} disabled={loading} variant="emphasis" className={`text-xl! pb-5 pt-4.5 rounded-xl ${loading ? "opacity-50 cursor-not-allowed" : ""}`}>
+          {loading ? "Loading..." : "Generate Report"}
+        </Button>
+        <div className="flex flex-col gap-2">
+          <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Shift (receptionist on duty)</label>
+          <select
+            value={shift}
+            onChange={(e) => setShift(e.target.value)}
+            className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
+          >
+            <option value="">-- Select --</option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.display_name}>{s.display_name} ({s.role})</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl w-full">{error}</div>}
+      {exportError && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl w-full">{exportError}</div>}
+      {loading && <div className="flex justify-center py-20 w-full"><LoadingSpinner size="lg" /></div>}
+
+      {!loading && data && (
+        <div className="w-full flex flex-col gap-[2.5rem]">
+          <div className="w-full flex flex-wrap items-center justify-between gap-4">
+            <p className="text-2xl text-[color:var(--text-color)]/76">
+              Accommodation report for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
+            </p>
+            <Button
+              onClick={handleExport}
+              disabled={exporting || !shift}
+              variant="secondary"
+              className="text-xl! flex items-center rounded-xl gap-2"
+              title={!shift ? "Select a shift before exporting" : undefined}
+            >
+              <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
+            </Button>
+          </div>
+
+          <ReportSection title="Rooms in Use">
+            {data.rows.length === 0 ? (
+              <EmptyRow />
+            ) : (
+              <table className="w-full text-xl">
+                <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Tariff", "Payment Mode", "Payment Status", "Amount Paid", "Shift", "Remarks"]} />
+                <tbody>
+                  {data.rows.map((r, i) => (
+                    <tr key={`${r.reservation_id}-${r.room_number}-${i}`} className="border-b border-[color:var(--text-color)]/10">
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(data.report_date)}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_type_name}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_number}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.tariff)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.payment_mode}</td>
+                      <td className="px-6 py-4"><StatusBadge status={r.payment_status} /></td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount_paid)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{shift || "—"}</td>
+                      <td className="px-6 py-4"><StatusBadge status={r.remarks} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </ReportSection>
+        </div>
+      )}
+
+      {!loading && !data && !error && (
+        <div className="text-center py-20 text-[color:var(--text-color)]/60 text-2xl w-full">
+          Pick a date, then click <strong>Generate Report</strong>.
         </div>
       )}
     </div>

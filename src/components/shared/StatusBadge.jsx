@@ -19,6 +19,13 @@ const STYLES = {
   manager: "bg-purple-100 text-purple-700",
   receptionist: "bg-blue-100 text-blue-700",
   developer: "bg-slate-800 text-white",
+  // Payment status (Accommodation Report)
+  paid: "bg-green-100 text-green-700",
+  owing: "bg-red-100 text-red-700",
+  // Accommodation Report remarks
+  "checked in": "bg-blue-100 text-blue-700",
+  "checked out": "bg-gray-100 text-gray-600",
+  "in house": "bg-green-100 text-green-700",
 };
 
 export default function StatusBadge({ status, className = "" }) {
