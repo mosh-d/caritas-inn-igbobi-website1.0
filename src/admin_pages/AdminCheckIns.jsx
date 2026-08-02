@@ -31,7 +31,7 @@ const tomorrowISO = () => {
 };
 const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).toLocaleString()}`;
 
-const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestName: "", phone: "", email: "", roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "" };
+const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestFirstName: "", guestLastName: "", phone: "", email: "", roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "" };
 
 export default function AdminCheckInsPage() {
   const navigate = useNavigate();
@@ -57,6 +57,7 @@ export default function AdminCheckInsPage() {
   const [walkInAvailableRooms, setWalkInAvailableRooms] = useState(null);
   const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
   const [walkInBlacklisted, setWalkInBlacklisted] = useState(false);
+  const [walkInKnownNames, setWalkInKnownNames] = useState([]);
 
   const loadList = useCallback(async () => {
     try {
@@ -110,18 +111,28 @@ export default function AdminCheckInsPage() {
   // Live blacklist check as the receptionist types the email — there's no
   // reservation (or guest_id link) yet at this point, so this has to match
   // by email directly rather than relying on the usual guest association.
-  // Debounced so it's not firing on every keystroke.
+  // Debounced so it's not firing on every keystroke. Also surfaces the
+  // account's known names (if any), for the "someone booking on someone
+  // else's behalf using their own email" case — same response payload
+  // AdminGuests.jsx's edit-modal dropdown reads.
   useEffect(() => {
     const email = walkIn.email.trim();
     if (!email.includes("@")) {
       setWalkInBlacklisted(false);
+      setWalkInKnownNames([]);
       return;
     }
     let cancelled = false;
     const timer = setTimeout(() => {
       checkGuestBlacklist(email)
-        .then((data) => { if (!cancelled) setWalkInBlacklisted(Boolean(data?.is_blacklisted)); })
-        .catch(() => { if (!cancelled) setWalkInBlacklisted(false); });
+        .then((data) => {
+          if (cancelled) return;
+          setWalkInBlacklisted(Boolean(data?.is_blacklisted));
+          setWalkInKnownNames(
+            (data?.alternate_names || "").split(",").map((n) => n.trim()).filter(Boolean),
+          );
+        })
+        .catch(() => { if (!cancelled) { setWalkInBlacklisted(false); setWalkInKnownNames([]); } });
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [walkIn.email]);
@@ -166,7 +177,7 @@ export default function AdminCheckInsPage() {
 
   const handleWalkIn = async (e) => {
     e.preventDefault();
-    if (!walkIn.roomTypeId || !walkIn.guestName.trim() || !walkIn.phone.trim() || !walkIn.email.trim() || !walkIn.checkOut) {
+    if (!walkIn.roomTypeId || !walkIn.guestFirstName.trim() || !walkIn.phone.trim() || !walkIn.email.trim() || !walkIn.checkOut) {
       setWalkInError("Guest name, phone, email, room type, and check-out date are required.");
       return;
     }
@@ -177,11 +188,15 @@ export default function AdminCheckInsPage() {
     }
     setWalkInProcessing(true);
     setWalkInError(null);
+    // Concatenated into one string only at submit time, same as the public
+    // booking site's own form (separate fields, joined for the backend's
+    // single guest_name column) — see BookingConfirmation.jsx.
+    const guestFullName = `${walkIn.guestFirstName} ${walkIn.guestLastName}`.trim();
     try {
       const hold = await createAdminReservation({
         branch_id: BRANCH_ID,
         room_type_id: Number(walkIn.roomTypeId),
-        guest_name: walkIn.guestName.trim(),
+        guest_name: guestFullName,
         phone_number: walkIn.phone.trim(),
         guest_email: walkIn.email.trim(),
         check_in: todayISO(),
@@ -208,7 +223,7 @@ export default function AdminCheckInsPage() {
       await confirmReservationById(internalId);
       await checkInReservation(internalId);
 
-      setWalkInSuccess({ bookingRef, guestName: walkIn.guestName.trim() });
+      setWalkInSuccess({ bookingRef, guestName: guestFullName });
       setWalkIn(EMPTY_WALK_IN);
       setAvailability(null);
     } catch (err) {
@@ -525,17 +540,48 @@ export default function AdminCheckInsPage() {
 
                 {/* Guest details */}
                 <div className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-2">
-                    <label className={field.label}>
-                      Guest Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Full name"
-                      value={walkIn.guestName}
-                      onChange={(e) => setWalkIn((p) => ({ ...p, guestName: e.target.value }))}
-                      className={field.input}
-                    />
+                  {walkInKnownNames.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <label className={field.label}>Known Names</label>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (!e.target.value) return;
+                          const [first, ...rest] = e.target.value.trim().split(/\s+/);
+                          setWalkIn((p) => ({ ...p, guestFirstName: first, guestLastName: rest.join(" ") || "" }));
+                        }}
+                        className={field.select}
+                      >
+                        <option value="">Select a known name to prefill…</option>
+                        {walkInKnownNames.map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="flex gap-4 flex-wrap">
+                    <div className="flex flex-col gap-2 flex-1 min-w-48">
+                      <label className={field.label}>
+                        First Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="First name"
+                        value={walkIn.guestFirstName}
+                        onChange={(e) => setWalkIn((p) => ({ ...p, guestFirstName: e.target.value }))}
+                        className={field.input}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1 min-w-48">
+                      <label className={field.label}>Last Name</label>
+                      <input
+                        type="text"
+                        placeholder="Last name"
+                        value={walkIn.guestLastName}
+                        onChange={(e) => setWalkIn((p) => ({ ...p, guestLastName: e.target.value }))}
+                        className={field.input}
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-4 flex-wrap">
                     <div className="flex flex-col gap-2 flex-1 min-w-48">
@@ -623,7 +669,7 @@ export default function AdminCheckInsPage() {
                   disabled={
                     walkInProcessing ||
                     !walkIn.roomTypeId ||
-                    !walkIn.guestName.trim() ||
+                    !walkIn.guestFirstName.trim() ||
                     !walkIn.phone.trim() ||
                     walkInValidRoomNumbers.length < Number(walkIn.roomsBooked || 1)
                   }

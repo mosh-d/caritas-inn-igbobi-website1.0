@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { IoClose, IoFilter, IoPeopleOutline } from 'react-icons/io5';
 import Button from '../components/shared/Button';
 import Modal from '../components/shared/Modal';
@@ -20,6 +21,7 @@ import { isManager } from '../utils/auth';
 import { useWebSocketContext } from '../context/WebSocketContext';
 
 const GUEST_TYPES = ['walk-in', 'corporate', 'group', 'VIP'];
+const RESERVATIONS_PAGE_SIZE = 5;
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 // Ordinary contact-info fields, saved via PUT /api/guests/:id (any staff).
@@ -49,6 +51,7 @@ const emptyGuestForm = {
 
 export default function AdminGuestsPage() {
   const canManageGuestStatus = isManager();
+  const navigate = useNavigate();
   const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,6 +71,7 @@ export default function AdminGuestsPage() {
   const [selectedGuestReservations, setSelectedGuestReservations] = useState(
     [],
   );
+  const [reservationsPage, setReservationsPage] = useState(1);
   const [editForm, setEditForm] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -136,6 +140,7 @@ export default function AdminGuestsPage() {
     setSelectedGuest(guest);
     setEditForm({ ...emptyGuestForm, ...guest });
     setSelectedGuestReservations([]);
+    setReservationsPage(1);
     setGuestNotes([]);
     setNewNoteText('');
     setNotesError('');
@@ -159,6 +164,7 @@ export default function AdminGuestsPage() {
     setSelectedGuest(null);
     setEditForm(null);
     setSelectedGuestReservations([]);
+    setReservationsPage(1);
     setGuestNotes([]);
     setNewNoteText('');
     setNotesError('');
@@ -487,6 +493,32 @@ export default function AdminGuestsPage() {
             </>
           }
         >
+          {(() => {
+            const knownNames = (selectedGuest.alternate_names || '')
+              .split(',')
+              .map((n) => n.trim())
+              .filter(Boolean);
+            return knownNames.length > 0 && (
+              <section className='flex flex-col gap-2'>
+                <label className={field.label}>Known Names</label>
+                <select
+                  value=''
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    const [first, ...rest] = e.target.value.trim().split(/\s+/);
+                    setEditForm({ ...editForm, first_name: first, last_name: rest.join(' ') || first });
+                  }}
+                  className={field.select}
+                >
+                  <option value=''>Select a known name to prefill…</option>
+                  {knownNames.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </section>
+            );
+          })()}
+
           <section className='grid grid-cols-2 gap-4 max-sm:grid-cols-1'>
             <LabeledInput
               label='First Name'
@@ -641,23 +673,68 @@ export default function AdminGuestsPage() {
               <p className='text-xl text-[color:var(--text-color)]/76'>
                 No reservations for this guest yet.
               </p>
-            : <div className='flex flex-col gap-2'>
-                {selectedGuestReservations.map((r) => (
-                  <div
-                    key={r.id}
-                    className='flex justify-between items-center gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl'
-                  >
-                    <span className='truncate'>
-                      {r.booking_reference || r.id}
-                      <span className='text-[color:var(--text-color)]/68 ml-3'>
-                        {new Date(r.check_in).toLocaleDateString(undefined, { timeZone: "Africa/Lagos" })} –{' '}
-                        {new Date(r.check_out).toLocaleDateString(undefined, { timeZone: "Africa/Lagos" })}
-                      </span>
-                    </span>
-                    <StatusBadge status={r.status} />
-                  </div>
-                ))}
-              </div>
+            : (() => {
+                const reservationsTotalPages = Math.max(1, Math.ceil(selectedGuestReservations.length / RESERVATIONS_PAGE_SIZE));
+                const pagedReservations = selectedGuestReservations.slice(
+                  (reservationsPage - 1) * RESERVATIONS_PAGE_SIZE,
+                  reservationsPage * RESERVATIONS_PAGE_SIZE,
+                );
+                return (
+                  <>
+                    <div className='flex flex-col gap-2'>
+                      {pagedReservations.map((r) => (
+                        <div
+                          key={r.id}
+                          className='flex flex-col gap-2 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl'
+                        >
+                          <div className='flex justify-between items-center gap-4'>
+                            <span className='truncate'>
+                              {r.booking_reference || r.id}
+                              <span className='text-[color:var(--text-color)]/68 ml-3'>
+                                {new Date(r.check_in).toLocaleDateString(undefined, { timeZone: "Africa/Lagos" })} –{' '}
+                                {new Date(r.check_out).toLocaleDateString(undefined, { timeZone: "Africa/Lagos" })}
+                              </span>
+                            </span>
+                            <StatusBadge status={r.status} />
+                          </div>
+                          {r.status === 'completed' && (
+                            <button
+                              type='button'
+                              onClick={() => navigate(`/admin/folios?reservation_id=${r.id}`)}
+                              className={`${btn.rowSecondary} self-end`}
+                            >
+                              View Folio
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {reservationsTotalPages > 1 && (
+                      <div className='flex justify-center items-center gap-4 w-full mt-2'>
+                        <Button
+                          variant='emphasis'
+                          onClick={() => setReservationsPage((p) => p - 1)}
+                          disabled={reservationsPage === 1}
+                          className={reservationsPage === 1 ? 'opacity-30 cursor-not-allowed' : ''}
+                        >
+                          Previous
+                        </Button>
+                        <span className='text-lg font-medium'>
+                          Page {reservationsPage} of {reservationsTotalPages}
+                        </span>
+                        <Button
+                          variant='emphasis'
+                          onClick={() => setReservationsPage((p) => p + 1)}
+                          disabled={reservationsPage === reservationsTotalPages}
+                          className={reservationsPage === reservationsTotalPages ? 'opacity-30 cursor-not-allowed' : ''}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()
             }
           </section>
         </Modal>
