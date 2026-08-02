@@ -59,7 +59,16 @@ function WebSocketProvider({ children }) {
 
     socketRef.current = io(socketUrl, {
       transports: ['websocket', 'polling'],
-      reconnection: true });
+      reconnection: true,
+      // Lets the server join this connection to a branch-scoped Socket.IO
+      // room (see RoomsGateway.handleConnection) instead of broadcasting
+      // every event to every connected client regardless of branch. Not an
+      // auth boundary — the client-side branch_id filter below still runs
+      // as a harmless defense-in-depth layer, and this is the same
+      // unauthenticated BRANCH_ID the public site already uses, so it works
+      // for the logged-out booking flow too, not just the admin panel.
+      query: { branchId: BRANCH_ID },
+    });
 
     socketRef.current.on('connect', () => {
       console.log(`[WebSocket] ✅ Connected (id: ${socketRef.current.id})`);
