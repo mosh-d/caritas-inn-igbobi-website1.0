@@ -102,9 +102,21 @@ export const fetchDeposits = async (params = {}) => {
   return response.data;
 };
 
-export const applyDeposit = async (id) => {
-  const response = await axios.post(`${baseUrl}/api/deposits/${id}/apply`, {}, {
+export const applyDeposit = async (id, targetReservationId) => {
+  const response = await axios.post(
+    `${baseUrl}/api/deposits/${id}/apply`,
+    targetReservationId ? { target_reservation_id: targetReservationId } : {},
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+};
+
+// Pending deposits left over from any of this guest's *other* reservations —
+// "credit from a previous stay" they can reclaim on this one.
+export const fetchGuestCredit = async (guestId) => {
+  const response = await axios.get(`${baseUrl}/api/deposits/guest-credit`, {
     headers: getAuthHeaders(),
+    params: { guest_id: guestId },
   });
   return response.data;
 };

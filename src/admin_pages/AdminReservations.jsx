@@ -27,7 +27,7 @@ import {
   checkOutReservation,
   extendStay,
 } from "../utils/reservations-pms-api";
-import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, refundDeposit } from "../utils/folios-api";
+import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, refundDeposit, fetchGuestCredit } from "../utils/folios-api";
 
 const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
 const BRANCH_ID = 3; // Caritas Inn Igbobi branch ID
@@ -88,6 +88,12 @@ export default function AdminReservationsPage() {
   const [recordingDeposit, setRecordingDeposit] = useState(false);
   const [depositError, setDepositError] = useState("");
   const [depositActionLoading, setDepositActionLoading] = useState(null);
+
+  // Pending deposits left over from this guest's *other* reservations —
+  // credit they can reclaim on this one. Loaded alongside the deposits list;
+  // "other" excludes anything already shown in the Deposits section above.
+  const [guestCredit, setGuestCredit] = useState([]);
+  const [creditActionLoading, setCreditActionLoading] = useState(null);
 
   // Shown right after recording a deposit so the reference number is on
   // screen long enough to write down or copy — not an auto-fading toast.
@@ -162,6 +168,7 @@ export default function AdminReservationsPage() {
     setDetailLoading(true);
     setReservationFolio(null);
     setDeposits([]);
+    setGuestCredit([]);
     setDepositForm(EMPTY_DEPOSIT_FORM);
     setDepositError("");
     setModalError("");
@@ -172,6 +179,12 @@ export default function AdminReservationsPage() {
         fetchDeposits({ reservation_id: reservation.id }),
       ]);
       setSelectedReservation(full);
+
+      if (full.guest_id) {
+        fetchGuestCredit(full.guest_id)
+          .then((credit) => setGuestCredit((credit || []).filter((c) => c.reservation_id !== full.id)))
+          .catch(() => setGuestCredit([]));
+      }
 
       const folio = (folioResult.data && folioResult.data[0]) || null;
       // Discount is a one-shot calculator, not a persisted field — normally
@@ -237,6 +250,7 @@ export default function AdminReservationsPage() {
     setSelectedReservation(null);
     setReservationFolio(null);
     setDeposits([]);
+    setGuestCredit([]);
     setDepositForm(EMPTY_DEPOSIT_FORM);
     setDepositError("");
     setModalError("");
@@ -442,6 +456,23 @@ export default function AdminReservationsPage() {
       setDepositError(err.response?.data?.message || "Failed to apply deposit.");
     } finally {
       setDepositActionLoading(null);
+    }
+  };
+
+  const handleApplyCredit = async (depositId) => {
+    try {
+      setCreditActionLoading(depositId);
+      await applyDeposit(depositId, selectedReservation.id);
+      const [credit, folioResult] = await Promise.all([
+        fetchGuestCredit(selectedReservation.guest_id),
+        fetchFolios({ reservation_id: selectedReservation.id }),
+      ]);
+      setGuestCredit((credit || []).filter((c) => c.reservation_id !== selectedReservation.id));
+      setReservationFolio((folioResult.data && folioResult.data[0]) || null);
+    } catch (err) {
+      setDepositError(err.response?.data?.message || "Failed to apply credit.");
+    } finally {
+      setCreditActionLoading(null);
     }
   };
 
@@ -952,6 +983,38 @@ export default function AdminReservationsPage() {
                   </div>
                 )}
               </section>
+
+              {/* Credit from a previous stay — pending deposits left over on
+                  a *different* reservation for this same guest, reclaimable
+                  here instead of only on the stay that originally paid it. */}
+              {guestCredit.length > 0 && (
+                <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+                  <h3 className="text-2xl font-bold text-[color:var(--black)]">Credit from a Previous Stay</h3>
+                  <div className="flex flex-col gap-2">
+                    {guestCredit.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between bg-[color:var(--text-color)]/3 rounded-lg px-5 py-4 gap-4">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-base text-[color:var(--text-color)]/68 font-mono">
+                            {c.deposit_reference}{c.receipt_number && <> · Receipt #{c.receipt_number}</>} · {formatDate(c.deposit_date)}
+                            {c.booking_reference && <> · from booking {c.booking_reference}</>}
+                          </span>
+                          <span className="text-xl font-medium">
+                            {money(c.amount)} · <span className="capitalize">{c.payment_method}</span>
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleApplyCredit(c.id)}
+                          disabled={creditActionLoading === c.id || !reservationFolio}
+                          className={btn.rowSuccess}
+                          title={!reservationFolio ? "No folio linked — confirm reservation first" : "Apply this credit to this reservation's folio"}
+                        >
+                          {creditActionLoading === c.id ? "..." : "Apply"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* Deposits */}
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
