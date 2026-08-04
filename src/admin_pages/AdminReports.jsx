@@ -914,7 +914,7 @@ function AccommodationReportTab() {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Tariff", "Payment Mode", "Payment Status", "Amount Paid", "Shift", "Remarks"]} />
+                <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Room Price", "Breakfast Price", "Payment Mode", "Payment Status", "Amount Paid", "Shift", "Remarks"]} />
                 <tbody>
                   {data.rows.map((r, i) => (
                     <tr key={`${r.reservation_id}-${r.room_number}-${i}`} className="border-b border-[color:var(--text-color)]/10">
@@ -922,7 +922,8 @@ function AccommodationReportTab() {
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_type_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_number}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.tariff)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.room_price)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.breakfast_price)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.payment_mode}</td>
                       <td className="px-6 py-4"><StatusBadge status={r.payment_status} /></td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount_paid)}</td>

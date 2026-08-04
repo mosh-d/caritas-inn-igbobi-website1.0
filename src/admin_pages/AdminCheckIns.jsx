@@ -31,7 +31,7 @@ const tomorrowISO = () => {
 };
 const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).toLocaleString()}`;
 
-const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestFirstName: "", guestLastName: "", phone: "", email: "", roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "" };
+const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestFirstName: "", guestLastName: "", phone: "", email: "", roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "", withoutBreakfast: false };
 
 export default function AdminCheckInsPage() {
   const navigate = useNavigate();
@@ -214,6 +214,7 @@ export default function AdminCheckInsPage() {
         // rate × rooms booked × nights, matching how the backend would
         // otherwise compute it from the room type's own base_rate.
         total_rate: walkInTotal,
+        without_breakfast: walkIn.withoutBreakfast,
       });
 
       const internalId = hold.internal_id;
@@ -540,6 +541,21 @@ export default function AdminCheckInsPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Without Breakfast — a manual opt-out from the room type's
+                    breakfast_rate, applied to every night of the stay. */}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="walkin-without-breakfast"
+                    checked={walkIn.withoutBreakfast}
+                    onChange={(e) => setWalkIn((p) => ({ ...p, withoutBreakfast: e.target.checked }))}
+                    className="w-5 h-5 cursor-pointer"
+                  />
+                  <label htmlFor="walkin-without-breakfast" className={`${field.label} cursor-pointer`}>
+                    Without Breakfast
+                  </label>
+                </div>
 
                 {/* Guest details */}
                 <div className="flex flex-col gap-6">

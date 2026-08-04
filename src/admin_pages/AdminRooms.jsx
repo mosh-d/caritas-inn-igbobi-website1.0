@@ -40,6 +40,7 @@ const EMPTY_FORM = {
   child_capacity: "",
   currency_symbol: "₦",
   base_rate: "",
+  breakfast_rate: "0",
   max_capacity: "",
 };
 
@@ -78,6 +79,7 @@ function AddRoomModal({ onClose, onSuccess, onError }) {
       child_capacity: Number(form.child_capacity),
       currency_symbol: form.currency_symbol || "₦",
       base_rate: Number(form.base_rate),
+      breakfast_rate: Number(form.breakfast_rate || 0),
       max_capacity: Number(form.max_capacity),
     };
 
@@ -213,6 +215,19 @@ function AddRoomModal({ onClose, onSuccess, onError }) {
         </div>
 
         <div className="flex flex-col gap-2">
+          <label className={field.label}>Breakfast Price (₦)</label>
+          <input
+            type="number"
+            name="breakfast_rate"
+            value={form.breakfast_rate}
+            onChange={handleChange}
+            min="0"
+            placeholder="e.g. 2000"
+            className={field.input}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
           <label className={field.label}>Max Capacity (no. of physical rooms) *</label>
           <input
             type="number"
@@ -246,6 +261,7 @@ function ViewRoomModal({
   highlightRoomInventoryId,
 }) {
   const [priceInput, setPriceInput] = useState(String(room.base_rate ?? ""));
+  const [breakfastPriceInput, setBreakfastPriceInput] = useState(String(room.breakfast_rate ?? "0"));
   const [capacityInput, setCapacityInput] = useState(
     String(room.max_capacity ?? "")
   );
@@ -336,6 +352,7 @@ function ViewRoomModal({
         console.log(`✅ [ViewRoomModal] First safety fetch complete, updating capacity from ${capacityInput} to ${freshData.max_capacity}`);
         setCapacityInput(String(freshData.max_capacity ?? ""));
         setPriceInput(String(freshData.base_rate ?? ""));
+        setBreakfastPriceInput(String(freshData.breakfast_rate ?? "0"));
       }
     }, 500);
 
@@ -347,6 +364,7 @@ function ViewRoomModal({
         console.log(`✅ [ViewRoomModal] Second safety fetch complete, updating capacity to ${freshData.max_capacity}`);
         setCapacityInput(String(freshData.max_capacity ?? ""));
         setPriceInput(String(freshData.base_rate ?? ""));
+        setBreakfastPriceInput(String(freshData.breakfast_rate ?? "0"));
       }
     }, 3000);
 
@@ -358,6 +376,7 @@ function ViewRoomModal({
         console.log(`✅ [ViewRoomModal] Final safety fetch complete, capacity confirmed as ${freshData.max_capacity}`);
         setCapacityInput(String(freshData.max_capacity ?? ""));
         setPriceInput(String(freshData.base_rate ?? ""));
+        setBreakfastPriceInput(String(freshData.breakfast_rate ?? "0"));
       }
 
       // Unlock UI after all safety fetches complete
@@ -378,15 +397,21 @@ function ViewRoomModal({
       return;
     }
 
+    const newBreakfastPrice = Number(breakfastPriceInput);
+    if (isNaN(newBreakfastPrice) || newBreakfastPrice < 0) {
+      onError("Please enter a valid breakfast price.");
+      return;
+    }
+
     console.log(
-      `AdminRooms: Updating price for room_type_id=${room.room_type_id} to ${newPrice}`
+      `AdminRooms: Updating price for room_type_id=${room.room_type_id} to ${newPrice} (breakfast ${newBreakfastPrice})`
     );
     setUpdatingPrice(true);
 
     try {
       const res = await axios.patch(
         `${getBaseUrl()}/api/rooms/price`,
-        { room_type_id: room.room_type_id, new_price: newPrice },
+        { room_type_id: room.room_type_id, new_price: newPrice, new_breakfast_price: newBreakfastPrice },
         {
           headers: getAuthHeaders(),
           withCredentials: true,
@@ -741,28 +766,43 @@ function ViewRoomModal({
         )}
       </section>
 
-      {/* Editable: Base Price */}
+      {/* Editable: Base Price + Breakfast Price */}
       <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
         <h3 className="text-2xl font-bold text-[color:var(--black)]">Base Price (₦)</h3>
         {canManagePrices ? (
-          <div className="flex gap-3 flex-nowrap items-center">
-            <input
-              type="number"
-              value={priceInput}
-              onChange={(e) => setPriceInput(e.target.value)}
-              className={field.input}
-              min="0"
-            />
-            <button
-              onClick={handleUpdatePrice}
-              disabled={updatingPrice}
-              className={`${btn.primary} whitespace-nowrap`}
-            >
-              {updatingPrice ? "..." : "Update"}
-            </button>
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-3 flex-nowrap items-center">
+              <input
+                type="number"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+                className={field.input}
+                min="0"
+              />
+              <button
+                onClick={handleUpdatePrice}
+                disabled={updatingPrice}
+                className={`${btn.primary} whitespace-nowrap`}
+              >
+                {updatingPrice ? "..." : "Update"}
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-lg font-semibold text-[color:var(--text-color)]/76">Breakfast Price (₦)</label>
+              <input
+                type="number"
+                value={breakfastPriceInput}
+                onChange={(e) => setBreakfastPriceInput(e.target.value)}
+                className={field.input}
+                min="0"
+              />
+            </div>
           </div>
         ) : (
-          <p className="text-2xl font-bold">NGN {formatPrice(room.base_rate ?? 0)}</p>
+          <>
+            <p className="text-2xl font-bold">NGN {formatPrice(room.base_rate ?? 0)}</p>
+            <p className="text-lg text-[color:var(--text-color)]/68">Breakfast: NGN {formatPrice(room.breakfast_rate ?? 0)}</p>
+          </>
         )}
       </section>
 
@@ -958,6 +998,7 @@ export default function AdminRoomsPage() {
 
   // Inline price editing per row (desktop)
   const [inlinePriceEdits, setInlinePriceEdits] = useState({});
+  const [inlineBreakfastPriceEdits, setInlineBreakfastPriceEdits] = useState({});
   const [updatingInlinePrice, setUpdatingInlinePrice] = useState(null);
 
   // WebSocket update lock - prevents editing during safety fetches
@@ -1007,11 +1048,14 @@ export default function AdminRoomsPage() {
 
       // Initialise inline price state from fetched data
       const priceMap = {};
+      const breakfastPriceMap = {};
       roomList.forEach((r) => {
         priceMap[r.room_type_id] = String(r.base_rate ?? "");
+        breakfastPriceMap[r.room_type_id] = String(r.breakfast_rate ?? "0");
       });
       console.log("AdminRooms: Initialised inline price map:", priceMap);
       setInlinePriceEdits(priceMap);
+      setInlineBreakfastPriceEdits(breakfastPriceMap);
     } catch (err) {
       console.error("AdminRooms: Error fetching rooms:", {
         message: err.message,
@@ -1163,15 +1207,21 @@ export default function AdminRoomsPage() {
       return;
     }
 
+    const newBreakfastPrice = Number(inlineBreakfastPriceEdits[room.room_type_id]);
+    if (isNaN(newBreakfastPrice) || newBreakfastPrice < 0) {
+      showError("Please enter a valid breakfast price.");
+      return;
+    }
+
     console.log(
-      `AdminRooms: [Inline] Updating price for room_type_id=${room.room_type_id} to ${newPrice}`
+      `AdminRooms: [Inline] Updating price for room_type_id=${room.room_type_id} to ${newPrice} (breakfast ${newBreakfastPrice})`
     );
     setUpdatingInlinePrice(room.room_type_id);
 
     try {
       const res = await axios.patch(
         `${getBaseUrl()}/api/rooms/price`,
-        { room_type_id: room.room_type_id, new_price: newPrice },
+        { room_type_id: room.room_type_id, new_price: newPrice, new_breakfast_price: newBreakfastPrice },
         {
           headers: getAuthHeaders(),
           withCredentials: true,
@@ -1285,34 +1335,58 @@ export default function AdminRoomsPage() {
                       {/* Desktop: Inline price input + Update button */}
                       <td className={`${table.td} hidden md:table-cell`}>
                         {canManagePrices ? (
-                          <div className="flex items-center gap-2 flex-nowrap">
-                            <input
-                              type="number"
-                              value={inlinePriceEdits[room.room_type_id] ?? ""}
-                              onChange={(e) =>
-                                setInlinePriceEdits((prev) => ({
-                                  ...prev,
-                                  [room.room_type_id]: e.target.value,
-                                }))
-                              }
-                              className={`${field.input} text-xl! w-52! py-2!`}
-                              min="0"
-                              disabled={webSocketUpdating}
-                            />
-                            <button
-                              onClick={() => handleInlinePriceUpdate(room)}
-                              disabled={updatingInlinePrice === room.room_type_id || webSocketUpdating}
-                              className={btn.rowPrimary}
-                            >
-                              {updatingInlinePrice === room.room_type_id
-                                ? "..."
-                                : webSocketUpdating
-                                ? "Syncing..."
-                                : "Update"}
-                            </button>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-lg text-[color:var(--text-color)]/68">Base Price</span>
+                              <div className="flex items-center gap-2 flex-nowrap">
+                                <input
+                                  type="number"
+                                  value={inlinePriceEdits[room.room_type_id] ?? ""}
+                                  onChange={(e) =>
+                                    setInlinePriceEdits((prev) => ({
+                                      ...prev,
+                                      [room.room_type_id]: e.target.value,
+                                    }))
+                                  }
+                                  className={`${field.input} text-xl! w-52! py-2!`}
+                                  min="0"
+                                  disabled={webSocketUpdating}
+                                />
+                                <button
+                                  onClick={() => handleInlinePriceUpdate(room)}
+                                  disabled={updatingInlinePrice === room.room_type_id || webSocketUpdating}
+                                  className={btn.rowPrimary}
+                                >
+                                  {updatingInlinePrice === room.room_type_id
+                                    ? "..."
+                                    : webSocketUpdating
+                                    ? "Syncing..."
+                                    : "Update"}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-lg text-[color:var(--text-color)]/68">Breakfast</span>
+                              <input
+                                type="number"
+                                value={inlineBreakfastPriceEdits[room.room_type_id] ?? ""}
+                                onChange={(e) =>
+                                  setInlineBreakfastPriceEdits((prev) => ({
+                                    ...prev,
+                                    [room.room_type_id]: e.target.value,
+                                  }))
+                                }
+                                className={`${field.input} text-xl! w-52! py-2!`}
+                                min="0"
+                                disabled={webSocketUpdating}
+                              />
+                            </div>
                           </div>
                         ) : (
-                          <span>NGN {formatPrice(room.base_rate ?? 0)}</span>
+                          <div className="flex flex-col gap-1">
+                            <span>NGN {formatPrice(room.base_rate ?? 0)}</span>
+                            <span className="text-lg text-[color:var(--text-color)]/68">Breakfast: NGN {formatPrice(room.breakfast_rate ?? 0)}</span>
+                          </div>
                         )}
                       </td>
 
