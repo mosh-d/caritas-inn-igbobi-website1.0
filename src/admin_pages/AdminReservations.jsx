@@ -9,6 +9,7 @@ import LoadingSpinner from "../components/shared/LoadingSpinner";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import ContactRow from "../components/shared/ContactRow";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
+import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import {
@@ -82,7 +83,7 @@ export default function AdminReservationsPage() {
   // "Save Room Assignments" still needs to be clicked first.
   const [pendingRoomSlots, setPendingRoomSlots] = useState([]);
 
-  const EMPTY_DEPOSIT_FORM = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
+  const EMPTY_DEPOSIT_FORM = { splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "" };
   const [deposits, setDeposits] = useState([]);
   const [depositForm, setDepositForm] = useState(EMPTY_DEPOSIT_FORM);
   const [recordingDeposit, setRecordingDeposit] = useState(false);
@@ -415,14 +416,20 @@ export default function AdminReservationsPage() {
     }
   };
 
+  const hasValidDepositSplits = depositForm.splits.length > 0 && depositForm.splits.every((s) => Number(s.amount) > 0);
+
   const handleRecordDeposit = async () => {
     if (!selectedReservation) return;
     setDepositError("");
-    const amount = Number(depositForm.amount);
-    if (!amount || amount <= 0) { setDepositError("Enter a valid amount."); return; }
+    if (!hasValidDepositSplits) { setDepositError("Enter a valid amount for each method."); return; }
     try {
       setRecordingDeposit(true);
-      const result = await recordDeposit({ reservation_id: selectedReservation.id, amount, payment_method: depositForm.payment_method, receipt_number: depositForm.receipt_number || null, notes: depositForm.notes || null });
+      const result = await recordDeposit({
+        reservation_id: selectedReservation.id,
+        payments: depositForm.splits.map((s) => ({ amount: Number(s.amount), payment_method: s.payment_method })),
+        receipt_number: depositForm.receipt_number || null,
+        notes: depositForm.notes || null,
+      });
       const [deps, folioResult] = await Promise.all([
         fetchDeposits({ reservation_id: selectedReservation.id }),
         fetchFolios({ reservation_id: selectedReservation.id }),
@@ -432,8 +439,7 @@ export default function AdminReservationsPage() {
       setDepositForm(EMPTY_DEPOSIT_FORM);
       setTransactionReceipt({
         title: "Deposit Recorded",
-        reference: result.deposit_reference,
-        amount: money(result.amount),
+        items: result.deposits.map((d) => ({ reference: d.deposit_reference, amount: money(d.amount), method: d.payment_method })),
       });
     } catch (err) {
       setDepositError(err.response?.data?.message || "Failed to record deposit.");
@@ -634,7 +640,7 @@ export default function AdminReservationsPage() {
   // of truth for occupancy, a confirmed reservation with no room assigned
   // is exactly the gap that used to let a reservation slip through to
   // check-in with no room number at all.
-  const hasUnsavedDeposit = Boolean(depositForm.amount);
+  const hasUnsavedDeposit = depositForm.splits.some((s) => s.amount);
   const savedRoomNumbers = (res?.room_assignments || []).map((ra) => ra.room_number);
   const roomsBookedCount = Number(res?.rooms_booked || 1);
   const hasUnsavedRoomAssignment =
@@ -1061,29 +1067,19 @@ export default function AdminReservationsPage() {
                 {depositError && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{depositError}</p>}
                 {canModify && (
                   <div className="flex flex-col gap-4">
+                    <p className={field.label}>New Deposit</p>
+                    <PaymentSplitRows splits={depositForm.splits} setSplits={(splits) => setDepositForm({ ...depositForm, splits })} />
                     <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                      <div className="flex flex-col gap-2">
-                        <label className={field.label}>New Deposit Amount (₦)</label>
-                        <input type="number" value={depositForm.amount} onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })} className={field.input} />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className={field.label}>Method</label>
-                        <select value={depositForm.payment_method} onChange={(e) => setDepositForm({ ...depositForm, payment_method: e.target.value })} className={field.select}>
-                          {["cash", "card", "transfer", "pos", "online"].map((m) => (
-                            <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
-                          ))}
-                        </select>
-                      </div>
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Receipt Number</label>
                         <input type="text" placeholder="e.g. from the receipt book" value={depositForm.receipt_number} onChange={(e) => setDepositForm({ ...depositForm, receipt_number: e.target.value })} className={field.input} />
                       </div>
+                      <div className="flex flex-col gap-2">
+                        <label className={field.label}>Notes (optional)</label>
+                        <input type="text" value={depositForm.notes} onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })} className={field.input} />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <label className={field.label}>Notes (optional)</label>
-                      <input type="text" value={depositForm.notes} onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })} className={field.input} />
-                    </div>
-                    <button onClick={handleRecordDeposit} disabled={recordingDeposit || !depositForm.amount} className={`${btn.primary} self-start`}>
+                    <button onClick={handleRecordDeposit} disabled={recordingDeposit || !hasValidDepositSplits} className={`${btn.primary} self-start`}>
                       {recordingDeposit ? "Recording..." : "Record Deposit"}
                     </button>
                   </div>
@@ -1261,6 +1257,7 @@ export default function AdminReservationsPage() {
           title={transactionReceipt.title}
           reference={transactionReceipt.reference}
           amount={transactionReceipt.amount}
+          items={transactionReceipt.items}
           onClose={() => setTransactionReceipt(null)}
         />
       )}

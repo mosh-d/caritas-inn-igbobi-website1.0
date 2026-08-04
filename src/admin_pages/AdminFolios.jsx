@@ -10,6 +10,7 @@ import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import CopyIconButton from "../components/shared/CopyIconButton";
+import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import {
   fetchFolios,
   fetchPendingFolios,
@@ -29,7 +30,7 @@ const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 // a flat figure, picked via tax_mode/discount_mode.
 const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "service", date: "" };
 const emptyCreateForm = { reservation_id: "", guest_id: "", total_amount: "0", amount_paid: "0" };
-const emptyPaymentForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
+const emptyPaymentForm = { splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "" };
 const emptyRefundForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -240,15 +241,16 @@ export default function AdminFoliosPage() {
     }
   };
 
+  const hasValidPaymentSplits = paymentForm.splits.length > 0 && paymentForm.splits.every((s) => Number(s.amount) > 0);
+
   const handleRecordPayment = async () => {
-    if (!selectedFolio || !paymentForm.amount) return;
+    if (!selectedFolio || !hasValidPaymentSplits) return;
     setPaymentError(null);
     try {
       setRecordingPayment(true);
       const result = await recordPayment({
         folio_id: selectedFolio.id,
-        amount: Number(paymentForm.amount),
-        payment_method: paymentForm.payment_method,
+        payments: paymentForm.splits.map((s) => ({ amount: Number(s.amount), payment_method: s.payment_method })),
         receipt_number: paymentForm.receipt_number || undefined,
         notes: paymentForm.notes || undefined,
       });
@@ -259,8 +261,7 @@ export default function AdminFoliosPage() {
       setTimeout(() => setSuccessMessage(""), 5000);
       setTransactionReceipt({
         title: "Payment Recorded",
-        reference: result.payment.payment_reference,
-        amount: money(result.payment.amount),
+        items: result.payments.map((p) => ({ reference: p.payment_reference, amount: money(p.amount), method: p.payment_method })),
       });
     } catch (err) {
       setPaymentError(err.response?.data?.message || "Failed to record payment.");
@@ -694,24 +695,12 @@ export default function AdminFoliosPage() {
                 {selectedFolio.status !== "closed" && (
                   <div className="flex flex-col gap-4 mt-2">
                     {paymentError && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{paymentError}</p>}
-                    <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Record a payment</p>
+                    <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">
+                      Record a payment
+                      {" "}— {hasOutstandingBalance ? `balance due: ${money(selectedFolio.balance)}` : hasCreditBalance ? `credit on account: ${money(Math.abs(Number(selectedFolio.balance)))}` : "balance settled"}
+                    </p>
+                    <PaymentSplitRows splits={paymentForm.splits} setSplits={(splits) => setPaymentForm({ ...paymentForm, splits })} />
                     <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                      <div className="flex flex-col gap-2">
-                        <label className={field.label}>Amount (₦) *</label>
-                        <input
-                          type="number"
-                          placeholder={hasOutstandingBalance ? `Balance due: ${money(selectedFolio.balance)}` : hasCreditBalance ? `Credit on account: ${money(Math.abs(Number(selectedFolio.balance)))}` : "0"}
-                          value={paymentForm.amount}
-                          onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                          className={field.input}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className={field.label}>Method *</label>
-                        <select value={paymentForm.payment_method} onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })} className={field.select}>
-                          {PAYMENT_METHODS.map((m) => <option key={m} value={m} className="capitalize">{m}</option>)}
-                        </select>
-                      </div>
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Receipt Number</label>
                         <input
@@ -722,7 +711,7 @@ export default function AdminFoliosPage() {
                           className={field.input}
                         />
                       </div>
-                      <div className="col-span-2 max-sm:col-span-1 flex flex-col gap-2">
+                      <div className="flex flex-col gap-2">
                         <label className={field.label}>Notes</label>
                         <input
                           type="text"
@@ -733,7 +722,7 @@ export default function AdminFoliosPage() {
                         />
                       </div>
                     </div>
-                    <button onClick={handleRecordPayment} disabled={recordingPayment || !paymentForm.amount} className={`${btn.success} self-start`}>
+                    <button onClick={handleRecordPayment} disabled={recordingPayment || !hasValidPaymentSplits} className={`${btn.success} self-start`}>
                       {recordingPayment ? "Recording..." : "Record Payment"}
                     </button>
                   </div>
@@ -837,6 +826,7 @@ export default function AdminFoliosPage() {
           title={transactionReceipt.title}
           reference={transactionReceipt.reference}
           amount={transactionReceipt.amount}
+          items={transactionReceipt.items}
           onClose={() => setTransactionReceipt(null)}
         />
       )}
