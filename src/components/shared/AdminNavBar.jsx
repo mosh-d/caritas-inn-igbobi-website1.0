@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { FiMenu, FiX } from "react-icons/fi";
 import AdminMobileMenu from "./AdminMobileMenu";
-import { ADMIN_NAV_ITEMS } from "./adminNavItems";
+import { visibleAdminNavItems } from "./adminNavItems";
 import { useWebSocketContext } from "../../context/WebSocketContext";
-import { isManager } from "../../utils/auth";
 
 function AlertCountBadge({ count, active }) {
   if (!count) return null;
@@ -70,7 +69,7 @@ export default function AdminNavBar() {
           {/* `Icon` is used below as the JSX tag <Icon .../>; ESLint's no-unused-vars doesn't
               detect JSX-only usage of a destructured function-parameter binding. */}
           {/* eslint-disable-next-line no-unused-vars */}
-          {ADMIN_NAV_ITEMS.filter((item) => !item.managerOnly || isManager()).map(({ to, label, icon: Icon, end, showAlertBadge }) => (
+          {visibleAdminNavItems().map(({ to, label, icon: Icon, end, showAlertBadge }) => (
             <li key={to}>
               <NavLink
                 to={to}

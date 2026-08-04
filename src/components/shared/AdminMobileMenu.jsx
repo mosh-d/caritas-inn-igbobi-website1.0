@@ -1,9 +1,8 @@
 import { useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { FiX } from "react-icons/fi";
-import { ADMIN_NAV_ITEMS } from "./adminNavItems";
+import { visibleAdminNavItems } from "./adminNavItems";
 import { useWebSocketContext } from "../../context/WebSocketContext";
-import { isManager } from "../../utils/auth";
 
 export default function AdminMobileMenu({ isOpen, onClose }) {
   const { alertCount } = useWebSocketContext();
@@ -53,7 +52,7 @@ export default function AdminMobileMenu({ isOpen, onClose }) {
             {/* `Icon` is used below as the JSX tag <Icon .../>; ESLint's no-unused-vars doesn't
                 detect JSX-only usage of a destructured function-parameter binding. */}
             {/* eslint-disable-next-line no-unused-vars */}
-            {ADMIN_NAV_ITEMS.filter((item) => !item.managerOnly || isManager()).map(({ to, label, icon: Icon, end, showAlertBadge }) => (
+            {visibleAdminNavItems().map(({ to, label, icon: Icon, end, showAlertBadge }) => (
               <li key={to}>
                 <NavLink
                   to={to}

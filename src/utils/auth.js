@@ -293,3 +293,12 @@ export const isManager = () => {
 
 export const canManageRoomPrices = () => isManager();
 
+// Same "developer passes every gated check too" reasoning as isManager()
+// above — the backend's RolesGuard already grants developer accounts
+// everything, so the frontend shouldn't block them from accountant-only
+// screens either.
+export const isAccountant = () => {
+  const role = getStoredStaffRole();
+  return role === "accountant" || role === "developer";
+};
+

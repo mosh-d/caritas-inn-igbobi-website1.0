@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { IoBarChartOutline, IoDownloadOutline, IoMailOutline } from "react-icons/io5";
+import { IoBarChartOutline, IoDownloadOutline, IoMailOutline, IoSendOutline } from "react-icons/io5";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
@@ -18,24 +18,19 @@ import {
   downloadAccommodationReportExport,
 } from "../utils/reports-api";
 import { fetchStaffAccounts } from "../utils/staff-accounts-api";
+import { sendReportToAccountant } from "../utils/sent-reports-api";
 import { localTodayISO } from "../utils/date-utils";
 
-const money = (v) =>
-  `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-const pct = (v) => `${Number(v || 0).toFixed(1)}%`;
-
-const formatDateTime = (d) =>
-  d ? new Date(d).toLocaleString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
-
-// check_in/check_out are stored as a UTC-midnight marker for the scheduled
-// calendar date, not a real point in time — formatting them with a time
-// component renders a meaningless "1:00 AM" (UTC midnight shifted into
-// WAT). Use this for any date that hasn't actually happened yet (a
-// scheduled checkout still in the future); use formatDateTime with the
-// actual_check_in/actual_check_out timestamp once it's a real past event.
-const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";
+// money/pct/formatDate/formatDateTime plus the shared render bits below
+// (ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge) moved
+// out to utils/report-format.js and components/shared/reportUi.jsx so
+// AccountantReportsPage can render a sent report's snapshot_data with the
+// exact same look as the live tab it came from, without duplicating any of
+// it — a plain component file can't co-export helper functions/consts
+// alongside its default export (breaks Fast Refresh), so this couldn't just
+// live here.
+import { money, pct, formatDate, formatDateTime } from "../utils/report-format";
+import { ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge } from "../components/shared/reportUi";
 
 function currentMonthRange() {
   const now = new Date();
@@ -53,8 +48,61 @@ const TABS = [
   { key: "accommodation", label: "Accommodation" },
 ];
 
+// Snapshots a tab's already-loaded `data` and sends it to the accountant —
+// shared across every tab below rather than duplicated 5 times. `shift`
+// comes from the report-page-level selector (see AdminReportsPage), not a
+// per-tab one — disabled with an explanatory title until one's picked.
+function SendToAccountantButton({ reportType, label, shift, data }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSend = async () => {
+    if (!data || !shift) return;
+    try {
+      setSending(true);
+      setError(null);
+      await sendReportToAccountant({ report_type: reportType, label, shift, snapshot_data: data });
+      setSent(true);
+      setTimeout(() => setSent(false), 4000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send report to accountant.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button
+        onClick={handleSend}
+        disabled={!data || !shift || sending}
+        variant="secondary"
+        className="text-xl! flex items-center gap-2 rounded-xl"
+        title={!shift ? "Select a shift at the top of the page first" : undefined}
+      >
+        <IoSendOutline size={20} /> {sending ? "Sending..." : sent ? "Sent!" : "Send to Accountant"}
+      </Button>
+      {error && <p className="text-red-600 text-lg">{error}</p>}
+    </div>
+  );
+}
+
 export default function AdminReportsPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  // Report-page-level, not per-tab — one shift selection covers whichever
+  // report is currently active, including when it's sent to the accountant
+  // (see SendToAccountantButton). Populated from the same receptionist
+  // roster the Accommodation Report's shift dropdown used to fetch locally.
+  const [staff, setStaff] = useState([]);
+  const [shift, setShift] = useState("");
+
+  useEffect(() => {
+    fetchStaffAccounts()
+      .then((list) => setStaff(list || []))
+      .catch(() => setStaff([]));
+  }, []);
 
   return (
     <div data-component="AdminReports" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
@@ -86,18 +134,32 @@ export default function AdminReportsPage() {
           : "One row per room in use on a given date — guest, room, tariff, payment, and whether they checked in, checked out, or are still in-house."}
       </p>
 
-      {activeTab === "dashboard" && <DashboardTab />}
-      {activeTab === "manifest" && <ManifestTab />}
-      {activeTab === "analysis" && <AnalysisTab />}
-      {activeTab === "pms" && <PmsReportTab />}
-      {activeTab === "accommodation" && <AccommodationReportTab />}
+      <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-col gap-2 w-full max-w-sm">
+        <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Shift (receptionist on duty)</label>
+        <select
+          value={shift}
+          onChange={(e) => setShift(e.target.value)}
+          className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
+        >
+          <option value="">-- Select --</option>
+          {staff.map((s) => (
+            <option key={s.id} value={s.display_name}>{s.display_name} ({s.role})</option>
+          ))}
+        </select>
+      </div>
+
+      {activeTab === "dashboard" && <DashboardTab shift={shift} />}
+      {activeTab === "manifest" && <ManifestTab shift={shift} />}
+      {activeTab === "analysis" && <AnalysisTab shift={shift} />}
+      {activeTab === "pms" && <PmsReportTab shift={shift} />}
+      {activeTab === "accommodation" && <AccommodationReportTab shift={shift} />}
     </div>
   );
 }
 
 // ─── Dashboard (existing report, unchanged) ──────────────────────────────────
 
-function DashboardTab() {
+function DashboardTab({ shift }) {
   const defaultRange = currentMonthRange();
   const [from, setFrom] = useState(defaultRange.from);
   const [to, setTo] = useState(defaultRange.to);
@@ -217,6 +279,12 @@ function DashboardTab() {
         >
           <IoMailOutline size={20} /> Email Report
         </Button>
+        <SendToAccountantButton
+          reportType="dashboard"
+          label={period ? `${period.from} to ${period.to}` : `${from} to ${to}`}
+          shift={shift}
+          data={data}
+        />
       </div>
 
       {showEmailForm && (
@@ -412,7 +480,7 @@ function DashboardTab() {
 
 // ─── Manifest ─────────────────────────────────────────────────────────────────
 
-function ManifestTab() {
+function ManifestTab({ shift }) {
   const [date, setDate] = useState(localTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -489,9 +557,12 @@ function ManifestTab() {
             <p className="text-2xl text-[color:var(--text-color)]/76">
               Manifest for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
             </p>
-            <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
-              <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
+                <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
+              </Button>
+              <SendToAccountantButton reportType="manifest" label={data.report_date} shift={shift} data={data} />
+            </div>
           </div>
 
           <ReportSection title="Check-Ins" subtitle="Everyone due to arrive this business day">
@@ -566,7 +637,7 @@ function ManifestTab() {
 
 // ─── Analysis ─────────────────────────────────────────────────────────────────
 
-function AnalysisTab() {
+function AnalysisTab({ shift }) {
   const defaultRange = currentMonthRange();
   const [from, setFrom] = useState(defaultRange.from);
   const [to, setTo] = useState(defaultRange.to);
@@ -612,10 +683,11 @@ function AnalysisTab() {
 
       {!loading && data && (
         <div className="w-full flex flex-col gap-[2.5rem]">
-          <div className="w-full flex justify-end">
+          <div className="w-full flex justify-end gap-3">
             <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex rounded-xl items-center gap-2">
               <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
             </Button>
+            <SendToAccountantButton reportType="analysis" label={`${from} to ${to}`} shift={shift} data={data} />
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 w-full">
@@ -668,7 +740,7 @@ function AnalysisTab() {
 
 // ─── PMS Report (Evening / Morning) ─────────────────────────────────────────────
 
-function PmsReportTab() {
+function PmsReportTab({ shift }) {
   const [date, setDate] = useState(localTodayISO());
   const [variant, setVariant] = useState("evening");
   const [data, setData] = useState(null);
@@ -744,9 +816,12 @@ function PmsReportTab() {
               {data.variant === "evening" ? "Evening" : "Morning"} report for{" "}
               <strong className="text-[color:var(--black)]">{data.report_date}</strong>
             </p>
-            <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
-              <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
+                <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
+              </Button>
+              <SendToAccountantButton reportType="pms" label={`${data.report_date} (${data.variant})`} shift={shift} data={data} />
+            </div>
           </div>
 
           {data.previous_night_audit !== undefined && (
@@ -848,22 +923,13 @@ function PmsReportTab() {
 
 // ─── Accommodation Report ───────────────────────────────────────────────────
 
-function AccommodationReportTab() {
+function AccommodationReportTab({ shift }) {
   const [date, setDate] = useState(localTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
-
-  const [staff, setStaff] = useState([]);
-  const [shift, setShift] = useState("");
-
-  useEffect(() => {
-    fetchStaffAccounts()
-      .then((list) => setStaff(list || []))
-      .catch(() => setStaff([]));
-  }, []);
 
   const load = useCallback(async () => {
     if (!date) return;
@@ -906,19 +972,6 @@ function AccommodationReportTab() {
         <Button onClick={load} disabled={loading} variant="emphasis" className={`text-xl! pb-5 pt-4.5 rounded-xl ${loading ? "opacity-50 cursor-not-allowed" : ""}`}>
           {loading ? "Loading..." : "Generate Report"}
         </Button>
-        <div className="flex flex-col gap-2">
-          <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Shift (receptionist on duty)</label>
-          <select
-            value={shift}
-            onChange={(e) => setShift(e.target.value)}
-            className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
-          >
-            <option value="">-- Select --</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.display_name}>{s.display_name} ({s.role})</option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl w-full">{error}</div>}
@@ -931,15 +984,18 @@ function AccommodationReportTab() {
             <p className="text-2xl text-[color:var(--text-color)]/76">
               Accommodation report for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
             </p>
-            <Button
-              onClick={handleExport}
-              disabled={exporting || !shift}
-              variant="secondary"
-              className="text-xl! flex items-center rounded-xl gap-2"
-              title={!shift ? "Select a shift before exporting" : undefined}
-            >
-              <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleExport}
+                disabled={exporting || !shift}
+                variant="secondary"
+                className="text-xl! flex items-center rounded-xl gap-2"
+                title={!shift ? "Select a shift at the top of the page first" : undefined}
+              >
+                <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
+              </Button>
+              <SendToAccountantButton reportType="accommodation" label={data.report_date} shift={shift} data={data} />
+            </div>
           </div>
 
           <ReportSection title="Rooms in Use">
@@ -1024,63 +1080,7 @@ function RangePicker({ from, to, setFrom, setTo, onGenerate, loading }) {
   );
 }
 
-function ReportSection({ title, subtitle, children }) {
-  return (
-    <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 overflow-hidden w-full">
-      <div className="px-6 py-5 border-b border-[color:var(--text-color)]/10">
-        <h2 className="text-3xl font-bold text-[color:var(--black)]">{title}</h2>
-        {subtitle && <p className="text-xl text-[color:var(--text-color)]/68 mt-1">{subtitle}</p>}
-      </div>
-      <div className="overflow-x-auto">{children}</div>
-    </div>
-  );
-}
-
-function TableHead({ cells }) {
-  return (
-    <thead>
-      <tr className="border-b border-[color:var(--text-color)]/10">
-        {cells.map((c, i) => (
-          <th
-            key={i}
-            className={`px-6 py-3 text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide ${
-              i === 0 ? "text-left" : "text-left"
-            }`}
-          >
-            {c}
-          </th>
-        ))}
-      </tr>
-    </thead>
-  );
-}
-
-function EmptyRow() {
-  return <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No data for this period.</p>;
-}
-
-function SummaryCard({ label, value, sub, accent, warn }) {
-  return (
-    <div className={`rounded-xl border p-6 ${accent ? "bg-[color:var(--emphasis)] border-transparent text-white" : warn ? "bg-white border-orange-200" : "bg-white border-[color:var(--text-color)]/10"}`}>
-      <p className={`text-xl font-semibold uppercase tracking-wide mb-2 ${accent ? "text-white/70" : "text-[color:var(--text-color)]/68"}`}>
-        {label}
-      </p>
-      <p className={`text-4xl font-bold ${accent ? "text-white" : warn ? "text-orange-600" : "text-[color:var(--black)]"}`}>
-        {value}
-      </p>
-      {sub && (
-        <p className={`text-xl mt-1 ${accent ? "text-white/60" : "text-[color:var(--text-color)]/60"}`}>{sub}</p>
-      )}
-    </div>
-  );
-}
-
-function OccupancyBadge({ value }) {
-  const v = Number(value || 0);
-  const color = v >= 80 ? "bg-green-100 text-green-700" : v >= 50 ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600";
-  return (
-    <span className={`inline-block px-3 py-1 rounded-full text-xl font-bold ${color}`}>
-      {pct(v)}
-    </span>
-  );
-}
+// ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge now live
+// in components/shared/reportUi.jsx (imported at the top of this file) so
+// AccountantReportsPage can reuse them for rendering a sent report's
+// snapshot_data.
