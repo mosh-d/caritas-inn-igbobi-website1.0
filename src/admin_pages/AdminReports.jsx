@@ -413,9 +413,7 @@ function DashboardTab() {
 // ─── Manifest ─────────────────────────────────────────────────────────────────
 
 function ManifestTab() {
-  const defaultRange = currentMonthRange();
-  const [from, setFrom] = useState(defaultRange.from);
-  const [to, setTo] = useState(defaultRange.to);
+  const [date, setDate] = useState(localTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -423,24 +421,24 @@ function ManifestTab() {
   const [exportError, setExportError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!from || !to) return;
+    if (!date) return;
     try {
       setLoading(true);
       setError(null);
-      setData(await fetchManifest(from, to));
+      setData(await fetchManifest(date));
     } catch (err) {
       setError((err.response?.data?.message || "Failed to load manifest.") + " Please refresh the page.");
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, [date]);
 
   const handleExport = async () => {
-    if (!from || !to) return;
+    if (!date) return;
     try {
       setExporting(true);
       setExportError(null);
-      await downloadManifestExport(from, to);
+      await downloadManifestExport(date);
     } catch (err) {
       setExportError(err.response?.data?.message || "Failed to export manifest.");
     } finally {
@@ -452,7 +450,8 @@ function ManifestTab() {
     <tr key={r.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_numbers || "Unassigned"}</td>
-      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{r.total_rate ? money(r.total_rate) : "—"}</td>
+      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(r.room_price)}</td>
+      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(r.breakfast_price)}</td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.receipt_numbers || "—"}</td>
       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(r.amount_deposited)}</td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(r.actual_check_in || r.check_in)}</td>
@@ -461,11 +460,24 @@ function ManifestTab() {
     </tr>
   );
 
-  const headers = ["Guest", "Room", "Room Price", "Receipt No.", "Deposited", "Arrival", "Check-Out", "Source"];
+  const headers = ["Guest", "Room", "Room Price", "Breakfast Price", "Receipt No.", "Deposited", "Arrival", "Check-Out", "Source"];
 
   return (
     <div className="w-full flex flex-col items-start gap-[2.5rem]">
-      <RangePicker from={from} to={to} setFrom={setFrom} setTo={setTo} onGenerate={load} loading={loading} />
+      <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
+        <div className="flex flex-col gap-2">
+          <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
+          />
+        </div>
+        <Button onClick={load} disabled={loading} variant="emphasis" className={`text-xl! pb-5 pt-4.5 rounded-xl ${loading ? "opacity-50 cursor-not-allowed" : ""}`}>
+          {loading ? "Loading..." : "Generate Report"}
+        </Button>
+      </div>
 
       {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl w-full">{error}</div>}
       {exportError && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl w-full">{exportError}</div>}
@@ -475,15 +487,14 @@ function ManifestTab() {
         <div className="w-full flex flex-col gap-[2.5rem]">
           <div className="w-full flex flex-wrap items-center justify-between gap-4">
             <p className="text-2xl text-[color:var(--text-color)]/76">
-              Showing data for <strong className="text-[color:var(--black)]">{data.period.from}</strong> to{" "}
-              <strong className="text-[color:var(--black)]">{data.period.to}</strong>
+              Manifest for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
             </p>
             <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
               <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
             </Button>
           </div>
 
-          <ReportSection title="Check-Ins" subtitle="Everyone arriving in the selected period">
+          <ReportSection title="Check-Ins" subtitle="Everyone due to arrive this business day">
             {data.check_ins.length === 0 ? (
               <EmptyRow />
             ) : (
@@ -494,7 +505,7 @@ function ManifestTab() {
             )}
           </ReportSection>
 
-          <ReportSection title="Check-Outs" subtitle="Everyone departing in the selected period">
+          <ReportSection title="Check-Outs" subtitle="Everyone due to depart this business day">
             {data.check_outs.length === 0 ? (
               <EmptyRow />
             ) : (
@@ -505,9 +516,31 @@ function ManifestTab() {
             )}
           </ReportSection>
 
+          <ReportSection title="Paid Before / Credit" subtitle="Guests who paid ahead of when it's due, this business day">
+            {data.paid_before.length === 0 ? (
+              <EmptyRow />
+            ) : (
+              <table className="w-full text-xl">
+                <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} />
+                <tbody>
+                  {data.paid_before.map((d) => (
+                    <tr key={d.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
+                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.amount)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
+                      <td className="px-6 py-4"><StatusBadge status={d.status} /></td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.receipt_number || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </ReportSection>
+
           <ReportSection title="Notes">
             {data.notes.length === 0 ? (
-              <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No guest notes recorded for this period.</p>
+              <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No guest notes recorded for this business day.</p>
             ) : (
               <div className="flex flex-col gap-2 p-6">
                 {data.notes.map((n, i) => (
@@ -524,7 +557,7 @@ function ManifestTab() {
 
       {!loading && !data && !error && (
         <div className="text-center py-20 text-[color:var(--text-color)]/60 text-2xl w-full">
-          Select a date range and click <strong>Generate Report</strong> to view results.
+          Pick a date, then click <strong>Generate Report</strong>.
         </div>
       )}
     </div>

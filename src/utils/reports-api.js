@@ -36,8 +36,8 @@ const downloadXlsx = async (path, params, filename) => {
 export const downloadReportsExport = (from, to) =>
   downloadXlsx("/api/reports/export", { from, to }, `report_${from}_to_${to}.xlsx`);
 
-export const downloadManifestExport = (from, to) =>
-  downloadXlsx("/api/reports/manifest/export", { from, to }, `manifest_${from}_to_${to}.xlsx`);
+export const downloadManifestExport = (date) =>
+  downloadXlsx("/api/reports/manifest/export", { date }, `manifest_${date}.xlsx`);
 
 export const downloadAnalysisExport = (from, to) =>
   downloadXlsx("/api/reports/analysis/export", { from, to }, `analysis_${from}_to_${to}.xlsx`);
@@ -57,10 +57,10 @@ export const emailReportsDashboard = async (from, to, email) => {
   return response.data;
 };
 
-export const fetchManifest = async (from, to) => {
+export const fetchManifest = async (date) => {
   const response = await axios.get(`${baseUrl}/api/reports/manifest`, {
     headers: getAuthHeaders(),
-    params: { from, to },
+    params: { date },
   });
   return response.data;
 };
