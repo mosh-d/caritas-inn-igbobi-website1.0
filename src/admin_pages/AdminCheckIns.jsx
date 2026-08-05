@@ -11,6 +11,8 @@ import { checkGuestBlacklist } from "../utils/guests-api";
 import { localTodayISO } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
+import PaymentSplitRows from "../components/shared/PaymentSplitRows";
+import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import {
   checkInReservation,
   assignRoom,
@@ -19,6 +21,7 @@ import {
   confirmReservationById,
   fetchAvailableRoomNumbers,
 } from "../utils/reservations-pms-api";
+import { fetchFolios, recordPayment } from "../utils/folios-api";
 
 const BRANCH_ID = 3;
 const formatDate = (d) =>
@@ -31,7 +34,11 @@ const tomorrowISO = () => {
 };
 const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).toLocaleString()}`;
 
-const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestFirstName: "", guestLastName: "", phone: "", email: "", roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "", withoutBreakfast: false };
+const EMPTY_WALK_IN = {
+  checkOut: "", roomsBooked: 1, roomTypeId: "", guestFirstName: "", guestLastName: "", phone: "", email: "",
+  roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "", withoutBreakfast: false,
+  paymentSplits: [{ amount: "", payment_method: "cash" }], paymentReceiptNumber: "", paymentNotes: "",
+};
 
 export default function AdminCheckInsPage() {
   const navigate = useNavigate();
@@ -58,6 +65,8 @@ export default function AdminCheckInsPage() {
   const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
   const [walkInBlacklisted, setWalkInBlacklisted] = useState(false);
   const [walkInKnownNames, setWalkInKnownNames] = useState([]);
+  const [walkInReceipt, setWalkInReceipt] = useState(null);
+  const [walkInPaymentWarning, setWalkInPaymentWarning] = useState(null);
 
   const loadList = useCallback(async () => {
     try {
@@ -227,6 +236,34 @@ export default function AdminCheckInsPage() {
       await confirmReservationById(internalId);
       await checkInReservation(internalId);
 
+      // Payment is optional — only attempted if the receptionist actually
+      // entered an amount. Failing this must never undo or hide the
+      // check-in that already succeeded; it's reported as a separate
+      // warning, directing staff to record it from the folio instead.
+      const validPaymentSplits = walkIn.paymentSplits.filter((s) => Number(s.amount) > 0);
+      if (validPaymentSplits.length > 0) {
+        try {
+          const folios = await fetchFolios({ reservation_id: internalId });
+          const folioId = folios?.data?.[0]?.id;
+          if (!folioId) throw new Error("Folio not found");
+          const result = await recordPayment({
+            folio_id: folioId,
+            payments: validPaymentSplits.map((s) => ({ amount: Number(s.amount), payment_method: s.payment_method })),
+            receipt_number: walkIn.paymentReceiptNumber || undefined,
+            notes: walkIn.paymentNotes || undefined,
+          });
+          setWalkInReceipt({
+            title: "Payment Recorded",
+            items: result.payments.map((p) => ({ reference: p.payment_reference, amount: fmtCurrency(p.amount), method: p.payment_method })),
+          });
+        } catch (payErr) {
+          setWalkInPaymentWarning(
+            (payErr.response?.data?.message || "Failed to record the payment") +
+              " — the guest is checked in; record the payment from their folio instead.",
+          );
+        }
+      }
+
       setWalkInSuccess({ bookingRef, guestName: guestFullName });
       setWalkIn(EMPTY_WALK_IN);
       setAvailability(null);
@@ -242,6 +279,8 @@ export default function AdminCheckInsPage() {
     setWalkInError(null);
     setWalkIn(EMPTY_WALK_IN);
     setAvailability(null);
+    setWalkInReceipt(null);
+    setWalkInPaymentWarning(null);
   };
 
   const availableTypes = availability
@@ -396,6 +435,9 @@ export default function AdminCheckInsPage() {
                   Checked in · Booking Ref: <strong className="text-[color:var(--black)]">{walkInSuccess.bookingRef}</strong>
                 </p>
                 <p className="text-xl text-[color:var(--text-color)]/68">Guest profile and folio have been created.</p>
+                {walkInPaymentWarning && (
+                  <p className="text-orange-700 text-xl bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 max-w-lg">{walkInPaymentWarning}</p>
+                )}
                 <button onClick={resetWalkIn} className={`${btn.primary} mt-4`}>New Walk-In</button>
               </div>
             ) : (
@@ -683,6 +725,45 @@ export default function AdminCheckInsPage() {
                   </div>
                 </div>
 
+                {/* Payment (optional) — a walk-in commonly pays at the desk
+                    right away; recording it here saves the trip to the
+                    folio afterward. Left blank, nothing is charged and the
+                    folio opens exactly as it would without this section. */}
+                <div className="flex flex-col gap-4 border-t border-[color:var(--text-color)]/10 pt-6">
+                  <div>
+                    <label className={field.label}>Payment (optional)</label>
+                    <p className="text-lg text-[color:var(--text-color)]/68 mt-1">
+                      If the guest is paying now, record it here — leave the amount blank to skip and record it later from the folio.
+                    </p>
+                  </div>
+                  <PaymentSplitRows
+                    splits={walkIn.paymentSplits}
+                    setSplits={(splits) => setWalkIn((p) => ({ ...p, paymentSplits: splits }))}
+                  />
+                  <div className="flex gap-4 flex-wrap">
+                    <div className="flex flex-col gap-2 flex-1 min-w-48">
+                      <label className={field.label}>Receipt Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. from the receipt book"
+                        value={walkIn.paymentReceiptNumber}
+                        onChange={(e) => setWalkIn((p) => ({ ...p, paymentReceiptNumber: e.target.value }))}
+                        className={field.input}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1 min-w-48">
+                      <label className={field.label}>Notes</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. cash received at check-in"
+                        value={walkIn.paymentNotes}
+                        onChange={(e) => setWalkIn((p) => ({ ...p, paymentNotes: e.target.value }))}
+                        className={field.input}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   disabled={
@@ -701,6 +782,14 @@ export default function AdminCheckInsPage() {
           </div>
         )}
       </div>
+
+      {walkInReceipt && (
+        <TransactionReceiptModal
+          title={walkInReceipt.title}
+          items={walkInReceipt.items}
+          onClose={() => setWalkInReceipt(null)}
+        />
+      )}
 
       {/* ==== Check-in modal for expected arrivals ==== */}
       {selected && (

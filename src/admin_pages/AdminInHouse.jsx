@@ -456,15 +456,16 @@ export default function AdminInHousePage() {
                   />
                   <button
                     onClick={handleExtendStay}
-                    disabled={processing || !newCheckOutDate || balanceDue}
+                    disabled={processing || !newCheckOutDate}
                     className={`${btn.primary} whitespace-nowrap`}
-                    title={balanceDue ? "Settle the outstanding balance before extending the stay" : undefined}
                   >
                     Extend
                   </button>
                 </div>
                 {balanceDue && (
-                  <p className="text-lg text-orange-600">Settle the outstanding balance before extending this stay.</p>
+                  <p className="text-lg text-[color:var(--text-color)]/68">
+                    This folio has an outstanding balance — extending is still allowed, and the balance will grow with the added nights.
+                  </p>
                 )}
               </section>
             </>

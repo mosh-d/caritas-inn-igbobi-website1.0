@@ -595,8 +595,9 @@ export default function AdminReservationsPage() {
 
   const res = selectedReservation;
   const canModify = res && res.status !== "cancelled" && res.status !== "completed";
-  // Same rule the backend now enforces on extendStay — don't let a stay that
-  // already owes money get pushed further out before it's settled.
+  // Informational only — extending is allowed with an outstanding balance
+  // (standard hotel practice; the balance simply grows with the added
+  // nights), this just surfaces that fact next to the Extend button.
   const hasOutstandingBalance = Boolean(reservationFolio) && Number(reservationFolio.balance) > 0;
   // Read-only display for the Details section — sourced from the Deposits
   // ledger below rather than the free-editable field it used to be, since
@@ -1109,16 +1110,17 @@ export default function AdminReservationsPage() {
                     <input type="date" value={newCheckOutDate} onChange={(e) => setNewCheckOutDate(e.target.value)} className={field.input} />
                     <button
                       onClick={handleExtendStay}
-                      disabled={extending || !newCheckOutDate || hasOutstandingBalance}
+                      disabled={extending || !newCheckOutDate}
                       className={`${btn.primary} whitespace-nowrap`}
-                      title={hasOutstandingBalance ? "Settle the outstanding balance before extending the stay" : undefined}
                     >
                       {extending ? "Extending..." : "Extend"}
                     </button>
-                    {hasOutstandingBalance && (
-                      <span className="text-lg text-orange-600">Settle the outstanding balance before extending this stay.</span>
-                    )}
                   </div>
+                  {hasOutstandingBalance && (
+                    <p className="text-lg text-[color:var(--text-color)]/68">
+                      This folio has an outstanding balance — extending is still allowed, and the balance will grow with the added nights.
+                    </p>
+                  )}
                 </section>
               )}
             </>
