@@ -587,7 +587,7 @@ function ManifestTab({ shift }) {
             )}
           </ReportSection>
 
-          <ReportSection title="Reservation" subtitle="Advance payments recorded this business day">
+          <ReportSection title="Reservation (Credit)" subtitle="Advance payments recorded this business day">
             {data.paid_before.length === 0 ? (
               <EmptyRow />
             ) : (

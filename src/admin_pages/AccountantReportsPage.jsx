@@ -267,7 +267,7 @@ function ManifestSnapshot({ data }) {
           <table className="w-full text-xl"><TableHead cells={headers} /><tbody>{checkOuts.map(ManifestRow)}</tbody></table>
         )}
       </ReportSection>
-      <ReportSection title="Reservation">
+      <ReportSection title="Reservation (Credit)">
         {paidBefore.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
             <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} />
