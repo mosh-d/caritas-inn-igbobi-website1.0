@@ -347,14 +347,19 @@ export default function AdminFoliosPage() {
     (Boolean(selectedFolio.reservation?.actual_check_out) || Boolean(selectedFolio.reservation?.is_no_show));
   const hasOutstandingBalance = selectedFolio && Number(selectedFolio.balance) > 0;
   const hasCreditBalance = selectedFolio && Number(selectedFolio.balance) < 0;
-  // A payment-reference search runs through the generic getFolios query, not
-  // getOverdueFolios/getPendingFolios — it doesn't fetch actual_check_out, so
-  // these columns (which need that data) only make sense when one of those
-  // tabs' own query actually ran, not when a search overrides it. Guest
-  // Status is useful on both Outstanding Balance and Overdue (has this
-  // guest actually left yet?); Check-Out Date only makes sense on Overdue,
-  // where it explains *why* a folio counts as overdue in the first place.
-  const showGuestStatusColumn = (subTab === "overdue" || subTab === "pending") && !searchTerm;
+  // Guest Status (Guest Ledger / City Ledger) is useful any time a search
+  // could turn up an owing folio — not just on Outstanding Balance/Overdue,
+  // since a search runs from whichever tab happens to be selected (often
+  // "All") and isn't itself balance-filtered. getFolios (what a search
+  // always queries, regardless of subTab) now fetches actual_check_out too,
+  // same as getPendingFolios/getOverdueFolios. Because a search isn't
+  // balance-filtered the way those two tabs' own queries are, each row's
+  // badge below still checks its own balance rather than trusting the
+  // column's visibility alone — a settled or credit row shows neither
+  // label. Check-Out Date only makes sense on Overdue itself, where it
+  // explains *why* a folio counts as overdue in the first place — not a
+  // general-purpose column, left as is.
+  const showGuestStatusColumn = subTab === "overdue" || subTab === "pending" || Boolean(searchTerm);
   const showCheckOutDateColumn = subTab === "overdue" && !searchTerm;
   const extraColumnCount = (showGuestStatusColumn ? 1 : 0) + (showCheckOutDateColumn ? 1 : 0);
   const folioTableColSpan = 7 + extraColumnCount;
@@ -471,13 +476,17 @@ export default function AdminFoliosPage() {
                       </td>
                       {showGuestStatusColumn && (
                         <td className={table.td}>
-                          {f.reservation?.actual_check_out ? (
-                            // This column only ever renders where balance > 0
-                            // already (Outstanding Balance/Overdue), so
-                            // "genuinely departed + still owing" is exactly
-                            // the definition of a City Ledger receivable —
-                            // no longer a front-desk matter, now a
-                            // collections one.
+                          {/* Outside a search, this tab's own query is
+                              already balance > 0 filtered — but a search
+                              runs through the generic, unfiltered getFolios
+                              query regardless of subTab, so a matched row
+                              here could have a zero or credit balance. City
+                              Ledger/Still In-House only mean anything for an
+                              actual receivable, so check the row's own
+                              balance rather than trusting the tab. */}
+                          {Number(f.balance) <= 0 ? (
+                            <span className="text-lg text-[color:var(--text-color)]/40">—</span>
+                          ) : f.reservation?.actual_check_out ? (
                             <span
                               className="text-sm font-bold uppercase tracking-wide text-[color:var(--text-color)]/60 bg-black/5 px-2.5 py-1 rounded-full whitespace-nowrap"
                               title="Checked out, still owing — a City Ledger receivable"
