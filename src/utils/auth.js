@@ -302,3 +302,13 @@ export const isAccountant = () => {
   return role === "accountant" || role === "developer";
 };
 
+// Where a session should land right after login, or when visiting the bare
+// /admin URL while already authenticated. An accountant's nav (see
+// visibleAdminNavItems()) has no link back to Overview at all, so landing
+// there by default is a dead end — send them straight to their own report
+// list instead. Checked against the raw stored role, not isAccountant()
+// above: a developer session should still default to the normal Overview,
+// not the accountant-specific landing page, since developer sees everything.
+export const getDefaultAdminRoute = () =>
+  getStoredStaffRole() === "accountant" ? "/admin/accountant-reports" : "/admin/overview";
+

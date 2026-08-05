@@ -16,7 +16,7 @@ import {
   IoKeyOutline,
 } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
-import { isManager } from "../utils/auth";
+import { isManager, isAccountant, getStoredStaffRole } from "../utils/auth";
 
 // Mirrors ADMIN_NAV_ITEMS' order (adminNavItems.js) so the quick-jump chips
 // and section order match the sidebar exactly — this page exists so a new
@@ -190,9 +190,23 @@ const SECTIONS = [
     ],
   },
   {
+    id: "accountant-reports",
+    icon: IoBarChartOutline,
+    label: "Accountant Reports",
+    accountantOnly: true,
+    summary: "Every report the front office has sent, grouped by the day it was sent — click one to see exactly what was sent.",
+    workflow: [
+      "What you see is a frozen snapshot from the moment it was sent — if the underlying reservation or folio changes afterward, this view doesn't change with it.",
+      "Grouped by the calendar day a report was actually sent, not by whatever date or date-range the report itself covers.",
+      "Click a report to expand it in place, with its own Export to Excel button.",
+      "\"Shift\" shows which receptionist was on duty when the report was generated — not necessarily whoever actually clicked Send.",
+    ],
+  },
+  {
     id: "account",
     icon: IoKeyOutline,
     label: "Account",
+    alwaysVisible: true,
     summary: "Change your own login password.",
     workflow: [
       "A manager can also reset a receptionist's password here without needing to know their current one — just the manager's own password to confirm.",
@@ -202,7 +216,16 @@ const SECTIONS = [
 
 export default function AdminHelpPage() {
   const manager = isManager();
-  const visibleSections = SECTIONS.filter((s) => !s.managerOnly || manager);
+  const role = getStoredStaffRole();
+  // Same shape as visibleAdminNavItems() (adminNavItems.js) — an accountant
+  // session sees only accountantOnly + alwaysVisible sections, since none of
+  // the front-desk pages apply to them.
+  const visibleSections = SECTIONS.filter((s) => {
+    if (s.accountantOnly) return isAccountant();
+    if (role === "accountant") return s.alwaysVisible === true;
+    if (s.managerOnly) return manager;
+    return true;
+  });
 
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });

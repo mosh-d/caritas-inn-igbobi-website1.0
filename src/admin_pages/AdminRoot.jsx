@@ -2,7 +2,7 @@ import { useWebSocketContext } from '../context/WebSocketContext';
 import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { IoClose } from 'react-icons/io5';
-import { verifyToken } from "../utils/auth";
+import { verifyToken, getDefaultAdminRoute } from "../utils/auth";
 import AdminNavBar from "../components/shared/AdminNavBar";
 import AdminTopBar from "../components/shared/AdminTopBar";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
@@ -87,9 +87,10 @@ export default function AdminRootLayout() {
     );
   }
 
-  // If on login page and already authenticated, redirect to overview
+  // If on login page and already authenticated, redirect to this role's
+  // default landing page (see getDefaultAdminRoute)
   if (isLoginPage && isAuthenticated) {
-    return <Navigate to="/admin/overview" replace />;
+    return <Navigate to={getDefaultAdminRoute()} replace />;
   }
 
   // Don't show layout for login page

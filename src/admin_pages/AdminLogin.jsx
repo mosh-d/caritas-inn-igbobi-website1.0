@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { loginStaff } from "../utils/auth";
+import { loginStaff, getDefaultAdminRoute } from "../utils/auth";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
 
@@ -39,8 +39,8 @@ export default function AdminLoginPage() {
 
     try {
       await loginStaff(username.trim(), password);
-      // Redirect to the intended page or dashboard
-      const from = location.state?.from?.pathname || "/admin/overview";
+      // Redirect to the intended page, or this role's default landing page
+      const from = location.state?.from?.pathname || getDefaultAdminRoute();
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || "Invalid password. Please try again.");

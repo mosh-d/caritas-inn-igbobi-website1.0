@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import Logo from '../../assets/caritas-logo-2.png';
-import { logout, getStoredStaffRole, getStoredBranch, getStoredDisplayName } from '../../utils/auth';
+import { logout, getStoredStaffRole, getStoredBranch, getStoredDisplayName, getDefaultAdminRoute } from '../../utils/auth';
 import StatusBadge from './StatusBadge';
 
 // Branch names in the DB are stored as "<Brand> <Location>" (e.g. "Caritas Inn
@@ -58,7 +58,7 @@ export default function AdminTopBar() {
       </div>
       <div className='w-48 flex-shrink-0 absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center'>
         <NavLink
-          to='/admin/overview'
+          to={getDefaultAdminRoute()}
           className='block'
         >
           <img
