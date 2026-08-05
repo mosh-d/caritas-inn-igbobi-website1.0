@@ -435,8 +435,8 @@ export default function AdminFoliosPage() {
             : subTab === "all"
             ? "Every folio across all guests, open and closed."
             : subTab === "pending"
-            ? "Open folios with a balance still owed."
-            : "Guests who are supposed to have checked out but still have a balance owed — only counted from noon on their checkout date onward."}
+            ? "Open folios with a balance still owed — both in-house guests (Guest Ledger) and guests who've already departed still owing (City Ledger)."
+            : "Guests who are supposed to have checked out but still have a balance owed — only counted from noon on their checkout date onward. A guest who has genuinely left is a City Ledger receivable; one still in-house past their scheduled date is still a Guest Ledger matter — see the Guest Status column."}
         </p>
 
         <div className={table.card}>
@@ -472,11 +472,23 @@ export default function AdminFoliosPage() {
                       {showGuestStatusColumn && (
                         <td className={table.td}>
                           {f.reservation?.actual_check_out ? (
-                            <span className="text-sm font-bold uppercase tracking-wide text-[color:var(--text-color)]/60 bg-black/5 px-2.5 py-1 rounded-full whitespace-nowrap">
-                              Checked Out
+                            // This column only ever renders where balance > 0
+                            // already (Outstanding Balance/Overdue), so
+                            // "genuinely departed + still owing" is exactly
+                            // the definition of a City Ledger receivable —
+                            // no longer a front-desk matter, now a
+                            // collections one.
+                            <span
+                              className="text-sm font-bold uppercase tracking-wide text-[color:var(--text-color)]/60 bg-black/5 px-2.5 py-1 rounded-full whitespace-nowrap"
+                              title="Checked out, still owing — a City Ledger receivable"
+                            >
+                              City Ledger
                             </span>
                           ) : (
-                            <span className="text-sm font-bold uppercase tracking-wide text-orange-700 bg-orange-100 px-2.5 py-1 rounded-full whitespace-nowrap">
+                            <span
+                              className="text-sm font-bold uppercase tracking-wide text-orange-700 bg-orange-100 px-2.5 py-1 rounded-full whitespace-nowrap"
+                              title="Still a registered in-house guest — a Guest Ledger matter"
+                            >
                               Still In-House
                             </span>
                           )}
