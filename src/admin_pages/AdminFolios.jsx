@@ -347,19 +347,20 @@ export default function AdminFoliosPage() {
     (Boolean(selectedFolio.reservation?.actual_check_out) || Boolean(selectedFolio.reservation?.is_no_show));
   const hasOutstandingBalance = selectedFolio && Number(selectedFolio.balance) > 0;
   const hasCreditBalance = selectedFolio && Number(selectedFolio.balance) < 0;
-  // Guest Status (Guest Ledger / City Ledger) is useful any time a search
-  // could turn up an owing folio — not just on Outstanding Balance/Overdue,
-  // since a search runs from whichever tab happens to be selected (often
-  // "All") and isn't itself balance-filtered. getFolios (what a search
-  // always queries, regardless of subTab) now fetches actual_check_out too,
-  // same as getPendingFolios/getOverdueFolios. Because a search isn't
-  // balance-filtered the way those two tabs' own queries are, each row's
-  // badge below still checks its own balance rather than trusting the
-  // column's visibility alone — a settled or credit row shows neither
-  // label. Check-Out Date only makes sense on Overdue itself, where it
-  // explains *why* a folio counts as overdue in the first place — not a
+  // Guest Status (Guest Ledger / City Ledger) is shown on every tab now,
+  // not just Outstanding Balance/Overdue — "All" mixes settled and owing
+  // folios together same as a search does, and there's no good reason to
+  // hide a City Ledger receivable just because the guest happens to be
+  // viewed from that tab. getFolios (every one of these queries goes
+  // through it or one of its balance-filtered siblings) now fetches
+  // actual_check_out on every path. Since "All" and a search aren't
+  // balance-filtered the way Outstanding Balance/Overdue's own queries are,
+  // each row's badge below checks its own balance rather than trusting the
+  // column's visibility alone — a settled or credit row shows a plain "—".
+  // Check-Out Date only makes sense on Overdue itself, where it explains
+  // *why* a folio counts as overdue in the first place — not a
   // general-purpose column, left as is.
-  const showGuestStatusColumn = subTab === "overdue" || subTab === "pending" || Boolean(searchTerm);
+  const showGuestStatusColumn = true;
   const showCheckOutDateColumn = subTab === "overdue" && !searchTerm;
   const extraColumnCount = (showGuestStatusColumn ? 1 : 0) + (showCheckOutDateColumn ? 1 : 0);
   const folioTableColSpan = 7 + extraColumnCount;
