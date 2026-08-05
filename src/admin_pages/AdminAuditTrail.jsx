@@ -91,7 +91,9 @@ export default function AdminAuditTrail() {
   const [filterStaffId, setFilterStaffId] = useState("");
   const [filterRole, setFilterRole] = useState("");
   const [filterAction, setFilterAction] = useState("");
-  const hasFilters = filterStaffId || filterRole || filterAction;
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const hasFilters = filterStaffId || filterRole || filterAction || filterFrom || filterTo;
 
   const load = useCallback(async (p = 1, filters = {}) => {
     try {
@@ -102,6 +104,8 @@ export default function AdminAuditTrail() {
         staff_account_id: filters.staffId || undefined,
         role: filters.role || undefined,
         action: filters.action || undefined,
+        from: filters.from || undefined,
+        to: filters.to || undefined,
       });
       setEntries(data.data || []);
       setTotal(data.total || 0);
@@ -126,7 +130,7 @@ export default function AdminAuditTrail() {
   const { isConnected } = useWebSocketContext();
   useEffect(() => {
     if (!manager || !isConnected) return;
-    load(1, { staffId: filterStaffId, role: filterRole, action: filterAction });
+    load(1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, manager]);
 
@@ -135,11 +139,15 @@ export default function AdminAuditTrail() {
       staffId: filterStaffId,
       role: filterRole,
       action: filterAction,
+      from: filterFrom,
+      to: filterTo,
       ...next,
     };
     setFilterStaffId(merged.staffId);
     setFilterRole(merged.role);
     setFilterAction(merged.action);
+    setFilterFrom(merged.from);
+    setFilterTo(merged.to);
     load(1, merged);
   };
 
@@ -147,6 +155,8 @@ export default function AdminAuditTrail() {
     setFilterStaffId("");
     setFilterRole("");
     setFilterAction("");
+    setFilterFrom("");
+    setFilterTo("");
     load(1, {});
   };
 
@@ -212,6 +222,26 @@ export default function AdminAuditTrail() {
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>From</label>
+          <input
+            type="date"
+            value={filterFrom}
+            onChange={(e) => applyFilters({ from: e.target.value })}
+            className={field.input}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>To</label>
+          <input
+            type="date"
+            value={filterTo}
+            onChange={(e) => applyFilters({ to: e.target.value })}
+            className={field.input}
+          />
         </div>
 
         {hasFilters && (
@@ -285,7 +315,7 @@ export default function AdminAuditTrail() {
               <div className="flex justify-center items-center gap-4 w-full mt-6">
                 <Button
                   variant="emphasis"
-                  onClick={() => load(page - 1, { staffId: filterStaffId, role: filterRole, action: filterAction })}
+                  onClick={() => load(page - 1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo })}
                   disabled={page === 1}
                   className={page === 1 ? "opacity-30 cursor-not-allowed" : ""}
                 >
@@ -294,7 +324,7 @@ export default function AdminAuditTrail() {
                 <span className="text-lg font-medium">Page {page} of {pages}</span>
                 <Button
                   variant="emphasis"
-                  onClick={() => load(page + 1, { staffId: filterStaffId, role: filterRole, action: filterAction })}
+                  onClick={() => load(page + 1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo })}
                   disabled={page === pages}
                   className={page === pages ? "opacity-30 cursor-not-allowed" : ""}
                 >
