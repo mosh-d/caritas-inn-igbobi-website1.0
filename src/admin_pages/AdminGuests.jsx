@@ -682,12 +682,17 @@ export default function AdminGuestsPage() {
                 return (
                   <>
                     <div className='flex flex-col gap-2'>
-                      {pagedReservations.map((r) => (
-                        <div
-                          key={r.id}
-                          className='flex flex-col gap-2 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl'
-                        >
-                          <div className='flex justify-between items-center gap-4'>
+                      {pagedReservations.map((r) => {
+                        // A folio only exists once a reservation has been
+                        // checked in — hold/confirmed/cancelled never have
+                        // one, so those rows stay non-interactive.
+                        const hasFolio = r.status === 'active' || r.status === 'completed';
+                        return (
+                          <div
+                            key={r.id}
+                            onClick={hasFolio ? () => navigate(`/admin/folios?reservation_id=${r.id}`) : undefined}
+                            className={`flex justify-between items-center gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl ${hasFolio ? 'cursor-pointer hover:bg-[color:var(--text-color)]/8' : ''}`}
+                          >
                             <span className='truncate'>
                               {r.booking_reference || r.id}
                               <span className='text-[color:var(--text-color)]/68 ml-3'>
@@ -697,17 +702,8 @@ export default function AdminGuestsPage() {
                             </span>
                             <StatusBadge status={r.status} />
                           </div>
-                          {r.status === 'completed' && (
-                            <button
-                              type='button'
-                              onClick={() => navigate(`/admin/folios?reservation_id=${r.id}`)}
-                              className={`${btn.rowSecondary} self-end`}
-                            >
-                              View Folio
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     {reservationsTotalPages > 1 && (
                       <div className='flex justify-center items-center gap-4 w-full mt-2'>
