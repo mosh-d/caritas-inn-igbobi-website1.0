@@ -406,8 +406,8 @@ export default function AdminAlertsPage() {
                               <td className={`${table.td} font-bold text-red-600`}>{money(f.balance)}</td>
                               <td className={table.td}>
                                 <div className={table.actions}>
-                                  <button onClick={() => navigate("/admin/folios")} className={btn.rowPrimary}>
-                                    Go to Folios
+                                  <button onClick={() => navigate(`/admin/folios?folio_id=${f.id}`)} className={btn.rowPrimary}>
+                                    Go to Folio
                                   </button>
                                 </div>
                               </td>
