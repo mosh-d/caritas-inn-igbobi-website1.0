@@ -238,7 +238,7 @@ const SECTIONS = [
     summary: "The food and drink item list — name and price — that Folios' Food/Drink Charge picker and Walk-In Sales both pull from.",
     workflow: [
       "Manager-only, same tier as room pricing.",
-      "Deactivating an item (instead of deleting it) keeps it out of future pickers while preserving any past folio charge or walk-in sale that already referenced it.",
+      "Setting an item Out of Stock (instead of deleting it) keeps it out of future pickers while preserving any past folio charge or walk-in sale that already referenced it.",
       "A price change here only affects new charges/sales going forward — a historical charge or sale keeps whatever price was in effect when it was made.",
     ],
   },

@@ -157,7 +157,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
 
       <label className="flex items-center gap-3 text-xl cursor-pointer">
         <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="w-5 h-5 cursor-pointer" />
-        Show deactivated items
+        Show out-of-stock items
       </label>
 
       <div className={table.card}>
@@ -189,7 +189,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
                         </td>
                         <td className={table.td}>
                           <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                            {item.is_active ? "Active" : "Deactivated"}
+                            {item.is_active ? "In Stock" : "Out of Stock"}
                           </span>
                         </td>
                         <td className={table.td}>
@@ -207,14 +207,14 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
                         <td className={table.td}>{money(item.price)}</td>
                         <td className={table.td}>
                           <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                            {item.is_active ? "Active" : "Deactivated"}
+                            {item.is_active ? "In Stock" : "Out of Stock"}
                           </span>
                         </td>
                         <td className={table.td}>
                           <div className={table.actions}>
                             <button onClick={() => startEdit(item)} className={btn.rowSecondary}>Edit</button>
                             <button onClick={() => handleToggleActive(item)} disabled={savingId === item.id} className={item.is_active ? btn.rowDanger : btn.rowSuccess}>
-                              {savingId === item.id ? "..." : item.is_active ? "Deactivate" : "Reactivate"}
+                              {savingId === item.id ? "..." : item.is_active ? "Set Out of Stock" : "Mark In Stock"}
                             </button>
                           </div>
                         </td>
