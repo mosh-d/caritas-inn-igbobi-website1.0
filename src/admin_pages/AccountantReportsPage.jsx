@@ -14,6 +14,8 @@ const REPORT_TYPE_LABELS = {
   analysis: "Analysis",
   pms: "PMS Report",
   accommodation: "Accommodation",
+  "food-sales": "Food Sales",
+  "drink-sales": "Drink Sales",
 };
 
 export default function AccountantReportsPage() {
@@ -169,6 +171,8 @@ function SnapshotView({ reportType, data }) {
   if (reportType === "analysis") return <AnalysisSnapshot data={data} />;
   if (reportType === "pms") return <PmsSnapshot data={data} />;
   if (reportType === "accommodation") return <AccommodationSnapshot data={data} />;
+  if (reportType === "food-sales") return <FoodSalesSnapshot data={data} />;
+  if (reportType === "drink-sales") return <DrinkSalesSnapshot data={data} />;
   return <p className="text-xl text-[color:var(--text-color)]/68">Unknown report type "{reportType}".</p>;
 }
 
@@ -458,5 +462,96 @@ function AccommodationSnapshot({ data }) {
         </table>
       )}
     </ReportSection>
+  );
+}
+
+// Shared by FoodSalesSnapshot/DrinkSalesSnapshot — same shape as
+// AdminReports.jsx's SalesTotals, kept as its own copy here rather than a
+// shared import since this file renders a frozen snapshot_data object while
+// AdminReports.jsx renders live state — the two have different data
+// lifecycles even though the JSX matches.
+function SalesTotalsSnapshot({ data }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <SummaryCard label="Total" value={money(data.total)} accent />
+        {(data.payment_breakdown || []).map((p, i) => (
+          <SummaryCard
+            key={i}
+            label={p.payment_method === "charged_to_room" ? "Charged to Room" : p.payment_method}
+            value={money(p.total)}
+            sub={p.payment_method === "charged_to_room" ? undefined : `${p.count} sale${p.count === 1 ? "" : "s"}`}
+          />
+        ))}
+      </div>
+      <ReportSection title="By Staff">
+        {!(data.staff_breakdown || []).length ? <EmptyRow /> : (
+          <table className="w-full text-xl">
+            <TableHead cells={["Staff", "Total"]} />
+            <tbody>
+              {data.staff_breakdown.map((s, i) => (
+                <tr key={i} className="border-b border-[color:var(--text-color)]/10">
+                  <td className="px-6 py-4 font-medium text-[color:var(--black)]">{s.staff_name}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(s.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </ReportSection>
+    </>
+  );
+}
+
+function FoodSalesSnapshot({ data }) {
+  const rows = data?.rows || [];
+  return (
+    <div className="flex flex-col gap-6">
+      <SalesTotalsSnapshot data={data} />
+      <ReportSection title="Food Orders">
+        {rows.length === 0 ? <EmptyRow /> : (
+          <table className="w-full text-xl">
+            <TableHead cells={["Customer", "Qty", "Description", "Amount", "Status"]} />
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className="border-b border-[color:var(--text-color)]/10">
+                  <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.customer}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.quantity}</td>
+                  <td className="px-6 py-4 capitalize text-[color:var(--text-color)]/84">{r.description}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount)}</td>
+                  <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </ReportSection>
+    </div>
+  );
+}
+
+function DrinkSalesSnapshot({ data }) {
+  const rows = data?.rows || [];
+  return (
+    <div className="flex flex-col gap-6">
+      <SalesTotalsSnapshot data={data} />
+      <ReportSection title="Drinks Sold">
+        {rows.length === 0 ? <EmptyRow /> : (
+          <table className="w-full text-xl">
+            <TableHead cells={["Item", "Qty Sold", "Unit Price", "Total Amount"]} />
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className="border-b border-[color:var(--text-color)]/10">
+                  <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.description}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.quantity}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.unit_price)}</td>
+                  <td className="px-6 py-4 font-semibold text-[color:var(--black)]">{money(r.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </ReportSection>
+    </div>
   );
 }

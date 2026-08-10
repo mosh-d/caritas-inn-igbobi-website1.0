@@ -296,6 +296,7 @@ export default function AdminFoliosPage() {
         discount: discountAmount,
         item_type: itemForm.item_type,
         reference_id: itemForm.menu_item_id ? Number(itemForm.menu_item_id) : undefined,
+        quantity: isFoodOrDrinkCharge ? Number(itemForm.quantity) || 1 : undefined,
         date: itemForm.date || undefined,
       });
       setItemForm(resetItemForm());
@@ -736,10 +737,6 @@ export default function AdminFoliosPage() {
                         </>
                       )}
                       <div className="flex flex-col gap-2">
-                        <label className={field.label}>Description</label>
-                        <input type="text" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.input} />
-                      </div>
-                      <div className="flex flex-col gap-2">
                         <label className={field.label}>Amount (₦)</label>
                         <input type="number" value={itemForm.amount} onChange={(e) => setItemForm({ ...itemForm, amount: e.target.value })} className={field.input} />
                       </div>
@@ -770,6 +767,10 @@ export default function AdminFoliosPage() {
                           </select>
                           <input type="number" value={itemForm.discount} onChange={(e) => setItemForm({ ...itemForm, discount: e.target.value })} className={field.input} />
                         </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className={field.label}>Description</label>
+                        <input type="text" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.input} />
                       </div>
                     </div>
                     {itemForm.item_type === "adjustment" && (

@@ -32,6 +32,11 @@ const STYLES = {
   // Settled by drawing on an existing credit (an applied deposit from a
   // previous "Reservation" advance payment) rather than a fresh payment.
   pb: "bg-blue-100 text-blue-700",
+  // Food/Drink Sales reports — a zero-amount folio charge (staff already
+  // can zero out the auto-filled Amount when posting). Purple to match the
+  // app's one existing "given away, no charge" convention (complementary
+  // rooms).
+  complementary: "bg-purple-100 text-purple-700",
   // Accommodation Report remarks
   "checked in": "bg-blue-100 text-blue-700",
   "checked out": "bg-gray-100 text-gray-600",

@@ -88,3 +88,25 @@ export const fetchAccommodationReport = async (date) => {
   });
   return response.data;
 };
+
+export const fetchFoodSalesReport = async (date) => {
+  const response = await axios.get(`${baseUrl}/api/reports/food-sales`, {
+    headers: getAuthHeaders(),
+    params: { date },
+  });
+  return response.data;
+};
+
+export const downloadFoodSalesReportExport = (date, shift) =>
+  downloadXlsx("/api/reports/food-sales/export", { date, shift }, `food_sales_report_${date}.xlsx`);
+
+export const fetchDrinkSalesReport = async (date) => {
+  const response = await axios.get(`${baseUrl}/api/reports/drink-sales`, {
+    headers: getAuthHeaders(),
+    params: { date },
+  });
+  return response.data;
+};
+
+export const downloadDrinkSalesReportExport = (date, shift) =>
+  downloadXlsx("/api/reports/drink-sales/export", { date, shift }, `drink_sales_report_${date}.xlsx`);
