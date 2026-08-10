@@ -53,22 +53,38 @@ export default function AccountantReportsPage() {
         </div>
       )}
 
-      {!loading && groups.map((group) => (
-        <DaySection key={group.date} date={group.date} reports={group.reports} />
+      {!loading && groups.map((group, i) => (
+        // Most recent date (groups is already sent_at DESC from the
+        // backend, one entry per calendar day) opens by default so there's
+        // something to see on first load; every older date starts
+        // collapsed — expand a date, then expand a report within it.
+        <DaySection key={group.date} date={group.date} reports={group.reports} defaultExpanded={i === 0} />
       ))}
     </div>
   );
 }
 
-function DaySection({ date, reports }) {
+function DaySection({ date, reports, defaultExpanded }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   return (
     <div className="w-full flex flex-col gap-4">
-      <h2 className="text-3xl font-bold text-[color:var(--black)]">{formatDate(date)}</h2>
-      <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 overflow-hidden w-full">
-        {reports.map((r) => (
-          <SentReportRow key={r.id} report={r} />
-        ))}
-      </div>
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center justify-between gap-4 cursor-pointer"
+      >
+        <h2 className="text-3xl font-bold text-[color:var(--black)]">{formatDate(date)}</h2>
+        <div className="flex items-center gap-3">
+          <span className="text-xl text-[color:var(--text-color)]/60">{reports.length} report{reports.length === 1 ? "" : "s"}</span>
+          {expanded ? <IoChevronUp size={26} /> : <IoChevronDown size={26} />}
+        </div>
+      </button>
+      {expanded && (
+        <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 overflow-hidden w-full">
+          {reports.map((r) => (
+            <SentReportRow key={r.id} report={r} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
