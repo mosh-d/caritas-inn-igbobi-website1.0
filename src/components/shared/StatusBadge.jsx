@@ -19,6 +19,13 @@ const STYLES = {
   manager: "bg-purple-100 text-purple-700",
   receptionist: "bg-blue-100 text-blue-700",
   developer: "bg-slate-800 text-white",
+  // Missing before now — never actually rendered anywhere until accountant
+  // actions started appearing in the Audit Trail (they now can: Reports/
+  // Audit Trail access), which is when the plain-gray fallback would have
+  // first been visible. Found while adding waiter/waitress below.
+  accountant: "bg-teal-100 text-teal-700",
+  waiter: "bg-amber-100 text-amber-700",
+  waitress: "bg-amber-100 text-amber-700",
   // Payment status (Accommodation Report)
   paid: "bg-green-100 text-green-700",
   owing: "bg-red-100 text-red-700",
