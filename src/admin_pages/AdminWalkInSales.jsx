@@ -116,7 +116,7 @@ export default function AdminWalkInSales() {
       <div className="w-full flex flex-col gap-4 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6">
         <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Items</p>
         {rows.map((row, index) => (
-          <div key={index} className="grid grid-cols-4 gap-4 max-sm:grid-cols-1 items-end">
+          <div key={index} className="flex flex-col gap-4 pb-4 border-b border-[color:var(--text-color)]/10 last:border-0 last:pb-0">
             <div className="flex flex-col gap-2">
               <label className={field.label}>Kind</label>
               <select
@@ -143,7 +143,7 @@ export default function AdminWalkInSales() {
               <label className={field.label}>Quantity</label>
               <input type="number" min="1" value={row.quantity} onChange={(e) => updateRow(index, { quantity: e.target.value })} className={field.input} />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between gap-4">
               <span className="text-xl font-bold whitespace-nowrap">{money(rowAmount(row))}</span>
               {rows.length > 1 && (
                 <button type="button" onClick={() => removeRow(index)} className={btn.rowDanger}>Remove</button>
