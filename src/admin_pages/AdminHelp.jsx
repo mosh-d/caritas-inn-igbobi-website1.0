@@ -14,6 +14,8 @@ import {
   IoNotificationsOutline,
   IoDocumentTextOutline,
   IoKeyOutline,
+  IoRestaurantOutline,
+  IoCartOutline,
 } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
 import { isManager, isAccountant, getStoredStaffRole } from "../utils/auth";
@@ -92,17 +94,34 @@ const SECTIONS = [
     id: "folios",
     icon: IoReceiptOutline,
     label: "Folios",
+    waitstaffVisible: true,
     summary: "The financial ledger for each reservation — charges, tax, discounts, payments, refunds, deposits, and the running balance.",
     workflow: [
       "Tabs: All (every folio), Outstanding Balance (open folios with money still owed), Overdue (guests who are supposed to have checked out by now but still owe money — checks the scheduled checkout date, not whether they've actually left).",
       "Overdue only starts counting from noon on the scheduled checkout date — matches the hotel's actual noon checkout time, same rule Alerts uses.",
       "Guest Ledger vs. City Ledger (standard hotel accounting terms, shown as the Guest Status column on Outstanding Balance/Overdue): a balance owed by a guest who's still registered/in-house is Guest Ledger — a front-desk matter. Once that same guest has actually checked out and still owes, it becomes City Ledger — a receivable to collect, not something front desk can resolve just by finishing checkout.",
       "Checkout is never blocked by an outstanding balance — the room still has to be released for housekeeping/resale, and the folio simply stays open as a City Ledger receivable instead of auto-closing. The checkout screen shows a clear warning with the exact amount before staff confirm, but it's a warning, not a hard stop — standard PMS behavior.",
+      "Charge Type (top of Add-a-Charge) determines the rest of the form — Room Charge, Food Charge, Drink Charge, Laundry Charge, Penalty, or Adjustment. Food/Drink Charge shows a menu-item picker (pick an item + quantity) instead of a plain description/amount — it pre-fills both, but they're still editable afterward.",
+      "Waiters/waitresses can only post Food Charge or Drink Charge; receptionists can post everything except those two — food/drink charges always stay attributed to whoever actually rang the item in, not whoever happened to be at the front desk.",
+      "A waiter/waitress session only sees open folios here — no tabs, no status filter, no Create Folio button. They can only ever post to a folio that's still open for business, so there's nothing else for them to switch between.",
       "Discount on a charge is always a percentage. Tax can be switched between a fixed amount or a percentage — both convert to a real amount before saving.",
       "For a discount of a specific amount rather than a percentage, post a charge with a negative amount instead (e.g. -2,000) — it reduces the balance by exactly that much.",
       "Recording a payment, refund, or deposit shows a popup with the reference number large and in monospace — write it down or read it to the guest before dismissing it (it won't auto-hide).",
       "Receipt number is always optional — the system-generated payment/deposit reference works as the record on its own if there's no physical receipt book entry.",
       "A folio only auto-closes once its balance reaches zero AND the guest has actually checked out — an open balance keeps it open as a receivable even after checkout.",
+    ],
+  },
+  {
+    id: "walk-in-sales",
+    icon: IoCartOutline,
+    label: "Walk-In Sales",
+    waitstaffVisible: true,
+    summary: "Record a food/drink sale to someone who isn't a hotel guest — a walk-in restaurant/bar customer. No folio involved; it's tracked on its own so it still counts in reports.",
+    workflow: [
+      "Pick one or more items (Food or Drink, from the same menu Folios' charge picker uses), a quantity each, and a payment method, then Record Sale.",
+      "Available to waiters/waitresses, receptionists, and managers — not accountants.",
+      "Shows up automatically in the Reports → Dashboard tab's Payments Received / Payments by Method totals — there's no separate walk-in-sales report to check.",
+      "Today's Sales below the form lists everything recorded so far today at this branch, so mistakes are easy to spot.",
     ],
   },
   {
@@ -209,6 +228,18 @@ const SECTIONS = [
     ],
   },
   {
+    id: "menu",
+    icon: IoRestaurantOutline,
+    label: "Menu",
+    managerOnly: true,
+    summary: "The food and drink item list — name and price — that Folios' Food/Drink Charge picker and Walk-In Sales both pull from.",
+    workflow: [
+      "Manager-only, same tier as room pricing.",
+      "Deactivating an item (instead of deleting it) keeps it out of future pickers while preserving any past folio charge or walk-in sale that already referenced it.",
+      "A price change here only affects new charges/sales going forward — a historical charge or sale keeps whatever price was in effect when it was made.",
+    ],
+  },
+  {
     id: "account",
     icon: IoKeyOutline,
     label: "Account",
@@ -223,12 +254,15 @@ const SECTIONS = [
 export default function AdminHelpPage() {
   const manager = isManager();
   const role = getStoredStaffRole();
+  const isWaitstaffRole = role === "waiter" || role === "waitress";
   // Same shape as visibleAdminNavItems() (adminNavItems.js) — an accountant
-  // session sees only accountantOnly + alwaysVisible sections, since none of
-  // the front-desk pages apply to them.
+  // session sees only accountantOnly + alwaysVisible sections, and a
+  // waiter/waitress session sees only alwaysVisible + waitstaffVisible ones,
+  // since none of the other front-desk pages apply to either.
   const visibleSections = SECTIONS.filter((s) => {
     if (s.accountantOnly) return isAccountant();
     if (role === "accountant") return s.alwaysVisible === true;
+    if (isWaitstaffRole) return s.alwaysVisible === true || s.waitstaffVisible === true;
     if (s.managerOnly) return manager;
     return true;
   });
