@@ -1076,7 +1076,7 @@ export default function AdminReservationsPage() {
                         <input type="text" placeholder="e.g. from the receipt book" value={depositForm.receipt_number} onChange={(e) => setDepositForm({ ...depositForm, receipt_number: e.target.value })} className={field.input} />
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className={field.label}>Notes (optional)</label>
+                        <label className={field.label}>Remarks (optional)</label>
                         <input type="text" value={depositForm.notes} onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })} className={field.input} />
                       </div>
                     </div>

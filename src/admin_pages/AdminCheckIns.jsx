@@ -783,7 +783,7 @@ export default function AdminCheckInsPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-2 flex-1 min-w-48">
-                      <label className={field.label}>Notes</label>
+                      <label className={field.label}>Remarks</label>
                       <input
                         type="text"
                         placeholder="e.g. cash received at check-in"

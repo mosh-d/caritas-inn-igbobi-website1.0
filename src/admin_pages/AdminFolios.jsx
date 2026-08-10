@@ -850,7 +850,7 @@ export default function AdminFoliosPage() {
                         />
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className={field.label}>Notes</label>
+                        <label className={field.label}>Remarks</label>
                         <input
                           type="text"
                           placeholder="e.g. cash received at front desk"
@@ -901,7 +901,7 @@ export default function AdminFoliosPage() {
                         />
                       </div>
                       <div className="col-span-2 max-sm:col-span-1 flex flex-col gap-2">
-                        <label className={field.label}>Notes</label>
+                        <label className={field.label}>Remarks</label>
                         <input
                           type="text"
                           placeholder="e.g. cash refunded to guest at checkout"

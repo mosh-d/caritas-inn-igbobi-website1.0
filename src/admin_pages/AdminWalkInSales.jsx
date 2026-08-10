@@ -31,7 +31,7 @@ export default function AdminWalkInSales() {
 
   const [rows, setRows] = useState([{ ...emptyRow }]);
   const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [notes, setNotes] = useState("");
+  const [remarks, setRemarks] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -88,11 +88,11 @@ export default function AdminWalkInSales() {
           quantity: Number(row.quantity),
         })),
         payment_method: paymentMethod,
-        notes: notes.trim() || undefined,
+        notes: remarks.trim() || undefined,
       });
       setRows([{ ...emptyRow }]);
       setPaymentMethod("cash");
-      setNotes("");
+      setRemarks("");
       setSuccessMessage("Sale recorded.");
       setTimeout(() => setSuccessMessage(""), 5000);
       await loadSales();
@@ -166,8 +166,8 @@ export default function AdminWalkInSales() {
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <label className={field.label}>Notes (optional)</label>
-            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} className={field.input} />
+            <label className={field.label}>Remarks (optional)</label>
+            <input type="text" value={remarks} onChange={(e) => setRemarks(e.target.value)} className={field.input} />
           </div>
         </div>
 
