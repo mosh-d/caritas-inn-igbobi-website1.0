@@ -59,8 +59,16 @@ const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { mi
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";
 
 export default function AdminFoliosPage() {
+  // Waitstaff only ever posts charges to a folio still open for business
+  // (closed folios reject new items — see FoliosService.addFolioItem), and
+  // never creates one (that's a front-desk task tied to a reservation/
+  // check-in) — so their view of this page is locked to exactly that
+  // slice: no tab/status switching, no "+ Create Folio".
+  const staffRole = getStoredStaffRole();
+  const isWaitstaffSession = staffRole === "waiter" || staffRole === "waitress";
+
   const [subTab, setSubTab] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(isWaitstaffSession ? "open" : "all");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [folios, setFolios] = useState([]);
@@ -85,7 +93,6 @@ export default function AdminFoliosPage() {
       highlightedPaymentRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [highlightPaymentId, selectedFolio]);
-  const staffRole = getStoredStaffRole();
   const allowedChargeTypes = allowedChargeTypesForRole(staffRole);
   const canChargeFoodOrDrink = allowedChargeTypes.includes("food_charge");
   const resetItemForm = () => ({ ...emptyItemForm, item_type: allowedChargeTypes[0] || "" });
@@ -242,7 +249,7 @@ export default function AdminFoliosPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "pending" || tab === "overdue" || tab === "all") {
+    if (!isWaitstaffSession && (tab === "pending" || tab === "overdue" || tab === "all")) {
       setSubTab(tab);
     }
     const reservationId = searchParams.get("reservation_id");
@@ -439,13 +446,20 @@ export default function AdminFoliosPage() {
       <div data-component="AdminFolios" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
         <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
           <PageHeading icon={IoReceiptOutline}>Folios</PageHeading>
-          <button onClick={() => setIsCreateOpen(true)} className={`${btn.primary} whitespace-nowrap`}>
-            + Create Folio
-          </button>
+          {/* Waitstaff never creates a folio — that's a front-desk task tied
+              to a reservation/check-in, not something a waiter/waitress does. */}
+          {!isWaitstaffSession && (
+            <button onClick={() => setIsCreateOpen(true)} className={`${btn.primary} whitespace-nowrap`}>
+              + Create Folio
+            </button>
+          )}
         </div>
 
         <div className="flex gap-3 text-xl flex-wrap items-center w-full">
-          {[
+          {/* Waitstaff's view is locked to open folios only (they can only
+              ever post to one that's still open — see FoliosService.addFolioItem),
+              so there's nothing for these tab/status controls to switch between. */}
+          {!isWaitstaffSession && [
             { key: "all", label: "All" },
             { key: "pending", label: "Outstanding Balance" },
             { key: "overdue", label: "Overdue" },
@@ -458,7 +472,7 @@ export default function AdminFoliosPage() {
               {t.label}
             </button>
           ))}
-          {subTab === "all" && !searchTerm && (
+          {!isWaitstaffSession && subTab === "all" && !searchTerm && (
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -498,6 +512,8 @@ export default function AdminFoliosPage() {
         <p className="text-xl text-[color:var(--text-color)]/76">
           {searchTerm
             ? `Folios matching folio # or payment/refund reference "${searchTerm}".`
+            : isWaitstaffSession
+            ? "Open folios only — find the guest's folio to post a food or drink charge to it."
             : subTab === "all"
             ? "Every folio across all guests, open and closed."
             : subTab === "pending"
