@@ -11,6 +11,7 @@ import { checkGuestBlacklist } from "../utils/guests-api";
 import { localTodayISO } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
+import RoomStatusTag from "../components/shared/RoomStatusTag";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import {
@@ -568,8 +569,9 @@ export default function AdminCheckInsPage() {
                           <strong className="text-[color:var(--black)]">{fmtCurrency(walkInTotal)}</strong>
                         )}
                         {walkInAllSelectedComplementary && (
-                          <span className="text-sm font-bold uppercase tracking-wide text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full whitespace-nowrap">
-                            Complementary — no charge at check-in
+                          <span className="flex items-center gap-2">
+                            <RoomStatusTag status="complementary" />
+                            <span className="text-lg text-[color:var(--text-color)]/68">no charge at check-in</span>
                           </span>
                         )}
                       </span>
@@ -578,7 +580,7 @@ export default function AdminCheckInsPage() {
                         are complementary — no single strike-through total
                         would read correctly, so name them instead. */}
                     {walkInComplementaryRoomNumbers.length > 0 && !walkInAllSelectedComplementary && (
-                      <p className="text-lg text-blue-700">
+                      <p className="text-lg text-purple-700">
                         Room{walkInComplementaryRoomNumbers.length > 1 ? "s" : ""} {walkInComplementaryRoomNumbers.join(", ")} {walkInComplementaryRoomNumbers.length > 1 ? "are" : "is"} complementary — no room charge will post for {walkInComplementaryRoomNumbers.length > 1 ? "them" : "it"} at check-in.
                       </p>
                     )}

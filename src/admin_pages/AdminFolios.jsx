@@ -11,6 +11,7 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import CopyIconButton from "../components/shared/CopyIconButton";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
+import RoomStatusTag from "../components/shared/RoomStatusTag";
 import {
   fetchFolios,
   fetchPendingFolios,
@@ -591,6 +592,17 @@ export default function AdminFoliosPage() {
               {/* Charges */}
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
                 <h3 className="text-2xl font-bold text-[color:var(--black)]">Charges</h3>
+                {/* Surfaced so a missing/short room charge doesn't read as a
+                    bug — postStayChargesForDay silently excludes a
+                    complementary room's own share when it posts. */}
+                {selectedFolio.complementary_rooms && selectedFolio.complementary_rooms.length > 0 && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg px-5 py-3 flex items-center gap-3 flex-wrap">
+                    <RoomStatusTag status="complementary" />
+                    <span className="text-lg text-purple-700">
+                      Room{selectedFolio.complementary_rooms.length > 1 ? "s" : ""} {selectedFolio.complementary_rooms.join(", ")} {selectedFolio.complementary_rooms.length > 1 ? "are" : "is"} complementary — no room charge posts for {selectedFolio.complementary_rooms.length > 1 ? "them" : "it"}.
+                    </span>
+                  </div>
+                )}
                 {selectedFolio.reservation?.actual_check_in && Number(selectedFolio.reservation?.total_rate) > 0 && (
                   <div className="bg-[color:var(--text-color)]/3 border border-[color:var(--text-color)]/10 rounded-lg px-5 py-3 text-lg text-[color:var(--text-color)]/76">
                     Original Total Cost of Accommodation: <span className="font-bold text-[color:var(--black)]">{money(selectedFolio.reservation.total_rate)}</span>
