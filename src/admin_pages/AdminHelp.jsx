@@ -140,12 +140,15 @@ const SECTIONS = [
     id: "reports",
     icon: IoBarChartOutline,
     label: "Reports",
-    summary: "Four report types, each on its own tab, all exportable to Excel.",
+    alwaysVisible: true,
+    summary: "Five report types, each on its own tab, all exportable to Excel.",
     workflow: [
       "Dashboard — revenue, occupancy, and stay totals for a custom date range (the original report; also emailable).",
-      "Manifest — every arrival/departure in a date range with room price, receipt numbers, and deposit amounts — the digitized version of the old paper manifest. Its Notes section combines both Special Requests and each stay's own Notes list.",
+      "Manifest — every arrival/departure in a date range with room price, receipt numbers, and deposit amounts — the digitized version of the old paper manifest. Its Notes section combines both Special Requests and each stay's own Notes list. Uses each reservation's *scheduled* check_in/check_out — the operational \"who's due in/out\" view, not the actual-occupancy one below.",
       "Analysis — every payment received in a date range, broken down by room, receipt number, and method, with a grand total.",
       "PMS Report — a shift-handoff snapshot. Evening = tonight's house (arrivals/departures so far vs. still expected, plus current room status) for wrapping up before Night Audit. Morning = the previous night's audit result plus today's expected activity, for the incoming shift.",
+      "Accommodation — one row per room actually in use on a single given date (actual occupancy/billing, not scheduled dates — this is the deliberate difference from Manifest), with room price, breakfast price, payment mode, payment status (Paid / Owing / PB — see Folios for what PB means), amount paid, shift, and a remark (Checked In / Checked Out / In House).",
+      "An accountant session doesn't see the Shift selector or the Send to Accountant button on any tab here — those are front-office-only, for handing a report off to the accountant. An accountant runs these same reports for their own audits, not to send them to themselves.",
     ],
   },
   {
@@ -175,7 +178,8 @@ const SECTIONS = [
     icon: IoDocumentTextOutline,
     label: "Audit Trail",
     managerOnly: true,
-    summary: "A record of every action taken by staff on this branch's account — who did what, and when. Manager and developer visibility only.",
+    alwaysVisible: true,
+    summary: "A record of every action taken by staff on this branch's account — who did what, and when. Manager, accountant, and developer visibility only — always read-only, no actions taken from here.",
     workflow: [
       "Filter by Staff, Role, or Action to narrow the list — all three can be combined at once.",
       "Some actions link straight to the specific record affected (e.g. \"View folio →\") — for a payment, this opens the folio and highlights that exact payment line.",

@@ -20,6 +20,7 @@ import {
 import { fetchStaffAccounts } from "../utils/staff-accounts-api";
 import { sendReportToAccountant } from "../utils/sent-reports-api";
 import { localTodayISO } from "../utils/date-utils";
+import { isAccountant } from "../utils/auth";
 
 // money/pct/formatDate/formatDateTime plus the shared render bits below
 // (ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge) moved
@@ -56,6 +57,11 @@ function SendToAccountantButton({ reportType, label, shift, data }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
+
+  // An accountant runs these reports for their own audits, not to send them
+  // to themselves — this button (and the shift it depends on) is a
+  // front-office-only action.
+  if (isAccountant()) return null;
 
   const handleSend = async () => {
     if (!data || !shift) return;
@@ -134,19 +140,24 @@ export default function AdminReportsPage() {
           : "One row per room in use on a given date — guest, room, tariff, payment, and whether they checked in, checked out, or are still in-house."}
       </p>
 
-      <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-col gap-2 w-full max-w-sm">
-        <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Shift (receptionist on duty)</label>
-        <select
-          value={shift}
-          onChange={(e) => setShift(e.target.value)}
-          className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
-        >
-          <option value="">-- Select --</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.display_name}>{s.display_name} ({s.role})</option>
-          ))}
-        </select>
-      </div>
+      {/* Shift attributes a report to whichever front-desk shift sends it to
+          the accountant — meaningless for an accountant's own session,
+          since they're not sending anything to themselves. */}
+      {!isAccountant() && (
+        <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-col gap-2 w-full max-w-sm">
+          <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Shift (receptionist on duty)</label>
+          <select
+            value={shift}
+            onChange={(e) => setShift(e.target.value)}
+            className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
+          >
+            <option value="">-- Select --</option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.display_name}>{s.display_name} ({s.role})</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {activeTab === "dashboard" && <DashboardTab shift={shift} />}
       {activeTab === "manifest" && <ManifestTab shift={shift} />}
@@ -944,8 +955,14 @@ function AccommodationReportTab({ shift }) {
     }
   }, [date]);
 
+  // An accountant session has no Shift selector at all (see AdminReportsPage)
+  // — shift stays "" for them, which the backend already treats as optional
+  // (falls back to a blank column), so export only actually needs a shift
+  // from a front-office session.
+  const shiftRequired = !isAccountant();
+
   const handleExport = async () => {
-    if (!date || !shift) return;
+    if (!date || (shiftRequired && !shift)) return;
     try {
       setExporting(true);
       setExportError(null);
@@ -987,10 +1004,10 @@ function AccommodationReportTab({ shift }) {
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleExport}
-                disabled={exporting || !shift}
+                disabled={exporting || (shiftRequired && !shift)}
                 variant="secondary"
                 className="text-xl! flex items-center rounded-xl gap-2"
-                title={!shift ? "Select a shift at the top of the page first" : undefined}
+                title={shiftRequired && !shift ? "Select a shift at the top of the page first" : undefined}
               >
                 <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
               </Button>

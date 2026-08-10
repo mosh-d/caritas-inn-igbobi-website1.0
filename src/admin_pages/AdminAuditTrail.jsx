@@ -7,7 +7,7 @@ import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
 import { table, field } from "../components/shared/ui";
 import { fetchAuditLogHistory, fetchAuditStaffOptions } from "../utils/audit-log-api";
-import { isManager } from "../utils/auth";
+import { isManager, isAccountant } from "../utils/auth";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
 // Maps a Phase-2 rich entry's entity_type to the deep link that opens it.
@@ -78,7 +78,11 @@ const formatWhen = (d) =>
 const PAGE_SIZE = 20;
 
 export default function AdminAuditTrail() {
-  const manager = isManager();
+  // Manager and accountant both get full read access here — an accountant
+  // reviewing the books needs the same trace-back-to-who-did-what visibility
+  // a manager has, just never the ability to act on any of it (this page is
+  // already read-only for everyone).
+  const canView = isManager() || isAccountant();
   const navigate = useNavigate();
 
   const [entries, setEntries] = useState([]);
@@ -119,20 +123,20 @@ export default function AdminAuditTrail() {
   }, []);
 
   useEffect(() => {
-    if (!manager) return;
+    if (!canView) return;
     load(1);
     fetchAuditStaffOptions().then(setStaffOptions).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manager]);
+  }, [canView]);
 
   // Re-fetch whenever the socket (re)connects, same pattern as
   // AdminNightAudit.jsx/AdminOverview.jsx.
   const { isConnected } = useWebSocketContext();
   useEffect(() => {
-    if (!manager || !isConnected) return;
+    if (!canView || !isConnected) return;
     load(1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, manager]);
+  }, [isConnected, canView]);
 
   const applyFilters = (next) => {
     const merged = {
@@ -160,7 +164,7 @@ export default function AdminAuditTrail() {
     load(1, {});
   };
 
-  if (!manager) {
+  if (!canView) {
     return (
       <div data-component="AdminAuditTrail" className="px-[4rem] max-sm:px-[1rem] py-[4rem]">
         <p className="text-2xl text-[color:var(--text-color)]/68">
