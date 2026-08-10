@@ -50,7 +50,7 @@ const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 
 // Both tax and discount can be either a percentage of the charge amount or
 // a flat figure, picked via tax_mode/discount_mode.
-const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "", menu_item_id: "", quantity: "1", date: "" };
+const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "", menu_item_id: "", quantity: "1", notes: "", date: "" };
 const emptyCreateForm = { reservation_id: "", guest_id: "", total_amount: "0", amount_paid: "0" };
 const emptyPaymentForm = { splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "" };
 const emptyRefundForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
@@ -297,6 +297,7 @@ export default function AdminFoliosPage() {
         item_type: itemForm.item_type,
         reference_id: itemForm.menu_item_id ? Number(itemForm.menu_item_id) : undefined,
         quantity: isFoodOrDrinkCharge ? Number(itemForm.quantity) || 1 : undefined,
+        notes: itemForm.notes.trim() || undefined,
         date: itemForm.date || undefined,
       });
       setItemForm(resetItemForm());
@@ -772,6 +773,10 @@ export default function AdminFoliosPage() {
                         <label className={field.label}>Description</label>
                         <input type="text" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.input} />
                       </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className={field.label}>Remarks (optional)</label>
+                      <input type="text" value={itemForm.notes} onChange={(e) => setItemForm({ ...itemForm, notes: e.target.value })} className={field.input} />
                     </div>
                     {itemForm.item_type === "adjustment" && (
                       <p className="text-lg text-[color:var(--text-color)]/60 -mt-1">
