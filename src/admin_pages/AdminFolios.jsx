@@ -12,6 +12,8 @@ import TransactionReceiptModal from "../components/shared/TransactionReceiptModa
 import CopyIconButton from "../components/shared/CopyIconButton";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
+import { getStoredStaffRole } from "../utils/auth";
+import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import {
   fetchFolios,
   fetchPendingFolios,
@@ -24,12 +26,31 @@ import {
   recordRefund,
 } from "../utils/folios-api";
 
-const ITEM_TYPES = ["room_charge", "service", "product", "penalty", "adjustment"];
+const CHARGE_TYPES = ["room_charge", "food_charge", "drink_charge", "laundry_charge", "penalty", "adjustment"];
+const CHARGE_TYPE_LABELS = {
+  room_charge: "Room Charge",
+  food_charge: "Food Charge",
+  drink_charge: "Drink Charge",
+  laundry_charge: "Laundry Charge",
+  penalty: "Penalty",
+  adjustment: "Adjustment",
+};
+// Waitstaff only ever sell food/drink, so they're confined to those two
+// charge types; receptionists post everything else a front desk normally
+// handles (including laundry) but never food/drink — that stays attributed
+// to whichever waiter/waitress actually rang it in. Manager/developer
+// sessions (and any other role, though none currently reach this page) see
+// every type. Mirrors the backend's own gating in FoliosService.addFolioItem.
+const allowedChargeTypesForRole = (role) => {
+  if (role === "waiter" || role === "waitress") return ["food_charge", "drink_charge"];
+  if (role === "receptionist") return ["room_charge", "laundry_charge", "penalty", "adjustment"];
+  return CHARGE_TYPES;
+};
 const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 
 // Both tax and discount can be either a percentage of the charge amount or
 // a flat figure, picked via tax_mode/discount_mode.
-const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "service", date: "" };
+const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "", menu_item_id: "", quantity: "1", date: "" };
 const emptyCreateForm = { reservation_id: "", guest_id: "", total_amount: "0", amount_paid: "0" };
 const emptyPaymentForm = { splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "" };
 const emptyRefundForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
@@ -64,9 +85,45 @@ export default function AdminFoliosPage() {
       highlightedPaymentRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [highlightPaymentId, selectedFolio]);
-  const [itemForm, setItemForm] = useState(emptyItemForm);
+  const staffRole = getStoredStaffRole();
+  const allowedChargeTypes = allowedChargeTypesForRole(staffRole);
+  const canChargeFoodOrDrink = allowedChargeTypes.includes("food_charge");
+  const resetItemForm = () => ({ ...emptyItemForm, item_type: allowedChargeTypes[0] || "" });
+
+  const [itemForm, setItemForm] = useState(resetItemForm);
   const [addingItem, setAddingItem] = useState(false);
   const [closing, setClosing] = useState(false);
+
+  // Only loaded for a role that can actually post a food/drink charge —
+  // receptionist sessions never need these lists.
+  const [foodItems, setFoodItems] = useState([]);
+  const [drinkItems, setDrinkItems] = useState([]);
+  useEffect(() => {
+    if (!canChargeFoodOrDrink) return;
+    fetchFoodItems().then(setFoodItems).catch(() => {});
+    fetchDrinkItems().then(setDrinkItems).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isFoodOrDrinkCharge = itemForm.item_type === "food_charge" || itemForm.item_type === "drink_charge";
+  const menuItemOptions = itemForm.item_type === "food_charge" ? foodItems : itemForm.item_type === "drink_charge" ? drinkItems : [];
+
+  // Recomputes description/amount from the picked menu item + quantity —
+  // still plain inputs underneath, so staff can hand-edit the result
+  // afterward (e.g. a note like "no ice") until they change the item or
+  // quantity again, which recomputes and overwrites once more.
+  useEffect(() => {
+    if (!isFoodOrDrinkCharge || !itemForm.menu_item_id) return;
+    const selected = menuItemOptions.find((i) => String(i.id) === String(itemForm.menu_item_id));
+    if (!selected) return;
+    const qty = Number(itemForm.quantity) || 1;
+    setItemForm((prev) => ({
+      ...prev,
+      description: `${selected.name} x${qty}`,
+      amount: String(Number(selected.price) * qty),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemForm.menu_item_id, itemForm.quantity, itemForm.item_type]);
 
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
   const [recordingPayment, setRecordingPayment] = useState(false);
@@ -146,7 +203,7 @@ export default function AdminFoliosPage() {
 
   const openFolioDetail = async (folio) => {
     setDetailLoading(true);
-    setItemForm(emptyItemForm);
+    setItemForm(resetItemForm());
     setPaymentForm(emptyPaymentForm);
     setPaymentError(null);
     setRefundForm(emptyRefundForm);
@@ -169,7 +226,7 @@ export default function AdminFoliosPage() {
 
   const closeFolioDetail = () => {
     setSelectedFolio(null);
-    setItemForm(emptyItemForm);
+    setItemForm(resetItemForm());
     setPaymentForm(emptyPaymentForm);
     setPaymentError(null);
     setRefundForm(emptyRefundForm);
@@ -210,7 +267,8 @@ export default function AdminFoliosPage() {
   }, []);
 
   const handleAddItem = async () => {
-    if (!selectedFolio || !itemForm.description || !itemForm.amount) return;
+    if (!selectedFolio || !itemForm.item_type || !itemForm.description || !itemForm.amount) return;
+    if (isFoodOrDrinkCharge && !itemForm.menu_item_id) return;
     try {
       setAddingItem(true);
       const amount = Number(itemForm.amount);
@@ -230,9 +288,10 @@ export default function AdminFoliosPage() {
         tax: taxAmount,
         discount: discountAmount,
         item_type: itemForm.item_type,
+        reference_id: itemForm.menu_item_id ? Number(itemForm.menu_item_id) : undefined,
         date: itemForm.date || undefined,
       });
-      setItemForm(emptyItemForm);
+      setItemForm(resetItemForm());
       await refreshSelectedFolio();
       loadFolios();
     } catch (err) {
@@ -619,7 +678,7 @@ export default function AdminFoliosPage() {
                       <div key={item.id} className="flex justify-between items-start gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl">
                         <span className="capitalize min-w-0 break-words">
                           {item.description}
-                          <span className="text-[color:var(--text-color)]/68 ml-2">({item.item_type})</span>
+                          <span className="text-[color:var(--text-color)]/68 ml-2">({CHARGE_TYPE_LABELS[item.item_type] || item.item_type})</span>
                         </span>
                         <span className="font-bold whitespace-nowrap shrink-0">{money(item.total)}</span>
                       </div>
@@ -631,6 +690,35 @@ export default function AdminFoliosPage() {
                   <div className="flex flex-col gap-4 mt-2">
                     <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Add a charge</p>
                     <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                      <div className="flex flex-col gap-2">
+                        <label className={field.label}>Charge Type</label>
+                        <select
+                          value={itemForm.item_type}
+                          onChange={(e) => setItemForm({ ...itemForm, item_type: e.target.value, menu_item_id: "", quantity: "1", description: "", amount: "" })}
+                          className={field.select}
+                        >
+                          {allowedChargeTypes.map((t) => <option key={t} value={t}>{CHARGE_TYPE_LABELS[t]}</option>)}
+                        </select>
+                      </div>
+                      {isFoodOrDrinkCharge && (
+                        <>
+                          <div className="flex flex-col gap-2">
+                            <label className={field.label}>Item</label>
+                            <select
+                              value={itemForm.menu_item_id}
+                              onChange={(e) => setItemForm({ ...itemForm, menu_item_id: e.target.value })}
+                              className={field.select}
+                            >
+                              <option value="">Select an item</option>
+                              {menuItemOptions.map((i) => <option key={i.id} value={i.id}>{i.name} — {money(i.price)}</option>)}
+                            </select>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className={field.label}>Quantity</label>
+                            <input type="number" min="1" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} className={field.input} />
+                          </div>
+                        </>
+                      )}
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Description</label>
                         <input type="text" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.input} />
@@ -667,12 +755,6 @@ export default function AdminFoliosPage() {
                           <input type="number" value={itemForm.discount} onChange={(e) => setItemForm({ ...itemForm, discount: e.target.value })} className={field.input} />
                         </div>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <label className={field.label}>Item Type</label>
-                        <select value={itemForm.item_type} onChange={(e) => setItemForm({ ...itemForm, item_type: e.target.value })} className={field.select}>
-                          {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </div>
                     </div>
                     {itemForm.item_type === "adjustment" && (
                       <p className="text-lg text-[color:var(--text-color)]/60 -mt-1">
@@ -681,7 +763,7 @@ export default function AdminFoliosPage() {
                         (e.g. -3000.00). This keeps the original charge visible for audit.
                       </p>
                     )}
-                    <button onClick={handleAddItem} disabled={addingItem || !itemForm.description || !itemForm.amount} className={`${btn.primary} self-start`}>
+                    <button onClick={handleAddItem} disabled={addingItem || !itemForm.description || !itemForm.amount || (isFoodOrDrinkCharge && !itemForm.menu_item_id)} className={`${btn.primary} self-start`}>
                       {addingItem ? "Adding..." : "Add Charge"}
                     </button>
                   </div>
