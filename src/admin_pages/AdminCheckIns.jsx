@@ -299,6 +299,15 @@ export default function AdminCheckInsPage() {
   const walkInValidRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
   const walkInBaseRate = Number(selectedWalkInRoomType?.base_rate || 0);
 
+  // A complementary room's own charge is already excluded at check-in time
+  // (see postStayChargesForDay's billableRooms) — this just makes that fact
+  // visible *before* check-in, so staff don't assign one without realizing.
+  const walkInComplementaryRoomNumbers = walkInValidRoomNumbers.filter(
+    (num) => walkInAvailableRooms?.available?.find((r) => r.room_number === num)?.status === "complementary",
+  );
+  const walkInAllSelectedComplementary =
+    walkInValidRoomNumbers.length > 0 && walkInComplementaryRoomNumbers.length === walkInValidRoomNumbers.length;
+
   // Discount is a one-shot calculator, not a persisted field — touching it
   // recomputes the per-night Room Rate from the room type's own base rate
   // every time, same pattern as the Hold reservation modal's discount field.
@@ -549,12 +558,30 @@ export default function AdminCheckInsPage() {
                         onChange={(e) => setWalkIn((p) => ({ ...p, roomRate: e.target.value }))}
                         className={`${field.input} max-w-xs`}
                       />
-                      <span className="text-xl text-[color:var(--text-color)]/76 whitespace-nowrap">
+                      <span className="text-xl text-[color:var(--text-color)]/76 whitespace-nowrap flex items-center gap-2 flex-wrap">
                         {walkInNights} night{walkInNights > 1 ? "s" : ""}
                         {Number(walkIn.roomsBooked) > 1 ? ` × ${walkIn.roomsBooked} rooms` : ""}
-                        {" × "}{fmtCurrency(walkInRoomRate)} = <strong className="text-[color:var(--black)]">{fmtCurrency(walkInTotal)}</strong>
+                        {" × "}{fmtCurrency(walkInRoomRate)} ={" "}
+                        {walkInAllSelectedComplementary ? (
+                          <s className="text-[color:var(--text-color)]/50">{fmtCurrency(walkInTotal)}</s>
+                        ) : (
+                          <strong className="text-[color:var(--black)]">{fmtCurrency(walkInTotal)}</strong>
+                        )}
+                        {walkInAllSelectedComplementary && (
+                          <span className="text-sm font-bold uppercase tracking-wide text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full whitespace-nowrap">
+                            Complementary — no charge at check-in
+                          </span>
+                        )}
                       </span>
                     </div>
+                    {/* Mixed multi-room case: some but not all selected rooms
+                        are complementary — no single strike-through total
+                        would read correctly, so name them instead. */}
+                    {walkInComplementaryRoomNumbers.length > 0 && !walkInAllSelectedComplementary && (
+                      <p className="text-lg text-blue-700">
+                        Room{walkInComplementaryRoomNumbers.length > 1 ? "s" : ""} {walkInComplementaryRoomNumbers.join(", ")} {walkInComplementaryRoomNumbers.length > 1 ? "are" : "is"} complementary — no room charge will post for {walkInComplementaryRoomNumbers.length > 1 ? "them" : "it"} at check-in.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -701,7 +728,9 @@ export default function AdminCheckInsPage() {
                             >
                               <option value="">-- Select a room --</option>
                               {options.map((r) => (
-                                <option key={r.id} value={r.room_number}>{r.room_number}</option>
+                                <option key={r.id} value={r.room_number}>
+                                  {r.room_number}{r.status === "complementary" ? " (Complementary)" : ""}
+                                </option>
                               ))}
                             </select>
                           ) : (

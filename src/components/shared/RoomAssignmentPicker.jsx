@@ -68,7 +68,9 @@ export default function RoomAssignmentPicker({ reservationId, roomsBooked, initi
                 <select value={value} onChange={(e) => updateSlot(index, e.target.value)} className={field.select}>
                   <option value="">-- Select a room --</option>
                   {options.map((r) => (
-                    <option key={r.id} value={r.room_number}>{r.room_number}</option>
+                    <option key={r.id} value={r.room_number}>
+                      {r.room_number}{r.status === "complementary" ? " (Complementary)" : ""}
+                    </option>
                   ))}
                 </select>
               ) : (
