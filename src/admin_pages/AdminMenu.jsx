@@ -1,0 +1,249 @@
+import { useState, useEffect, useCallback } from "react";
+import { IoRestaurantOutline } from "react-icons/io5";
+import PageHeading from "../components/shared/PageHeading";
+import LoadingSpinner from "../components/shared/LoadingSpinner";
+import { btn, field, table } from "../components/shared/ui";
+import { isManager } from "../utils/auth";
+import {
+  fetchFoodItems,
+  createFoodItem,
+  updateFoodItem,
+  fetchDrinkItems,
+  createDrinkItem,
+  updateDrinkItem,
+} from "../utils/menu-api";
+
+const money = (v) => `₦${Number(v || 0).toLocaleString()}`;
+
+export default function AdminMenu() {
+  const manager = isManager();
+  const [tab, setTab] = useState("food");
+
+  if (!manager) {
+    return (
+      <div data-component="AdminMenu" className="px-[4rem] max-sm:px-[1rem] py-[4rem]">
+        <p className="text-2xl text-[color:var(--text-color)]/68">
+          You don't have permission to view this page.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div data-component="AdminMenu" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
+      <PageHeading icon={IoRestaurantOutline}>Menu</PageHeading>
+      <p className="text-xl text-[color:var(--text-color)]/76">
+        Food and drink items a waiter/waitress picks from when posting a charge to a folio, or when recording a walk-in sale. Prices set here are what auto-fills — always still editable at the point of charging.
+      </p>
+
+      <div className="flex gap-3 text-xl flex-wrap">
+        {[
+          { key: "food", label: "Food" },
+          { key: "drinks", label: "Drinks" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-6 py-3 rounded-lg font-bold cursor-pointer transition-all ${
+              tab === t.key ? "bg-[color:var(--emphasis)] text-white" : "bg-black/4 text-[color:var(--text-color)] hover:bg-black/8"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "food" ? (
+        <MenuSection
+          key="food"
+          label="food item"
+          fetchItems={fetchFoodItems}
+          createItem={createFoodItem}
+          updateItem={updateFoodItem}
+        />
+      ) : (
+        <MenuSection
+          key="drinks"
+          label="drink item"
+          fetchItems={fetchDrinkItems}
+          createItem={createDrinkItem}
+          updateItem={updateDrinkItem}
+        />
+      )}
+    </div>
+  );
+}
+
+function MenuSection({ label, fetchItems, createItem, updateItem }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showInactive, setShowInactive] = useState(false);
+
+  const [addForm, setAddForm] = useState({ name: "", price: "" });
+  const [adding, setAdding] = useState(false);
+
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", price: "" });
+  const [savingId, setSavingId] = useState(null);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setItems(await fetchItems(showInactive));
+      setError(null);
+    } catch (err) {
+      setError((err.response?.data?.message || `Failed to load ${label}s.`) + " Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showInactive]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!addForm.name.trim() || !addForm.price) return;
+    try {
+      setAdding(true);
+      setError(null);
+      await createItem({ name: addForm.name.trim(), price: Number(addForm.price) });
+      setAddForm({ name: "", price: "" });
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || `Failed to add ${label}.`);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setEditForm({ name: item.name, price: String(item.price) });
+  };
+
+  const handleSaveEdit = async (id) => {
+    if (!editForm.name.trim() || !editForm.price) return;
+    try {
+      setSavingId(id);
+      setError(null);
+      await updateItem(id, { name: editForm.name.trim(), price: Number(editForm.price) });
+      setEditingId(null);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || `Failed to update ${label}.`);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleToggleActive = async (item) => {
+    try {
+      setSavingId(item.id);
+      setError(null);
+      await updateItem(item.id, { is_active: !item.is_active });
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || `Failed to update ${label}.`);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col gap-6">
+      {error && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{error}</p>}
+
+      <label className="flex items-center gap-3 text-xl cursor-pointer">
+        <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="w-5 h-5 cursor-pointer" />
+        Show deactivated items
+      </label>
+
+      <div className={table.card}>
+        <div className={table.scroll}>
+          <table className={table.el}>
+            <thead>
+              <tr className={table.headRow}>
+                <th className={table.th}>Name</th>
+                <th className={table.th}>Price (₦)</th>
+                <th className={table.th}>Status</th>
+                <th className={table.th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={4} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={4} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No {label}s yet.</td></tr>
+              ) : (
+                items.map((item) => (
+                  <tr key={item.id} className={table.row}>
+                    {editingId === item.id ? (
+                      <>
+                        <td className={table.td}>
+                          <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className={`${field.input} text-xl!`} />
+                        </td>
+                        <td className={table.td}>
+                          <input type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} className={`${field.input} text-xl! w-32`} />
+                        </td>
+                        <td className={table.td}>
+                          <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                            {item.is_active ? "Active" : "Deactivated"}
+                          </span>
+                        </td>
+                        <td className={table.td}>
+                          <div className={table.actions}>
+                            <button onClick={() => handleSaveEdit(item.id)} disabled={savingId === item.id} className={btn.rowPrimary}>
+                              {savingId === item.id ? "Saving..." : "Save"}
+                            </button>
+                            <button onClick={() => setEditingId(null)} className={btn.rowSecondary}>Cancel</button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className={`${table.td} font-medium`}>{item.name}</td>
+                        <td className={table.td}>{money(item.price)}</td>
+                        <td className={table.td}>
+                          <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                            {item.is_active ? "Active" : "Deactivated"}
+                          </span>
+                        </td>
+                        <td className={table.td}>
+                          <div className={table.actions}>
+                            <button onClick={() => startEdit(item)} className={btn.rowSecondary}>Edit</button>
+                            <button onClick={() => handleToggleActive(item)} disabled={savingId === item.id} className={item.is_active ? btn.rowDanger : btn.rowSuccess}>
+                              {savingId === item.id ? "..." : item.is_active ? "Deactivate" : "Reactivate"}
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <form onSubmit={handleAdd} className="flex flex-col gap-4 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 max-w-xl">
+        <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Add a {label}</p>
+        <div className="flex gap-4 flex-wrap items-end">
+          <div className="flex flex-col gap-2 flex-1 min-w-48">
+            <label className={field.label}>Name</label>
+            <input type="text" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} className={field.input} />
+          </div>
+          <div className="flex flex-col gap-2 w-40">
+            <label className={field.label}>Price (₦)</label>
+            <input type="number" value={addForm.price} onChange={(e) => setAddForm({ ...addForm, price: e.target.value })} className={field.input} />
+          </div>
+          <button type="submit" disabled={adding || !addForm.name.trim() || !addForm.price} className={btn.primary}>
+            {adding ? "Adding..." : "Add Item"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

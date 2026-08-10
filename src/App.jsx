@@ -25,6 +25,7 @@ import AccountantReportsPage from "./admin_pages/AccountantReportsPage";
 import AdminAlerts from "./admin_pages/AdminAlerts";
 import AdminNightAudit from "./admin_pages/AdminNightAudit";
 import AdminAuditTrail from "./admin_pages/AdminAuditTrail";
+import AdminMenu from "./admin_pages/AdminMenu";
 import AdminAccount from "./admin_pages/AdminAccount";
 import AdminHelp from "./admin_pages/AdminHelp";
 import AdminLoginPage from "./admin_pages/AdminLogin";
@@ -64,6 +65,7 @@ const router = createBrowserRouter([
       { path: "night-audit", element: <AdminNightAudit /> },
       { path: "alerts", element: <AdminAlerts /> },
       { path: "audit-trail", element: <AdminAuditTrail /> },
+      { path: "menu", element: <AdminMenu /> },
       { path: "account", element: <AdminAccount /> },
       { path: "help", element: <AdminHelp /> },
       { path: "*", element: <NotFound /> },

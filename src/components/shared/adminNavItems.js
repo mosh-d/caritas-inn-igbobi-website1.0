@@ -14,6 +14,7 @@ import {
   IoDocumentTextOutline,
   IoKeyOutline,
   IoHelpCircleOutline,
+  IoRestaurantOutline,
 } from "react-icons/io5";
 import { getStoredStaffRole } from "../../utils/auth";
 
@@ -58,6 +59,10 @@ export const ADMIN_NAV_ITEMS = [
   // managerOnly).
   { to: "/admin/audit-trail", label: "AUDIT TRAIL", icon: IoDocumentTextOutline, managerOnly: true, alwaysVisible: true },
   { to: "/admin/accountant-reports", label: "ACCOUNTANT REPORTS", icon: IoBarChartOutline, accountantOnly: true },
+  // Manager-only, same reasoning as room prices — menu prices are pricing
+  // config, not a front-desk/waitstaff editing concern (waitstaff browse the
+  // menu through the charge-posting picker itself, not this page).
+  { to: "/admin/menu", label: "MENU", icon: IoRestaurantOutline, managerOnly: true },
   { to: "/admin/account", label: "ACCOUNT", icon: IoKeyOutline, alwaysVisible: true },
   { to: "/admin/help", label: "HELP", icon: IoHelpCircleOutline, alwaysVisible: true },
 ];
