@@ -26,7 +26,7 @@ import { fetchFolios, recordPayment } from "../utils/folios-api";
 
 const BRANCH_ID = 3;
 const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+  d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
 const todayISO = () => localTodayISO();
 const tomorrowISO = () => {
   const d = new Date();

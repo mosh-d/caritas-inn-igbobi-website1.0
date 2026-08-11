@@ -295,8 +295,8 @@ export default function AdminBookingsPage() {
                 { label: "PHONE NUMBER", value: selectedBooking.phone_number || "N/A" },
                 { label: "NO OF ROOMS", value: selectedBooking.no_of_rooms },
                 { label: "BOOKING ID", value: selectedBooking.booking_id },
-                { label: "CHECK-IN", value: new Date(selectedBooking.check_in_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
-                { label: "CHECK-OUT", value: new Date(selectedBooking.check_out_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
+                { label: "CHECK-IN", value: new Date(selectedBooking.check_in_date).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) },
+                { label: "CHECK-OUT", value: new Date(selectedBooking.check_out_date).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) },
                 { label: "ROOM STATUS", value: selectedBooking.status },
                 { label: "ROOM CATEGORY", value: selectedBooking.room_category || "Classic" }
               ].map((item, i) => (
