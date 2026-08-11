@@ -435,7 +435,7 @@ export default function BookingConfirmationPage() {
                               disabled={room.total_rooms === 0}
                             >
                               {room.room_type_name} (₦
-                              {room.base_rate?.toLocaleString()}/night)
+                              {(Number(room.base_rate || 0) + Number(room.breakfast_rate || 0)).toLocaleString()}/night)
                               {room.total_rooms === 0
                                 ? " - Sold Out"
                                 : ` - ${room.total_rooms} available`}

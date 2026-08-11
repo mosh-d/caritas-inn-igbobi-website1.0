@@ -165,6 +165,12 @@ const getAmenityDisplayName = (amenity) => {
     .join(" ");
 };
 
+// A stay's actual nightly rate is base_rate + breakfast_rate — breakfast is
+// included by default on every reservation (opting out is a staff-side
+// override at check-in, not a guest-facing choice here), so quoting
+// base_rate alone understates what the guest will actually be charged.
+const nightlyRate = (room) => Number(room.base_rate || 0) + Number(room.breakfast_rate || 0);
+
 export default function AvailableRoomsSection() {
   const navigate = useNavigate();
   const [selectedRooms, setSelectedRooms] = useState({});
@@ -412,7 +418,7 @@ export default function AvailableRoomsSection() {
                   <div className="flex flex-col gap-6">
                     <span className="text-3xl font-bold">
                       {room.currency_symbol || "₦"}
-                      {room.base_rate?.toLocaleString()} per night
+                      {nightlyRate(room).toLocaleString()} per night
                     </span>
                     {parseInt(selectedRooms[room.room_type_id] || "1") > 1 && (
                       <>
@@ -420,7 +426,7 @@ export default function AvailableRoomsSection() {
                         <span className="text-3xl font-bold text-[color:var(--emphasis)]">
                           {room.currency_symbol || "₦"}
                           {(
-                            room.base_rate *
+                            nightlyRate(room) *
                             parseInt(selectedRooms[room.room_type_id] || "1")
                           ).toLocaleString()}{" "}
                           total
@@ -539,13 +545,13 @@ export default function AvailableRoomsSection() {
                 <div className="space-y-2">
                   <div className="text-2xl">
                     {room.currency_symbol || "₦"}
-                    {room.base_rate?.toLocaleString()} per night
+                    {nightlyRate(room).toLocaleString()} per night
                   </div>
                   {parseInt(selectedRooms[room.room_type_id] || "1") > 1 && (
                     <div className="text-2xl font-bold text-[color:var(--emphasis)]">
                       {room.currency_symbol || "₦"}
                       {(
-                        room.base_rate *
+                        nightlyRate(room) *
                         parseInt(selectedRooms[room.room_type_id] || "1")
                       ).toLocaleString()}{" "}
                       total for {selectedRooms[room.room_type_id] || "1"} room

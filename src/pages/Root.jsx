@@ -75,7 +75,12 @@ export default function RootLayout() {
     const selectedRoom = roomTypes.find(
       (room) => room.room_type_name === roomType
     );
-    const pricePerNight = selectedRoom?.base_rate || roomPrices[roomType] || 0;
+    // Breakfast is included by default on every reservation (opting out is a
+    // staff-side override at check-in), so the quoted total needs to match
+    // what the guest will actually be charged, not just the room's base rate.
+    const pricePerNight = selectedRoom
+      ? Number(selectedRoom.base_rate || 0) + Number(selectedRoom.breakfast_rate || 0)
+      : roomPrices[roomType] || 0;
 
     // Calculate number of nights, default to 1 if dates aren't set
     const nights =
@@ -129,10 +134,10 @@ export default function RootLayout() {
       if (data?.room_types?.length) {
         setRoomTypes(data.room_types);
 
-        // Update room prices
+        // Update room prices — includes breakfast (see calculateTotalPayment)
         const prices = {};
         data.room_types.forEach((room) => {
-          prices[room.room_type_name] = room.base_rate;
+          prices[room.room_type_name] = Number(room.base_rate || 0) + Number(room.breakfast_rate || 0);
         });
         setRoomPrices(prices);
 
