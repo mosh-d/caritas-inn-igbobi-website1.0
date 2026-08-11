@@ -311,6 +311,13 @@ export const isWaitstaff = () => {
   return role === "waiter" || role === "waitress" || role === "developer";
 };
 
+// No developer bypass here, unlike isManager()/isAccountant()/isWaitstaff()
+// above — this gates OUT a role (hiding Food/Drink Sales reports, which are
+// F&B-only), so a developer session correctly stays included rather than
+// excluded, matching the backend RolesGuard's own developer-sees-everything
+// bypass.
+export const isReceptionist = () => getStoredStaffRole() === "receptionist";
+
 // Where a session should land right after login, or when visiting the bare
 // /admin URL while already authenticated. An accountant's nav (see
 // visibleAdminNavItems()) has no link back to Overview at all, so landing

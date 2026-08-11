@@ -24,7 +24,7 @@ import {
 import { fetchStaffAccounts } from "../utils/staff-accounts-api";
 import { sendReportToAccountant } from "../utils/sent-reports-api";
 import { localTodayISO } from "../utils/date-utils";
-import { isAccountant } from "../utils/auth";
+import { isAccountant, isReceptionist } from "../utils/auth";
 
 // money/pct/formatDate/formatDateTime plus the shared render bits below
 // (ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge) moved
@@ -45,7 +45,7 @@ function currentMonthRange() {
   return { from: fmt(from), to: fmt(to) };
 }
 
-const TABS = [
+const ALL_TABS = [
   { key: "dashboard", label: "Dashboard" },
   { key: "manifest", label: "Manifest" },
   { key: "analysis", label: "Analysis" },
@@ -54,6 +54,13 @@ const TABS = [
   { key: "food-sales", label: "Food Sales" },
   { key: "drink-sales", label: "Drink Sales" },
 ];
+
+// Food/Drink Sales are F&B-only — a receptionist has no front-desk reason to
+// see them, unlike every other tab here. Mirrors the backend's own gating
+// (FOOD_DRINK_SALES_ROLES in ReportsController), which is the real
+// enforcement; this just keeps a receptionist from seeing tabs that would
+// 403 anyway.
+const visibleTabs = () => isReceptionist() ? ALL_TABS.filter((t) => t.key !== "food-sales" && t.key !== "drink-sales") : ALL_TABS;
 
 // Snapshots a tab's already-loaded `data` and sends it to the accountant —
 // shared across every tab below rather than duplicated 5 times. `shift`
@@ -121,7 +128,7 @@ export default function AdminReportsPage() {
       <PageHeading icon={IoBarChartOutline}>Reports</PageHeading>
 
       <div className="flex gap-3 text-xl flex-wrap">
-        {TABS.map((t) => (
+        {visibleTabs().map((t) => (
           <button
             key={t.key}
             onClick={() => setActiveTab(t.key)}
