@@ -8,7 +8,7 @@ import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchCheckInList } from "../utils/front-office-api";
 import { checkGuestBlacklist } from "../utils/guests-api";
-import { localTodayISO } from "../utils/date-utils";
+import { localTodayISO, currentBusinessDateISO, minWalkInCheckOutISO } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
@@ -28,11 +28,15 @@ const BRANCH_ID = 3;
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
 const todayISO = () => localTodayISO();
-const tomorrowISO = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+// A Walk-In's check-in is always "right now" — but the reservation it
+// creates must be dated by the hotel's business day (6am Lagos cutover, see
+// date-utils.js), not the raw calendar date, so an arrival before 6am can
+// validly have a same-calendar-day checkout instead of being forced into
+// "the next day." The backend recomputes this authoritatively itself
+// (ReservationsService.createReservationHold) — this is only used to keep
+// the availability check, room-number picker, and displayed night count
+// consistent with what will actually be booked.
+const walkInCheckInISO = () => currentBusinessDateISO();
 const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).toLocaleString()}`;
 
 const EMPTY_WALK_IN = {
@@ -109,7 +113,7 @@ export default function AdminCheckInsPage() {
     setWalkInRoomsLoading(true);
     fetchAvailableRoomNumbers({
       roomTypeId: Number(walkIn.roomTypeId),
-      checkIn: todayISO(),
+      checkIn: walkInCheckInISO(),
       checkOut: walkIn.checkOut,
     })
       .then((data) => { if (!cancelled) setWalkInAvailableRooms(data); })
@@ -179,7 +183,7 @@ export default function AdminCheckInsPage() {
     setAvailability(null);
     setWalkInError(null);
     try {
-      const result = await checkAvailability(BRANCH_ID, todayISO(), walkIn.checkOut);
+      const result = await checkAvailability(BRANCH_ID, walkInCheckInISO(), walkIn.checkOut);
       setAvailability(result);
     } catch (err) {
       setWalkInError(err.response?.data?.message || "Could not load availability.");
@@ -212,7 +216,7 @@ export default function AdminCheckInsPage() {
         guest_name: guestFullName,
         phone_number: walkIn.phone.trim(),
         guest_email: walkIn.email.trim(),
-        check_in: todayISO(),
+        check_in: walkInCheckInISO(),
         check_out: walkIn.checkOut,
         rooms_booked: Number(walkIn.roomsBooked),
         source: "walk_in",
@@ -290,7 +294,7 @@ export default function AdminCheckInsPage() {
 
   const selectedWalkInRoomType = availableTypes.find((rt) => String(rt.room_type_id) === walkIn.roomTypeId);
   const walkInNights = walkIn.checkOut
-    ? Math.max(1, Math.ceil((new Date(walkIn.checkOut) - new Date(todayISO())) / (1000 * 60 * 60 * 24)))
+    ? Math.max(1, Math.ceil((new Date(walkIn.checkOut) - new Date(walkInCheckInISO())) / (1000 * 60 * 60 * 24)))
     : 1;
   // The field holds a per-night rate, pre-filled with the room type's own
   // base rate (not the total) — staff think in "rate per night", and the
@@ -464,7 +468,7 @@ export default function AdminCheckInsPage() {
                     </label>
                     <input
                       type="date"
-                      min={tomorrowISO()}
+                      min={minWalkInCheckOutISO()}
                       value={walkIn.checkOut}
                       onChange={(e) => {
                         setWalkIn((p) => ({ ...p, checkOut: e.target.value, roomTypeId: "", roomNumbers: [] }));
