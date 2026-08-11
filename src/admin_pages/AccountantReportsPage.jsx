@@ -511,14 +511,16 @@ function FoodSalesSnapshot({ data }) {
       <ReportSection title="Food Orders">
         {rows.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Customer", "Qty", "Description", "Amount", "Status", "Remarks"]} />
+            <TableHead cells={["Customer", "Qty", "Bill No", "Description", "Amount", "Service Charge", "Status", "Remarks"]} />
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i} className="border-b border-[color:var(--text-color)]/10">
                   <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.customer}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.quantity}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.bill_no || "—"}</td>
                   <td className="px-6 py-4 capitalize text-[color:var(--text-color)]/84">{r.description}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount)}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.service_charge)}</td>
                   <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.notes || "—"}</td>
                 </tr>
@@ -539,7 +541,7 @@ function DrinkSalesSnapshot({ data }) {
       <ReportSection title="Drinks Sold">
         {rows.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Item", "Qty Sold", "Unit Price", "Total Amount", "Remarks"]} />
+            <TableHead cells={["Item", "Qty Sold", "Unit Price", "Total Amount", "Service Charge", "Remarks"]} />
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i} className="border-b border-[color:var(--text-color)]/10">
@@ -547,6 +549,7 @@ function DrinkSalesSnapshot({ data }) {
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.quantity}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.unit_price)}</td>
                   <td className="px-6 py-4 font-semibold text-[color:var(--black)]">{money(r.amount)}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.service_charge)}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.notes || "—"}</td>
                 </tr>
               ))}

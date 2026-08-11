@@ -80,11 +80,11 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
   const [error, setError] = useState(null);
   const [showInactive, setShowInactive] = useState(false);
 
-  const [addForm, setAddForm] = useState({ name: "", price: "" });
+  const [addForm, setAddForm] = useState({ name: "", price: "", service_charge: "" });
   const [adding, setAdding] = useState(false);
 
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", price: "" });
+  const [editForm, setEditForm] = useState({ name: "", price: "", service_charge: "" });
   const [savingId, setSavingId] = useState(null);
 
   const load = useCallback(async () => {
@@ -108,8 +108,8 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
     try {
       setAdding(true);
       setError(null);
-      await createItem({ name: addForm.name.trim(), price: Number(addForm.price) });
-      setAddForm({ name: "", price: "" });
+      await createItem({ name: addForm.name.trim(), price: Number(addForm.price), service_charge: Number(addForm.service_charge || 0) });
+      setAddForm({ name: "", price: "", service_charge: "" });
       await load();
     } catch (err) {
       setError(err.response?.data?.message || `Failed to add ${label}.`);
@@ -120,7 +120,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
 
   const startEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({ name: item.name, price: String(item.price) });
+    setEditForm({ name: item.name, price: String(item.price), service_charge: String(item.service_charge || 0) });
   };
 
   const handleSaveEdit = async (id) => {
@@ -128,7 +128,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
     try {
       setSavingId(id);
       setError(null);
-      await updateItem(id, { name: editForm.name.trim(), price: Number(editForm.price) });
+      await updateItem(id, { name: editForm.name.trim(), price: Number(editForm.price), service_charge: Number(editForm.service_charge || 0) });
       setEditingId(null);
       await load();
     } catch (err) {
@@ -167,15 +167,16 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
               <tr className={table.headRow}>
                 <th className={table.th}>Name</th>
                 <th className={table.th}>Price (₦)</th>
+                <th className={table.th}>Service Charge (₦)</th>
                 <th className={table.th}>Status</th>
                 <th className={table.th}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
+                <tr><td colSpan={5} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={4} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No {label}s yet.</td></tr>
+                <tr><td colSpan={5} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No {label}s yet.</td></tr>
               ) : (
                 items.map((item) => (
                   <tr key={item.id} className={table.row}>
@@ -186,6 +187,9 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
                         </td>
                         <td className={table.td}>
                           <input type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} className={`${field.input} text-xl! w-32`} />
+                        </td>
+                        <td className={table.td}>
+                          <input type="number" value={editForm.service_charge} onChange={(e) => setEditForm({ ...editForm, service_charge: e.target.value })} className={`${field.input} text-xl! w-32`} />
                         </td>
                         <td className={table.td}>
                           <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
@@ -205,6 +209,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
                       <>
                         <td className={`${table.td} font-medium`}>{item.name}</td>
                         <td className={table.td}>{money(item.price)}</td>
+                        <td className={table.td}>{money(item.service_charge)}</td>
                         <td className={table.td}>
                           <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
                             {item.is_active ? "In Stock" : "Out of Stock"}
@@ -238,6 +243,10 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
           <div className="flex flex-col gap-2 w-40">
             <label className={field.label}>Price (₦)</label>
             <input type="number" value={addForm.price} onChange={(e) => setAddForm({ ...addForm, price: e.target.value })} className={field.input} />
+          </div>
+          <div className="flex flex-col gap-2 w-40">
+            <label className={field.label}>Service Charge (₦)</label>
+            <input type="number" value={addForm.service_charge} onChange={(e) => setAddForm({ ...addForm, service_charge: e.target.value })} className={field.input} />
           </div>
           <button type="submit" disabled={adding || !addForm.name.trim() || !addForm.price} className={btn.primary}>
             {adding ? "Adding..." : "Add Item"}

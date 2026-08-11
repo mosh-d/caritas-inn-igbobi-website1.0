@@ -50,7 +50,7 @@ const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 
 // Both tax and discount can be either a percentage of the charge amount or
 // a flat figure, picked via tax_mode/discount_mode.
-const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "", menu_item_id: "", quantity: "1", notes: "", date: "" };
+const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "", menu_item_id: "", quantity: "1", notes: "", date: "", bill_no: "", is_complementary: false, is_manager: false };
 const emptyCreateForm = { reservation_id: "", guest_id: "", total_amount: "0", amount_paid: "0" };
 const emptyPaymentForm = { splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "" };
 const emptyRefundForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
@@ -114,13 +114,23 @@ export default function AdminFoliosPage() {
 
   const isFoodOrDrinkCharge = itemForm.item_type === "food_charge" || itemForm.item_type === "drink_charge";
   const menuItemOptions = itemForm.item_type === "food_charge" ? foodItems : itemForm.item_type === "drink_charge" ? drinkItems : [];
+  const selectedMenuItem = menuItemOptions.find((i) => String(i.id) === String(itemForm.menu_item_id));
+  const isCompOrManager = itemForm.is_complementary || itemForm.is_manager;
+  // Preview only — automatically set from the picked menu item's own rate
+  // (configured on the Menu page), never hand-edited, and always 0 once
+  // Complementary/Manager is checked. The backend re-resolves this itself
+  // from the same menu item at posting time, so this is purely so staff can
+  // see what will be added before submitting.
+  const previewServiceCharge = isCompOrManager || !selectedMenuItem ? 0 : Number(selectedMenuItem.service_charge || 0) * (Number(itemForm.quantity) || 1);
 
   // Recomputes description/amount from the picked menu item + quantity —
   // still plain inputs underneath, so staff can hand-edit the result
   // afterward (e.g. a note like "no ice") until they change the item or
-  // quantity again, which recomputes and overwrites once more.
+  // quantity again, which recomputes and overwrites once more. Skipped
+  // while Complementary/Manager is checked — amount stays locked at 0 (see
+  // the checkboxes' own onChange) until it's unchecked again.
   useEffect(() => {
-    if (!isFoodOrDrinkCharge || !itemForm.menu_item_id) return;
+    if (!isFoodOrDrinkCharge || !itemForm.menu_item_id || isCompOrManager) return;
     const selected = menuItemOptions.find((i) => String(i.id) === String(itemForm.menu_item_id));
     if (!selected) return;
     const qty = Number(itemForm.quantity) || 1;
@@ -130,7 +140,7 @@ export default function AdminFoliosPage() {
       amount: String(Number(selected.price) * qty),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemForm.menu_item_id, itemForm.quantity, itemForm.item_type]);
+  }, [itemForm.menu_item_id, itemForm.quantity, itemForm.item_type, isCompOrManager]);
 
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
   const [recordingPayment, setRecordingPayment] = useState(false);
@@ -299,6 +309,9 @@ export default function AdminFoliosPage() {
         quantity: isFoodOrDrinkCharge ? Number(itemForm.quantity) || 1 : undefined,
         notes: itemForm.notes.trim() || undefined,
         date: itemForm.date || undefined,
+        bill_no: itemForm.item_type === "food_charge" && itemForm.bill_no.trim() ? itemForm.bill_no.trim() : undefined,
+        is_complementary: isFoodOrDrinkCharge ? itemForm.is_complementary : undefined,
+        is_manager: isFoodOrDrinkCharge ? itemForm.is_manager : undefined,
       });
       setItemForm(resetItemForm());
       await refreshSelectedFolio();
@@ -697,6 +710,11 @@ export default function AdminFoliosPage() {
                         <span className="capitalize min-w-0 break-words">
                           {item.description}
                           <span className="text-[color:var(--text-color)]/68 ml-2">({CHARGE_TYPE_LABELS[item.item_type] || item.item_type})</span>
+                          {item.bill_no && <span className="text-[color:var(--text-color)]/68 ml-2">· Bill No {item.bill_no}</span>}
+                          {Number(item.service_charge) > 0 && <span className="text-[color:var(--text-color)]/68 ml-2">· Service Charge {money(item.service_charge)}</span>}
+                          {(item.is_manager || item.is_complementary) && (
+                            <span className="ml-2"><StatusBadge status={item.is_manager ? "manager" : "complementary"} /></span>
+                          )}
                         </span>
                         <span className="font-bold whitespace-nowrap shrink-0">{money(item.total)}</span>
                       </div>
@@ -712,7 +730,7 @@ export default function AdminFoliosPage() {
                         <label className={field.label}>Charge Type</label>
                         <select
                           value={itemForm.item_type}
-                          onChange={(e) => setItemForm({ ...itemForm, item_type: e.target.value, menu_item_id: "", quantity: "1", description: "", amount: "" })}
+                          onChange={(e) => setItemForm({ ...itemForm, item_type: e.target.value, menu_item_id: "", quantity: "1", description: "", amount: "", bill_no: "", is_complementary: false, is_manager: false })}
                           className={field.select}
                         >
                           {allowedChargeTypes.map((t) => <option key={t} value={t}>{CHARGE_TYPE_LABELS[t]}</option>)}
@@ -737,10 +755,34 @@ export default function AdminFoliosPage() {
                           </div>
                         </>
                       )}
+                      {itemForm.item_type === "food_charge" && (
+                        <div className="flex flex-col gap-2">
+                          <label className={field.label}>Bill No</label>
+                          <input
+                            type="text"
+                            placeholder="From the F&B docket/bill book"
+                            value={itemForm.bill_no}
+                            onChange={(e) => setItemForm({ ...itemForm, bill_no: e.target.value })}
+                            className={field.input}
+                          />
+                        </div>
+                      )}
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Amount (₦)</label>
-                        <input type="number" value={itemForm.amount} onChange={(e) => setItemForm({ ...itemForm, amount: e.target.value })} className={field.input} />
+                        <input
+                          type="number"
+                          value={itemForm.amount}
+                          disabled={isCompOrManager}
+                          onChange={(e) => setItemForm({ ...itemForm, amount: e.target.value })}
+                          className={`${field.input} ${isCompOrManager ? "opacity-60 cursor-not-allowed" : ""}`}
+                        />
                       </div>
+                      {isFoodOrDrinkCharge && (
+                        <div className="flex flex-col gap-2">
+                          <label className={field.label}>Service Charge (₦)</label>
+                          <input type="text" readOnly value={money(previewServiceCharge)} className={`${field.input} opacity-60 cursor-not-allowed`} />
+                        </div>
+                      )}
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Tax ({itemForm.tax_mode === "percentage" ? "%" : "₦"})</label>
                         <div className="flex flex-col gap-2">
@@ -774,6 +816,53 @@ export default function AdminFoliosPage() {
                         <input type="text" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.input} />
                       </div>
                     </div>
+                    {isFoodOrDrinkCharge && (
+                      <div className="flex gap-6 flex-wrap items-center">
+                        <label className="flex items-center gap-2 text-xl cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={itemForm.is_complementary || itemForm.is_manager}
+                            disabled={itemForm.is_manager}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              const qty = Number(itemForm.quantity) || 1;
+                              setItemForm({
+                                ...itemForm,
+                                is_complementary: checked,
+                                amount: checked ? "0" : selectedMenuItem ? String(Number(selectedMenuItem.price) * qty) : itemForm.amount,
+                              });
+                            }}
+                            className="w-5 h-5 cursor-pointer"
+                          />
+                          Complementary
+                        </label>
+                        <label className="flex items-center gap-2 text-xl cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={itemForm.is_manager}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              const qty = Number(itemForm.quantity) || 1;
+                              setItemForm({
+                                ...itemForm,
+                                is_manager: checked,
+                                is_complementary: checked ? true : itemForm.is_complementary,
+                                amount: checked || itemForm.is_complementary ? "0" : selectedMenuItem ? String(Number(selectedMenuItem.price) * qty) : itemForm.amount,
+                              });
+                            }}
+                            className="w-5 h-5 cursor-pointer"
+                          />
+                          For Manager
+                        </label>
+                        <p className="text-lg text-[color:var(--text-color)]/60">
+                          {itemForm.is_manager
+                            ? "This posts as a complementary charge for the manager — Customer will show \"Manager\" on the Food/Drink Sales report."
+                            : itemForm.is_complementary
+                            ? "This posts as complementary — no charge, still attributed to the room/walk-in as usual."
+                            : "Check if this item is being given away free."}
+                        </p>
+                      </div>
+                    )}
                     <div className="flex flex-col gap-2">
                       <label className={field.label}>Remarks (optional)</label>
                       <input type="text" value={itemForm.notes} onChange={(e) => setItemForm({ ...itemForm, notes: e.target.value })} className={field.input} />

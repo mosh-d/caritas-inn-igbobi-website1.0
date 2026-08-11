@@ -8,7 +8,7 @@ import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import { fetchDirectSales, createDirectSale } from "../utils/direct-sales-api";
 
 const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
-const emptyRow = { item_kind: "food", reference_id: "", quantity: "1" };
+const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", bill_no: "", is_complementary: false, is_manager: false };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatTime = (d) => d ? new Date(d).toLocaleTimeString("en-US", { timeZone: "Africa/Lagos", hour: "numeric", minute: "2-digit" }) : "—";
@@ -62,12 +62,21 @@ export default function AdminWalkInSales() {
 
   const menuFor = (kind) => (kind === "food" ? foodItems : drinkItems);
   const itemFor = (row) => menuFor(row.item_kind).find((i) => String(i.id) === String(row.reference_id));
+  const isCompOrManager = (row) => row.is_complementary || row.is_manager;
   const rowAmount = (row) => {
     const item = itemFor(row);
-    if (!item) return 0;
+    if (!item || isCompOrManager(row)) return 0;
     return Number(item.price) * (Number(row.quantity) || 0);
   };
-  const total = rows.reduce((sum, row) => sum + rowAmount(row), 0);
+  // Preview only, same as the folio Add-a-Charge form — automatically set
+  // from the item's own rate (Menu page), 0 once Complementary/Manager is
+  // checked; the backend re-resolves this itself from the same menu item.
+  const rowServiceCharge = (row) => {
+    const item = itemFor(row);
+    if (!item || isCompOrManager(row)) return 0;
+    return Number(item.service_charge || 0) * (Number(row.quantity) || 0);
+  };
+  const total = rows.reduce((sum, row) => sum + rowAmount(row) + rowServiceCharge(row), 0);
   const rowsValid = rows.length > 0 && rows.every((row) => row.reference_id && Number(row.quantity) > 0);
 
   const updateRow = (index, patch) => {
@@ -86,6 +95,9 @@ export default function AdminWalkInSales() {
           item_kind: row.item_kind,
           reference_id: Number(row.reference_id),
           quantity: Number(row.quantity),
+          bill_no: row.item_kind === "food" && row.bill_no.trim() ? row.bill_no.trim() : undefined,
+          is_complementary: row.is_complementary,
+          is_manager: row.is_manager,
         })),
         payment_method: paymentMethod,
         notes: remarks.trim() || undefined,
@@ -121,7 +133,7 @@ export default function AdminWalkInSales() {
               <label className={field.label}>Kind</label>
               <select
                 value={row.item_kind}
-                onChange={(e) => updateRow(index, { item_kind: e.target.value, reference_id: "" })}
+                onChange={(e) => updateRow(index, { item_kind: e.target.value, reference_id: "", bill_no: "", is_complementary: false, is_manager: false })}
                 className={field.select}
               >
                 <option value="food">Food</option>
@@ -143,8 +155,44 @@ export default function AdminWalkInSales() {
               <label className={field.label}>Quantity</label>
               <input type="number" min="1" value={row.quantity} onChange={(e) => updateRow(index, { quantity: e.target.value })} className={field.input} />
             </div>
+            {row.item_kind === "food" && (
+              <div className="flex flex-col gap-2">
+                <label className={field.label}>Bill No</label>
+                <input
+                  type="text"
+                  placeholder="From the F&B docket/bill book"
+                  value={row.bill_no}
+                  onChange={(e) => updateRow(index, { bill_no: e.target.value })}
+                  className={field.input}
+                />
+              </div>
+            )}
+            <div className="flex gap-6 flex-wrap items-center">
+              <label className="flex items-center gap-2 text-xl cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={row.is_complementary || row.is_manager}
+                  disabled={row.is_manager}
+                  onChange={(e) => updateRow(index, { is_complementary: e.target.checked })}
+                  className="w-5 h-5 cursor-pointer"
+                />
+                Complementary
+              </label>
+              <label className="flex items-center gap-2 text-xl cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={row.is_manager}
+                  onChange={(e) => updateRow(index, { is_manager: e.target.checked, is_complementary: e.target.checked ? true : row.is_complementary })}
+                  className="w-5 h-5 cursor-pointer"
+                />
+                For Manager
+              </label>
+            </div>
+            {Number(rowServiceCharge(row)) > 0 && (
+              <p className="text-lg text-[color:var(--text-color)]/60">Service Charge: {money(rowServiceCharge(row))}</p>
+            )}
             <div className="flex items-center justify-between gap-4">
-              <span className="text-xl font-bold whitespace-nowrap">{money(rowAmount(row))}</span>
+              <span className="text-xl font-bold whitespace-nowrap">{money(rowAmount(row) + rowServiceCharge(row))}</span>
               {rows.length > 1 && (
                 <button type="button" onClick={() => removeRow(index)} className={btn.rowDanger}>Remove</button>
               )}
