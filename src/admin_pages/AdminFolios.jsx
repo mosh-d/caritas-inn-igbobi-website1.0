@@ -459,7 +459,7 @@ export default function AdminFoliosPage() {
 
       <div data-component="AdminFolios" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
         <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
-          <PageHeading icon={IoReceiptOutline}>Folios</PageHeading>
+          <PageHeading icon={IoReceiptOutline}>Guest Folios</PageHeading>
           {/* Waitstaff never creates a folio — that's a front-desk task tied
               to a reservation/check-in, not something a waiter/waitress does. */}
           {!isWaitstaffSession && (

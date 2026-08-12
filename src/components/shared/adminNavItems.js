@@ -45,11 +45,11 @@ export const ADMIN_NAV_ITEMS = [
   // to post a food/drink charge to it — nothing else on this list applies
   // to them (see AdminFolios.jsx for how the page itself scopes down
   // further for this role: open folios only, no tabs, no Create Folio).
-  { to: "/admin/folios", label: "FOLIOS", icon: IoReceiptOutline, waitstaffVisible: true },
+  { to: "/admin/folios", label: "GUEST FOLIOS", icon: IoReceiptOutline, waitstaffVisible: true },
   // waitstaffVisible: waiters/waitresses record these directly; no
   // managerOnly, so receptionist/manager see it too (they can also ring in
-  // a walk-in sale, e.g. covering the bar when no waitstaff is on duty) —
-  // accountant is the only role that never sees it, same as FOLIOS.
+  // a walk-in order, e.g. covering the bar when no waitstaff is on duty) —
+  // accountant is the only role that never sees it, same as GUEST FOLIOS.
   { to: "/admin/walk-in-sales", label: "WALK-IN SALES", icon: IoCartOutline, waitstaffVisible: true },
   { to: "/admin/check-ins", label: "CHECK-INS", icon: IoLogInOutline },
   { to: "/admin/check-outs", label: "CHECK-OUTS", icon: IoLogOutOutline },
