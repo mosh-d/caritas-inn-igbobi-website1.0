@@ -54,3 +54,13 @@ export const updateDrinkItem = async (id, payload) => {
   });
   return response.data;
 };
+
+// Records a restock ('added') or a loss ('damaged': breakage/spillage/
+// expiry) against a drink item's stock ledger — feeds the Bar Stock report
+// (Reports → Bar Stock). Food isn't tracked this way.
+export const recordDrinkStockMovement = async (id, payload) => {
+  const response = await axios.post(`${baseUrl}/api/menu/drinks/${id}/stock`, payload, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};

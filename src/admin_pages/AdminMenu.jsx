@@ -11,6 +11,7 @@ import {
   fetchDrinkItems,
   createDrinkItem,
   updateDrinkItem,
+  recordDrinkStockMovement,
 } from "../utils/menu-api";
 
 const money = (v) => `₦${Number(v || 0).toLocaleString()}`;
@@ -68,13 +69,14 @@ export default function AdminMenu() {
           fetchItems={fetchDrinkItems}
           createItem={createDrinkItem}
           updateItem={updateDrinkItem}
+          recordStock={recordDrinkStockMovement}
         />
       )}
     </div>
   );
 }
 
-function MenuSection({ label, fetchItems, createItem, updateItem }) {
+function MenuSection({ label, fetchItems, createItem, updateItem, recordStock }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -86,6 +88,14 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ name: "", price: "", service_charge: "" });
   const [savingId, setSavingId] = useState(null);
+
+  // Stock adjustment (drinks only — recordStock is undefined for food) —
+  // feeds the Bar Stock report (Reports → Bar Stock), separate from is_active
+  // ("In Stock"/"Out of Stock" above, which is really just menu availability).
+  const [stockAdjustId, setStockAdjustId] = useState(null);
+  const [stockForm, setStockForm] = useState({ movement_type: "added", quantity: "", notes: "" });
+  const [savingStockId, setSavingStockId] = useState(null);
+  const [stockSuccessId, setStockSuccessId] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -148,6 +158,31 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
       setError(err.response?.data?.message || `Failed to update ${label}.`);
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const startStockAdjust = (item) => {
+    setStockAdjustId(item.id);
+    setStockForm({ movement_type: "added", quantity: "", notes: "" });
+  };
+
+  const handleSaveStockAdjust = async (id) => {
+    if (!Number(stockForm.quantity) || Number(stockForm.quantity) < 1) return;
+    try {
+      setSavingStockId(id);
+      setError(null);
+      await recordStock(id, {
+        movement_type: stockForm.movement_type,
+        quantity: Number(stockForm.quantity),
+        notes: stockForm.notes.trim() || undefined,
+      });
+      setStockAdjustId(null);
+      setStockSuccessId(id);
+      setTimeout(() => setStockSuccessId(null), 4000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to record stock movement.");
+    } finally {
+      setSavingStockId(null);
     }
   };
 
@@ -221,6 +256,11 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
                             <button onClick={() => handleToggleActive(item)} disabled={savingId === item.id} className={item.is_active ? btn.rowDanger : btn.rowSuccess}>
                               {savingId === item.id ? "..." : item.is_active ? "Set Out of Stock" : "Mark In Stock"}
                             </button>
+                            {recordStock && (
+                              <button onClick={() => startStockAdjust(item)} className={btn.rowSecondary}>
+                                {stockSuccessId === item.id ? "Recorded ✓" : "Adjust Stock"}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </>
@@ -228,6 +268,36 @@ function MenuSection({ label, fetchItems, createItem, updateItem }) {
                   </tr>
                 ))
               )}
+              {recordStock && items.map((item) => stockAdjustId === item.id && (
+                <tr key={`stock-${item.id}`} className={table.row}>
+                  <td colSpan={5} className={`${table.td} bg-[color:var(--text-color)]/3`}>
+                    <div className="flex flex-wrap gap-4 items-end">
+                      <span className="text-xl font-semibold whitespace-nowrap">Adjust stock — {item.name}</span>
+                      <div className="flex flex-col gap-2">
+                        <label className={field.label}>Type</label>
+                        <select value={stockForm.movement_type} onChange={(e) => setStockForm({ ...stockForm, movement_type: e.target.value })} className={`${field.select} text-xl!`}>
+                          <option value="added">Added (restock)</option>
+                          <option value="damaged">Damaged (breakage/spillage/expiry)</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className={field.label}>Quantity</label>
+                        <input type="number" min="1" value={stockForm.quantity} onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })} className={`${field.input} text-xl! w-32`} />
+                      </div>
+                      <div className="flex flex-col gap-2 flex-1 min-w-48">
+                        <label className={field.label}>Notes (optional)</label>
+                        <input type="text" value={stockForm.notes} onChange={(e) => setStockForm({ ...stockForm, notes: e.target.value })} className={`${field.input} text-xl!`} />
+                      </div>
+                      <div className={table.actions}>
+                        <button onClick={() => handleSaveStockAdjust(item.id)} disabled={savingStockId === item.id || !Number(stockForm.quantity)} className={btn.rowPrimary}>
+                          {savingStockId === item.id ? "Saving..." : "Save"}
+                        </button>
+                        <button onClick={() => setStockAdjustId(null)} className={btn.rowSecondary}>Cancel</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

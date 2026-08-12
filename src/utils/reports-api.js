@@ -110,3 +110,14 @@ export const fetchDrinkSalesReport = async (date) => {
 
 export const downloadDrinkSalesReportExport = (date, shift) =>
   downloadXlsx("/api/reports/drink-sales/export", { date, shift }, `drink_sales_report_${date}.xlsx`);
+
+export const fetchBarStockReport = async (date) => {
+  const response = await axios.get(`${baseUrl}/api/reports/bar-stock`, {
+    headers: getAuthHeaders(),
+    params: { date },
+  });
+  return response.data;
+};
+
+export const downloadBarStockReportExport = (date, shift) =>
+  downloadXlsx("/api/reports/bar-stock/export", { date, shift }, `bar_stock_report_${date}.xlsx`);

@@ -16,6 +16,8 @@ import {
   downloadFoodSalesReportExport,
   fetchDrinkSalesReport,
   downloadDrinkSalesReportExport,
+  fetchBarStockReport,
+  downloadBarStockReportExport,
   downloadManifestExport,
   downloadAnalysisExport,
   downloadPmsReportExport,
@@ -53,14 +55,16 @@ const ALL_TABS = [
   { key: "accommodation", label: "Accommodation" },
   { key: "food-sales", label: "Food Sales" },
   { key: "drink-sales", label: "Drink Sales" },
+  { key: "bar-stock", label: "Bar Stock" },
 ];
 
-// Food/Drink Sales are F&B-only — a receptionist has no front-desk reason to
-// see them, unlike every other tab here. Mirrors the backend's own gating
-// (FOOD_DRINK_SALES_ROLES in ReportsController), which is the real
-// enforcement; this just keeps a receptionist from seeing tabs that would
-// 403 anyway.
-const visibleTabs = () => isReceptionist() ? ALL_TABS.filter((t) => t.key !== "food-sales" && t.key !== "drink-sales") : ALL_TABS;
+// Food/Drink Sales and Bar Stock are all F&B-only — a receptionist has no
+// front-desk reason to see them, unlike every other tab here. Mirrors the
+// backend's own gating (FOOD_DRINK_SALES_ROLES in ReportsController), which
+// is the real enforcement; this just keeps a receptionist from seeing tabs
+// that would 403 anyway.
+const RECEPTIONIST_HIDDEN_TABS = ["food-sales", "drink-sales", "bar-stock"];
+const visibleTabs = () => isReceptionist() ? ALL_TABS.filter((t) => !RECEPTIONIST_HIDDEN_TABS.includes(t.key)) : ALL_TABS;
 
 // Snapshots a tab's already-loaded `data` and sends it to the accountant —
 // shared across every tab below rather than duplicated 5 times. `shift`
@@ -154,7 +158,9 @@ export default function AdminReportsPage() {
           ? "One row per room in use on a given date — guest, room, tariff, payment, and whether they checked in, checked out, or are still in-house."
           : activeTab === "food-sales"
           ? "Every food order for a given date — charged to a room's folio or a walk-in folio — with quantity, amount, payment status, and payment method."
-          : "Every drink order for a given date — charged to a room's folio or a walk-in folio — with quantity, amount, payment status, and payment method."}
+          : activeTab === "drink-sales"
+          ? "Every drink order for a given date — charged to a room's folio or a walk-in folio — with quantity, amount, payment status, and payment method."
+          : "Every active drink item for a given date — opening, added, damaged, sold, and closing stock, plus what sold for. Digitizes the paper Bar Analysis sheet."}
       </p>
 
       {/* Shift attributes a report to whichever front-desk shift sends it to
@@ -183,6 +189,7 @@ export default function AdminReportsPage() {
       {activeTab === "accommodation" && <AccommodationReportTab shift={shift} />}
       {activeTab === "food-sales" && <FoodSalesReportTab shift={shift} />}
       {activeTab === "drink-sales" && <DrinkSalesReportTab shift={shift} />}
+      {activeTab === "bar-stock" && <BarStockReportTab shift={shift} />}
     </div>
   );
 }
@@ -1320,6 +1327,128 @@ function DrinkSalesReportTab({ shift }) {
                       <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
                       <td className="px-6 py-4 capitalize text-[color:var(--text-color)]/84">{r.payment_method || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.notes || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </ReportSection>
+        </div>
+      )}
+
+      {!loading && !data && !error && (
+        <div className="text-center py-20 text-[color:var(--text-color)]/60 text-2xl w-full">
+          Pick a date, then click <strong>Generate Report</strong>.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BarStockReportTab({ shift }) {
+  const [date, setDate] = useState(localTodayISO());
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+
+  const load = useCallback(async () => {
+    if (!date) return;
+    try {
+      setLoading(true);
+      setError(null);
+      setData(await fetchBarStockReport(date));
+    } catch (err) {
+      setError((err.response?.data?.message || "Failed to load bar stock report.") + " Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+  }, [date]);
+
+  const shiftRequired = !isAccountant();
+
+  const handleExport = async () => {
+    if (!date || (shiftRequired && !shift)) return;
+    try {
+      setExporting(true);
+      setExportError(null);
+      await downloadBarStockReportExport(date, shift);
+    } catch (err) {
+      setExportError(err.response?.data?.message || "Failed to export bar stock report.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const totalSold = data ? data.rows.reduce((s, r) => s + r.sold_stock, 0) : 0;
+  const totalAmount = data ? data.rows.reduce((s, r) => s + r.total_amount, 0) : 0;
+
+  return (
+    <div className="w-full flex flex-col items-start gap-[2.5rem]">
+      <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
+        <div className="flex flex-col gap-2">
+          <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
+          />
+        </div>
+        <Button onClick={load} disabled={loading} variant="emphasis" className={`text-xl! pb-5 pt-4.5 rounded-xl ${loading ? "opacity-50 cursor-not-allowed" : ""}`}>
+          {loading ? "Loading..." : "Generate Report"}
+        </Button>
+      </div>
+
+      {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl w-full">{error}</div>}
+      {exportError && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl w-full">{exportError}</div>}
+      {loading && <div className="flex justify-center py-20 w-full"><LoadingSpinner size="lg" /></div>}
+
+      {!loading && data && (
+        <div className="w-full flex flex-col gap-[2.5rem]">
+          <div className="w-full flex flex-wrap items-center justify-between gap-4">
+            <p className="text-2xl text-[color:var(--text-color)]/76">
+              Bar stock for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
+            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleExport}
+                disabled={exporting || (shiftRequired && !shift)}
+                variant="secondary"
+                className="text-xl! flex items-center rounded-xl gap-2"
+                title={shiftRequired && !shift ? "Select a shift at the top of the page first" : undefined}
+              >
+                <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
+              </Button>
+              <SendToAccountantButton reportType="bar-stock" label={data.report_date} shift={shift} data={data} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <SummaryCard label="Total Sold Stock" value={totalSold} accent />
+            <SummaryCard label="Total Amount" value={money(totalAmount)} />
+          </div>
+
+          <ReportSection title="Stock">
+            {data.rows.length === 0 ? (
+              <EmptyRow />
+            ) : (
+              <table className="w-full text-xl">
+                <TableHead cells={["Stock", "Opening", "Added", "Total (before sales)", "Damaged", "Sold", "Unit Cost Price", "Total Amount", "Closing", "Remark"]} />
+                <tbody>
+                  {data.rows.map((r) => (
+                    <tr key={r.drink_item_id} className="border-b border-[color:var(--text-color)]/10">
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.stock}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.opening_stock}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.added_stock}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.total_stock}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.damaged_stock}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.sold_stock}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.unit_cost_price)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.total_amount)}</td>
+                      <td className={`px-6 py-4 font-semibold ${r.closing_stock < 0 ? "text-red-600" : "text-[color:var(--black)]"}`}>{r.closing_stock}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.remark || "—"}</td>
                     </tr>
                   ))}
                 </tbody>

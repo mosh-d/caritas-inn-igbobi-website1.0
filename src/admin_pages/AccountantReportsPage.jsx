@@ -173,6 +173,7 @@ function SnapshotView({ reportType, data }) {
   if (reportType === "accommodation") return <AccommodationSnapshot data={data} />;
   if (reportType === "food-sales") return <FoodSalesSnapshot data={data} />;
   if (reportType === "drink-sales") return <DrinkSalesSnapshot data={data} />;
+  if (reportType === "bar-stock") return <BarStockSnapshot data={data} />;
   return <p className="text-xl text-[color:var(--text-color)]/68">Unknown report type "{reportType}".</p>;
 }
 
@@ -555,6 +556,43 @@ function DrinkSalesSnapshot({ data }) {
                   <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
                   <td className="px-6 py-4 capitalize text-[color:var(--text-color)]/84">{r.payment_method || "—"}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.notes || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </ReportSection>
+    </div>
+  );
+}
+
+function BarStockSnapshot({ data }) {
+  const rows = data?.rows || [];
+  const totalSold = rows.reduce((s, r) => s + r.sold_stock, 0);
+  const totalAmount = rows.reduce((s, r) => s + r.total_amount, 0);
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <SummaryCard label="Total Sold Stock" value={totalSold} accent />
+        <SummaryCard label="Total Amount" value={money(totalAmount)} />
+      </div>
+      <ReportSection title="Stock">
+        {rows.length === 0 ? <EmptyRow /> : (
+          <table className="w-full text-xl">
+            <TableHead cells={["Stock", "Opening", "Added", "Total (before sales)", "Damaged", "Sold", "Unit Cost Price", "Total Amount", "Closing", "Remark"]} />
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.drink_item_id} className="border-b border-[color:var(--text-color)]/10">
+                  <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.stock}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.opening_stock}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.added_stock}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.total_stock}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.damaged_stock}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.sold_stock}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.unit_cost_price)}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.total_amount)}</td>
+                  <td className={`px-6 py-4 font-semibold ${r.closing_stock < 0 ? "text-red-600" : "text-[color:var(--black)]"}`}>{r.closing_stock}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.remark || "—"}</td>
                 </tr>
               ))}
             </tbody>
