@@ -8,9 +8,11 @@ import {
   fetchFoodItems,
   createFoodItem,
   updateFoodItem,
+  deleteFoodItem,
   fetchDrinkItems,
   createDrinkItem,
   updateDrinkItem,
+  deleteDrinkItem,
   recordDrinkStockMovement,
 } from "../utils/menu-api";
 
@@ -61,6 +63,7 @@ export default function AdminMenu() {
           fetchItems={fetchFoodItems}
           createItem={createFoodItem}
           updateItem={updateFoodItem}
+          deleteItem={deleteFoodItem}
         />
       ) : (
         <MenuSection
@@ -69,6 +72,7 @@ export default function AdminMenu() {
           fetchItems={fetchDrinkItems}
           createItem={createDrinkItem}
           updateItem={updateDrinkItem}
+          deleteItem={deleteDrinkItem}
           recordStock={recordDrinkStockMovement}
         />
       )}
@@ -76,7 +80,7 @@ export default function AdminMenu() {
   );
 }
 
-function MenuSection({ label, fetchItems, createItem, updateItem, recordStock }) {
+function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, recordStock }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -88,6 +92,12 @@ function MenuSection({ label, fetchItems, createItem, updateItem, recordStock })
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ name: "", price: "", service_charge: "" });
   const [savingId, setSavingId] = useState(null);
+
+  // Delete is only allowed for an item with zero order/stock history (the
+  // backend rejects anything else with a 409) — a two-click confirm avoids
+  // a native confirm() popup for something this rarely used and hard to undo.
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   // Stock adjustment (drinks only — recordStock is undefined for food) —
   // feeds the Bar Stock report (Reports → Bar Stock), separate from is_active
@@ -161,6 +171,30 @@ function MenuSection({ label, fetchItems, createItem, updateItem, recordStock })
     }
   };
 
+  const handleDelete = async (item) => {
+    try {
+      setDeletingId(item.id);
+      setError(null);
+      await deleteItem(item.id);
+      setConfirmDeleteId(null);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || `Failed to delete ${label}.`);
+      setConfirmDeleteId(null);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Drinks only (recordStock is undefined for food): once an item has a
+  // tracked stock ledger, computed current_stock hitting 0 or below shows
+  // "Out of Stock" automatically — informational only, doesn't block
+  // ordering (a hotel may still have physical stock that just hasn't been
+  // logged as "Added" yet). current_stock is null until the item's first
+  // stock movement is ever recorded, which reads as "In Stock" (no baseline
+  // to judge it against yet), not a false "Out of Stock".
+  const isComputedOutOfStock = (item) => !!recordStock && item.current_stock !== null && item.current_stock !== undefined && item.current_stock <= 0;
+
   const startStockAdjust = (item) => {
     setStockAdjustId(item.id);
     setStockForm({ movement_type: "added", quantity: "", notes: "" });
@@ -228,8 +262,8 @@ function MenuSection({ label, fetchItems, createItem, updateItem, recordStock })
                             <input type="number" value={editForm.service_charge} onChange={(e) => setEditForm({ ...editForm, service_charge: e.target.value })} className={`${field.input} text-xl! w-32`} />
                           </td>
                           <td className={table.td}>
-                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                              {item.is_active ? "In Stock" : "Out of Stock"}
+                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active && !isComputedOutOfStock(item) ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                              {item.is_active ? (isComputedOutOfStock(item) ? "Out of Stock" : "In Stock") : "Out of Stock"}
                             </span>
                           </td>
                           <td className={table.td}>
@@ -247,20 +281,35 @@ function MenuSection({ label, fetchItems, createItem, updateItem, recordStock })
                           <td className={table.td}>{money(item.price)}</td>
                           <td className={table.td}>{money(item.service_charge)}</td>
                           <td className={table.td}>
-                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                              {item.is_active ? "In Stock" : "Out of Stock"}
+                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active && !isComputedOutOfStock(item) ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                              {item.is_active ? (isComputedOutOfStock(item) ? "Out of Stock" : "In Stock") : "Out of Stock"}
                             </span>
                           </td>
                           <td className={table.td}>
                             <div className={table.actions}>
                               <button onClick={() => startEdit(item)} className={btn.rowSecondary}>Edit</button>
-                              <button onClick={() => handleToggleActive(item)} disabled={savingId === item.id} className={item.is_active ? btn.rowDanger : btn.rowSuccess}>
-                                {savingId === item.id ? "..." : item.is_active ? "Set Out of Stock" : "Mark In Stock"}
-                              </button>
+                              {/* For drinks, going out of stock is now automatic (computed from the ledger) — this manual toggle only stays available to reactivate an item deactivated before that existed. */}
+                              {(!recordStock || !item.is_active) && (
+                                <button onClick={() => handleToggleActive(item)} disabled={savingId === item.id} className={item.is_active ? btn.rowDanger : btn.rowSuccess}>
+                                  {savingId === item.id ? "..." : item.is_active ? "Set Out of Stock" : "Mark In Stock"}
+                                </button>
+                              )}
                               {recordStock && (
                                 <button onClick={() => startStockAdjust(item)} className={btn.rowSecondary}>
                                   {stockSuccessId === item.id ? "Recorded ✓" : "Adjust Stock"}
                                 </button>
+                              )}
+                              {deleteItem && (
+                                confirmDeleteId === item.id ? (
+                                  <>
+                                    <button onClick={() => handleDelete(item)} disabled={deletingId === item.id} className={btn.rowDanger}>
+                                      {deletingId === item.id ? "Deleting..." : "Confirm Delete"}
+                                    </button>
+                                    <button onClick={() => setConfirmDeleteId(null)} className={btn.rowSecondary}>Cancel</button>
+                                  </>
+                                ) : (
+                                  <button onClick={() => setConfirmDeleteId(item.id)} className={btn.rowSecondary}>Delete</button>
+                                )
                               )}
                             </div>
                           </td>

@@ -64,3 +64,21 @@ export const recordDrinkStockMovement = async (id, payload) => {
   });
   return response.data;
 };
+
+// Only succeeds for an item with no order/stock history — the backend
+// rejects (409) anything that's ever actually been sold or stocked, since
+// deleting one of those would erase real history rather than just
+// availability. Use "Set Out of Stock" for a real item going unavailable.
+export const deleteFoodItem = async (id) => {
+  const response = await axios.delete(`${baseUrl}/api/menu/food/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+export const deleteDrinkItem = async (id) => {
+  const response = await axios.delete(`${baseUrl}/api/menu/drinks/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
