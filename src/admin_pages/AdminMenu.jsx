@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { IoRestaurantOutline } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
@@ -214,90 +214,92 @@ function MenuSection({ label, fetchItems, createItem, updateItem, recordStock })
                 <tr><td colSpan={5} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No {label}s yet.</td></tr>
               ) : (
                 items.map((item) => (
-                  <tr key={item.id} className={table.row}>
-                    {editingId === item.id ? (
-                      <>
-                        <td className={table.td}>
-                          <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className={`${field.input} text-xl!`} />
-                        </td>
-                        <td className={table.td}>
-                          <input type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} className={`${field.input} text-xl! w-32`} />
-                        </td>
-                        <td className={table.td}>
-                          <input type="number" value={editForm.service_charge} onChange={(e) => setEditForm({ ...editForm, service_charge: e.target.value })} className={`${field.input} text-xl! w-32`} />
-                        </td>
-                        <td className={table.td}>
-                          <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                            {item.is_active ? "In Stock" : "Out of Stock"}
-                          </span>
-                        </td>
-                        <td className={table.td}>
-                          <div className={table.actions}>
-                            <button onClick={() => handleSaveEdit(item.id)} disabled={savingId === item.id} className={btn.rowPrimary}>
-                              {savingId === item.id ? "Saving..." : "Save"}
-                            </button>
-                            <button onClick={() => setEditingId(null)} className={btn.rowSecondary}>Cancel</button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className={`${table.td} font-medium`}>{item.name}</td>
-                        <td className={table.td}>{money(item.price)}</td>
-                        <td className={table.td}>{money(item.service_charge)}</td>
-                        <td className={table.td}>
-                          <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                            {item.is_active ? "In Stock" : "Out of Stock"}
-                          </span>
-                        </td>
-                        <td className={table.td}>
-                          <div className={table.actions}>
-                            <button onClick={() => startEdit(item)} className={btn.rowSecondary}>Edit</button>
-                            <button onClick={() => handleToggleActive(item)} disabled={savingId === item.id} className={item.is_active ? btn.rowDanger : btn.rowSuccess}>
-                              {savingId === item.id ? "..." : item.is_active ? "Set Out of Stock" : "Mark In Stock"}
-                            </button>
-                            {recordStock && (
-                              <button onClick={() => startStockAdjust(item)} className={btn.rowSecondary}>
-                                {stockSuccessId === item.id ? "Recorded ✓" : "Adjust Stock"}
+                  <Fragment key={item.id}>
+                    <tr className={table.row}>
+                      {editingId === item.id ? (
+                        <>
+                          <td className={table.td}>
+                            <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className={`${field.input} text-xl!`} />
+                          </td>
+                          <td className={table.td}>
+                            <input type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} className={`${field.input} text-xl! w-32`} />
+                          </td>
+                          <td className={table.td}>
+                            <input type="number" value={editForm.service_charge} onChange={(e) => setEditForm({ ...editForm, service_charge: e.target.value })} className={`${field.input} text-xl! w-32`} />
+                          </td>
+                          <td className={table.td}>
+                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                              {item.is_active ? "In Stock" : "Out of Stock"}
+                            </span>
+                          </td>
+                          <td className={table.td}>
+                            <div className={table.actions}>
+                              <button onClick={() => handleSaveEdit(item.id)} disabled={savingId === item.id} className={btn.rowPrimary}>
+                                {savingId === item.id ? "Saving..." : "Save"}
                               </button>
-                            )}
+                              <button onClick={() => setEditingId(null)} className={btn.rowSecondary}>Cancel</button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className={`${table.td} font-medium`}>{item.name}</td>
+                          <td className={table.td}>{money(item.price)}</td>
+                          <td className={table.td}>{money(item.service_charge)}</td>
+                          <td className={table.td}>
+                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                              {item.is_active ? "In Stock" : "Out of Stock"}
+                            </span>
+                          </td>
+                          <td className={table.td}>
+                            <div className={table.actions}>
+                              <button onClick={() => startEdit(item)} className={btn.rowSecondary}>Edit</button>
+                              <button onClick={() => handleToggleActive(item)} disabled={savingId === item.id} className={item.is_active ? btn.rowDanger : btn.rowSuccess}>
+                                {savingId === item.id ? "..." : item.is_active ? "Set Out of Stock" : "Mark In Stock"}
+                              </button>
+                              {recordStock && (
+                                <button onClick={() => startStockAdjust(item)} className={btn.rowSecondary}>
+                                  {stockSuccessId === item.id ? "Recorded ✓" : "Adjust Stock"}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                    {recordStock && stockAdjustId === item.id && (
+                      <tr className={table.row}>
+                        <td colSpan={5} className={`${table.td} bg-[color:var(--text-color)]/3`}>
+                          <div className="flex flex-wrap gap-4 items-end">
+                            <span className="text-xl font-semibold whitespace-nowrap">Adjust stock — {item.name}</span>
+                            <div className="flex flex-col gap-2">
+                              <label className={field.label}>Type</label>
+                              <select value={stockForm.movement_type} onChange={(e) => setStockForm({ ...stockForm, movement_type: e.target.value })} className={`${field.select} text-xl!`}>
+                                <option value="added">Added (restock)</option>
+                                <option value="damaged">Damaged (breakage/spillage/expiry)</option>
+                              </select>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <label className={field.label}>Quantity</label>
+                              <input type="number" min="1" value={stockForm.quantity} onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })} className={`${field.input} text-xl! w-32`} />
+                            </div>
+                            <div className="flex flex-col gap-2 flex-1 min-w-48">
+                              <label className={field.label}>Notes (optional)</label>
+                              <input type="text" value={stockForm.notes} onChange={(e) => setStockForm({ ...stockForm, notes: e.target.value })} className={`${field.input} text-xl!`} />
+                            </div>
+                            <div className={table.actions}>
+                              <button onClick={() => handleSaveStockAdjust(item.id)} disabled={savingStockId === item.id || !Number(stockForm.quantity)} className={btn.rowPrimary}>
+                                {savingStockId === item.id ? "Saving..." : "Save"}
+                              </button>
+                              <button onClick={() => setStockAdjustId(null)} className={btn.rowSecondary}>Cancel</button>
+                            </div>
                           </div>
                         </td>
-                      </>
+                      </tr>
                     )}
-                  </tr>
+                  </Fragment>
                 ))
               )}
-              {recordStock && items.map((item) => stockAdjustId === item.id && (
-                <tr key={`stock-${item.id}`} className={table.row}>
-                  <td colSpan={5} className={`${table.td} bg-[color:var(--text-color)]/3`}>
-                    <div className="flex flex-wrap gap-4 items-end">
-                      <span className="text-xl font-semibold whitespace-nowrap">Adjust stock — {item.name}</span>
-                      <div className="flex flex-col gap-2">
-                        <label className={field.label}>Type</label>
-                        <select value={stockForm.movement_type} onChange={(e) => setStockForm({ ...stockForm, movement_type: e.target.value })} className={`${field.select} text-xl!`}>
-                          <option value="added">Added (restock)</option>
-                          <option value="damaged">Damaged (breakage/spillage/expiry)</option>
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className={field.label}>Quantity</label>
-                        <input type="number" min="1" value={stockForm.quantity} onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })} className={`${field.input} text-xl! w-32`} />
-                      </div>
-                      <div className="flex flex-col gap-2 flex-1 min-w-48">
-                        <label className={field.label}>Notes (optional)</label>
-                        <input type="text" value={stockForm.notes} onChange={(e) => setStockForm({ ...stockForm, notes: e.target.value })} className={`${field.input} text-xl!`} />
-                      </div>
-                      <div className={table.actions}>
-                        <button onClick={() => handleSaveStockAdjust(item.id)} disabled={savingStockId === item.id || !Number(stockForm.quantity)} className={btn.rowPrimary}>
-                          {savingStockId === item.id ? "Saving..." : "Save"}
-                        </button>
-                        <button onClick={() => setStockAdjustId(null)} className={btn.rowSecondary}>Cancel</button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>
