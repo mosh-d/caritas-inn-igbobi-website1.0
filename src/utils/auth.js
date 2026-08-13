@@ -205,6 +205,7 @@ export const logout = async () => {
     }
   }
   clearStoredSession();
+  setDevRoleOverride(null); // so a later login in the same tab starts clean
   window.location.href = "/admin";
 };
 
@@ -251,8 +252,46 @@ export const getStoredAdminUser = () => {
   }
 };
 
-export const getStoredStaffRole = () =>
+// The role actually on this account's session — unaffected by the developer
+// role-simulator below. Use this (not getStoredStaffRole) specifically to
+// check "is this really a developer account", e.g. to decide whether to
+// show the role-simulator dropdown at all.
+export const getRealStoredStaffRole = () =>
   getStoredAdminUser()?.staff_role || null;
+
+const DEV_ROLE_OVERRIDE_KEY = "dev_role_override";
+
+// A developer can pick a role to "view as" (AdminTopBar's dropdown) so they
+// can confirm what each role's UI looks like without a separate login per
+// role — sessionStorage, not localStorage, so it resets on its own the
+// moment the tab closes instead of silently following into a later,
+// unrelated session. Only ever has an effect while the real account is a
+// developer (see getStoredStaffRole below) — setting it while logged in as
+// anything else does nothing, since nothing else's role gating reads it.
+export const getDevRoleOverride = () =>
+  typeof window === "undefined" ? null : sessionStorage.getItem(DEV_ROLE_OVERRIDE_KEY);
+
+export const setDevRoleOverride = (role) => {
+  if (typeof window === "undefined") return;
+  if (role) sessionStorage.setItem(DEV_ROLE_OVERRIDE_KEY, role);
+  else sessionStorage.removeItem(DEV_ROLE_OVERRIDE_KEY);
+};
+
+// The role every gating check in the app reads (isManager, isAccountant,
+// isWaitstaff, isReceptionist, visibleAdminNavItems, getDefaultAdminRoute,
+// every page-level "you don't have permission" check, ...) — deliberately
+// the one function all of them already called before the role-simulator
+// existed, so simulating a role needed no changes anywhere else. Only a
+// real developer session's own effective role is ever overridden; every
+// other account always sees its own real role here.
+export const getStoredStaffRole = () => {
+  const realRole = getRealStoredStaffRole();
+  if (realRole === "developer") {
+    const override = getDevRoleOverride();
+    if (override) return override;
+  }
+  return realRole;
+};
 
 // Only set for an individual staff_accounts login (loginStaff above) — null
 // for the shared branch/role login.
