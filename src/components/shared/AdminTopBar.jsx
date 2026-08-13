@@ -89,10 +89,8 @@ export default function AdminTopBar() {
             <select
               value={roleOverride || ''}
               onChange={handleRoleOverrideChange}
-              className={`rounded-lg px-3 py-1.5 text-base font-medium border cursor-pointer focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] ${
-                roleOverride
-                  ? 'bg-amber-400 text-black border-amber-300 font-bold'
-                  : 'bg-white/10 text-white border-white/20'
+              className={`rounded-lg px-3 py-1.5 text-base font-medium bg-[color:var(--text-color)] text-white border-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] ${
+                roleOverride ? 'border-amber-400' : 'border-white/30'
               }`}
             >
               <option value='' className='text-black'>Developer (all access)</option>
