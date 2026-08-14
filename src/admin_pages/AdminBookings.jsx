@@ -150,10 +150,12 @@ export default function AdminBookingsPage() {
       setProcessingEarlyCheckout(true);
       const baseUrl = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
       const resId = selectedBooking.reservation_id || selectedBooking.booking_id;
-      const response = await axios.post(`${baseUrl}/api/reservations/emergency-checkout`, { reservation_id: resId },
-        { headers: { "Content-Type": "application/json" } }
+      // This endpoint now requires auth (was missing JwtAuthGuard entirely
+      // until 2026-08-14) — without this header the request would 401.
+      await axios.post(`${baseUrl}/api/reservations/emergency-checkout`, { reservation_id: resId },
+        { headers: getAuthHeaders() }
       );
-      setSuccessMessage(response.data.message || "Success");
+      setSuccessMessage("Early checkout processed. Room released back to availability.");
       setTimeout(() => setSuccessMessage(""), 5000);
       setIsEarlyCheckoutOpen(false);
       setSelectedBooking(null);

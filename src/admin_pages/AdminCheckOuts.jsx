@@ -6,14 +6,20 @@ import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, table } from "../components/shared/ui";
 import { fetchCheckOutList } from "../utils/front-office-api";
-import { checkOutReservation } from "../utils/reservations-pms-api";
+import { checkOutReservation, emergencyCheckout } from "../utils/reservations-pms-api";
 import { fetchFolios } from "../utils/folios-api";
-import { localTodayISO } from "../utils/date-utils";
+import { localTodayISO, hasPassedNoonCutoff } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const todayISO = () => localTodayISO();
+// Whether this reservation's scheduled checkout has actually become due
+// (noon Lagos on check_out) — the date picker above can be browsed to a
+// future date, so a listed reservation isn't necessarily due yet. Decides
+// Check Out vs Early Checkout below; using the wrong one has a real
+// consequence, see handleEarlyCheckout's comment.
+const isCheckoutDue = (checkOut) => checkOut && hasPassedNoonCutoff(checkOut);
 
 export default function AdminCheckOutsPage() {
   const navigate = useNavigate();
@@ -84,7 +90,28 @@ export default function AdminCheckOutsPage() {
     }
   };
 
+  // Separate from handleCheckOut above, not just "check out early" —
+  // checkOutReservation posts a safety-net charge for the ORIGINALLY
+  // SCHEDULED last night regardless of when checkout actually happens,
+  // which would overbill a guest leaving before reaching that night.
+  const handleEarlyCheckout = async () => {
+    if (!selected) return;
+    try {
+      setProcessing(true);
+      await emergencyCheckout(selected.id);
+      setSuccessMessage(`${selected.guest_name} checked out early. Room released back to availability.`);
+      setTimeout(() => setSuccessMessage(""), 5000);
+      setSelected(null);
+      loadList();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to process early checkout.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const balanceDue = folio && Number(folio.balance) > 0;
+  const selectedIsDue = selected && isCheckoutDue(selected.check_out);
 
   return (
     <>
@@ -134,7 +161,9 @@ export default function AdminCheckOutsPage() {
                       <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.actual_check_in)}</td>
                       <td className={table.td}>
                         <div className={table.actions}>
-                          <button onClick={() => openCheckOut(r)} className={btn.rowPrimary}>Check Out</button>
+                          <button onClick={() => openCheckOut(r)} className={isCheckoutDue(r.check_out) ? btn.rowPrimary : btn.rowDanger}>
+                            {isCheckoutDue(r.check_out) ? "Check Out" : "Early Checkout"}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -150,18 +179,29 @@ export default function AdminCheckOutsPage() {
       {selected && (
         <Modal
           onClose={() => setSelected(null)}
-          title={selected.guest_name}
-          subtitle="Review the folio balance before completing check-out."
+          title={selectedIsDue ? selected.guest_name : `Early Checkout — ${selected.guest_name}?`}
+          subtitle={selectedIsDue ? "Review the folio balance before completing check-out." : "Their scheduled check-out date hasn't arrived yet — this releases the room right away regardless."}
           size="sm"
           footer={
             <>
               <button onClick={() => setSelected(null)} className={btn.secondary}>Cancel</button>
-              <button onClick={handleCheckOut} disabled={processing} className={btn.success}>
-                {processing ? "Checking Out..." : "Confirm Check Out"}
-              </button>
+              {selectedIsDue ? (
+                <button onClick={handleCheckOut} disabled={processing} className={btn.success}>
+                  {processing ? "Checking Out..." : "Confirm Check Out"}
+                </button>
+              ) : (
+                <button onClick={handleEarlyCheckout} disabled={processing} className={btn.dangerSolid}>
+                  {processing ? "Processing..." : "Yes, Check Out Early"}
+                </button>
+              )}
             </>
           }
         >
+          {!selectedIsDue && (
+            <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
+              Are you sure you want to check this guest out early? Use this only for guests who are actually leaving now.
+            </p>
+          )}
           {folioLoading ? (
             <div className="flex justify-center py-6"><LoadingSpinner /></div>
           ) : folio ? (

@@ -30,6 +30,7 @@ import {
   extendStay,
 } from "../utils/reservations-pms-api";
 import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, refundDeposit, fetchGuestCredit } from "../utils/folios-api";
+import { hasPassedNoonCutoff } from "../utils/date-utils";
 
 const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
 const BRANCH_ID = 3; // Caritas Inn Igbobi branch ID
@@ -848,9 +849,6 @@ export default function AdminReservationsPage() {
                   Reclaim Hold
                 </button>
               )}
-              {canModify && (
-                <button onClick={() => setShowEarlyCheckoutConfirm(true)} disabled={actionLoading} className={btn.danger}>Early Checkout</button>
-              )}
               {!res.actual_check_in && canModify && (
                 res.status === "confirmed" && !res.is_no_show ? (
                   <button onClick={handleCheckIn} disabled={actionLoading} className={btn.success}>Check In</button>
@@ -864,8 +862,21 @@ export default function AdminReservationsPage() {
                   </button>
                 )
               )}
+              {/* Whichever of these is actually appropriate depends on whether
+                  the scheduled check-out has become due yet (noon Lagos on
+                  res.check_out — see hasPassedNoonCutoff) — never both at
+                  once, since using the wrong one has a real consequence: a
+                  normal Check Out posts a safety-net charge for the
+                  ORIGINALLY SCHEDULED last night regardless of when checkout
+                  actually happens, which would overbill a guest leaving
+                  before reaching that night (see emergencyCheckout's own
+                  comment on the backend for the full reasoning). */}
               {res.actual_check_in && !res.actual_check_out && (
-                <button onClick={handleCheckOut} disabled={actionLoading} className={btn.success}>Check Out</button>
+                hasPassedNoonCutoff(res.check_out) ? (
+                  <button onClick={handleCheckOut} disabled={actionLoading} className={btn.success}>Check Out</button>
+                ) : (
+                  <button onClick={() => setShowEarlyCheckoutConfirm(true)} disabled={actionLoading} className={btn.danger}>Early Checkout</button>
+                )
               )}
               <button onClick={handleSaveEdit} disabled={saving} className={btn.primary}>
                 {saving ? "Saving..." : "Save Changes"}

@@ -10,6 +10,7 @@ import { btn, field, table } from "../components/shared/ui";
 import { fetchInHouse, fetchInHouseById } from "../utils/front-office-api";
 import {
   checkOutReservation,
+  emergencyCheckout,
   extendStay,
   assignRoom,
   fetchRoomStatusList,
@@ -50,6 +51,8 @@ export default function AdminInHousePage() {
   const [deletingNoteId, setDeletingNoteId] = useState(null);
   const [notesError, setNotesError] = useState("");
   const [roomTypeFilter, setRoomTypeFilter] = useState("all");
+  const [showEarlyCheckoutConfirm, setShowEarlyCheckoutConfirm] = useState(false);
+  const [earlyCheckoutError, setEarlyCheckoutError] = useState("");
 
   const loadRoomStatus = useCallback(async () => {
     try {
@@ -145,6 +148,8 @@ export default function AdminInHousePage() {
     setReservationNotes([]);
     setNewNoteText("");
     setNotesError("");
+    setShowEarlyCheckoutConfirm(false);
+    setEarlyCheckoutError("");
   };
   const balanceDue = folio && Number(folio.balance) > 0;
 
@@ -159,6 +164,30 @@ export default function AdminInHousePage() {
       loadList();
     } catch (err) {
       setModalError(err.response?.data?.message || "Failed to check out.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Deliberately a SEPARATE action from handleCheckOut above, not just
+  // "check out early" — checkOutReservation posts a safety-net charge for
+  // the ORIGINALLY SCHEDULED last night regardless of when checkout
+  // actually happens, which would overbill a guest leaving before reaching
+  // that night. Which one is offered is decided by isOverdue(check_out)
+  // (see the footer button below), never both at once.
+  const handleEarlyCheckout = async () => {
+    if (!selected) return;
+    try {
+      setProcessing(true);
+      setEarlyCheckoutError("");
+      await emergencyCheckout(selected.id);
+      setSuccessMessage(`${selected.guest_name} checked out early. Room released back to availability.`);
+      setTimeout(() => setSuccessMessage(""), 5000);
+      setShowEarlyCheckoutConfirm(false);
+      closeDetail();
+      loadList();
+    } catch (err) {
+      setEarlyCheckoutError(err.response?.data?.message || "Failed to process early checkout.");
     } finally {
       setProcessing(false);
     }
@@ -349,9 +378,17 @@ export default function AdminInHousePage() {
               >
                 Go to Folio
               </button>
-              <button onClick={handleCheckOut} disabled={processing} className={btn.success}>
-                {processing ? "Processing..." : "Check Out"}
-              </button>
+              {/* Whichever of these is offered depends on isOverdue (noon
+                  Lagos on the scheduled check_out) — never both at once, see
+                  handleEarlyCheckout's comment for why the wrong one has a
+                  real billing consequence. */}
+              {selected && isOverdue(selected.check_out) ? (
+                <button onClick={handleCheckOut} disabled={processing} className={btn.success}>
+                  {processing ? "Processing..." : "Check Out"}
+                </button>
+              ) : (
+                <button onClick={() => setShowEarlyCheckoutConfirm(true)} disabled={processing} className={btn.danger}>Early Checkout</button>
+              )}
             </>
           )}
         >
@@ -470,6 +507,32 @@ export default function AdminInHousePage() {
               </section>
             </>
           )}
+        </Modal>
+      )}
+
+      {/* ==== Early Checkout Warning Modal ==== */}
+      {showEarlyCheckoutConfirm && selected && (
+        <Modal
+          onClose={() => setShowEarlyCheckoutConfirm(false)}
+          title={`Early Checkout — ${selected.guest_name || "Reservation"}?`}
+          subtitle="Immediately releases the room back to availability."
+          size="sm"
+          zIndex={1200}
+          footer={
+            <>
+              <button onClick={() => setShowEarlyCheckoutConfirm(false)} disabled={processing} className={btn.secondary}>Back</button>
+              <button onClick={handleEarlyCheckout} disabled={processing} className={btn.dangerSolid}>
+                {processing ? "Processing..." : "Yes, Check Out Early"}
+              </button>
+            </>
+          }
+        >
+          {earlyCheckoutError && (
+            <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{earlyCheckoutError}</p>
+          )}
+          <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
+            Are you sure you want to check this guest out early? This releases their room back to availability right away, even though their scheduled check-out date hasn't arrived yet — use this only for guests who are actually leaving now.
+          </p>
         </Modal>
       )}
     </>
