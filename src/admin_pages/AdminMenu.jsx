@@ -192,9 +192,20 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
   // "Out of Stock" automatically — informational only, doesn't block
   // ordering (a hotel may still have physical stock that just hasn't been
   // logged as "Added" yet). current_stock is null until the item's first
-  // stock movement is ever recorded, which reads as "In Stock" (no baseline
-  // to judge it against yet), not a false "Out of Stock".
-  const isComputedOutOfStock = (item) => !!recordStock && item.current_stock !== null && item.current_stock !== undefined && item.current_stock <= 0;
+  // stock movement is ever recorded — shown as its own "Not Tracked" state
+  // rather than defaulting to "In Stock", which used to read as false
+  // confidence (every drink showed In Stock even with zero stock ever
+  // logged).
+  const statusBadge = (item) => {
+    if (!item.is_active) return { label: "Out of Stock", className: "bg-gray-100 text-gray-600" };
+    if (recordStock) {
+      if (item.current_stock === null || item.current_stock === undefined) {
+        return { label: "Not Tracked", className: "bg-gray-100 text-gray-600" };
+      }
+      if (item.current_stock <= 0) return { label: "Out of Stock", className: "bg-gray-100 text-gray-600" };
+    }
+    return { label: "In Stock", className: "bg-green-100 text-green-700" };
+  };
 
   const startStockAdjust = (item) => {
     setStockAdjustId(item.id);
@@ -202,7 +213,10 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
   };
 
   const handleSaveStockAdjust = async (id) => {
-    if (!Number(stockForm.quantity) || Number(stockForm.quantity) < 1) return;
+    const qty = Number(stockForm.quantity);
+    // Added/damaged are always a positive count; a correction can be
+    // negative too (to fix a mistaken over-entry) — just never zero.
+    if (!qty || (stockForm.movement_type !== "correction" && qty < 1)) return;
     try {
       setSavingStockId(id);
       setError(null);
@@ -221,6 +235,10 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
     }
   };
 
+  // Stock is a drinks-only column — Name, Price, Service Charge, Status,
+  // Actions is 5 for food; drinks get a 6th for it.
+  const columnCount = recordStock ? 6 : 5;
+
   return (
     <div className="w-full flex flex-col gap-6">
       {error && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{error}</p>}
@@ -238,15 +256,16 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                 <th className={table.th}>Name</th>
                 <th className={table.th}>Price (₦)</th>
                 <th className={table.th}>Service Charge (₦)</th>
+                {recordStock && <th className={table.th}>Stock</th>}
                 <th className={table.th}>Status</th>
                 <th className={table.th}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
+                <tr><td colSpan={columnCount} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={5} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No {label}s yet.</td></tr>
+                <tr><td colSpan={columnCount} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No {label}s yet.</td></tr>
               ) : (
                 items.map((item) => (
                   <Fragment key={item.id}>
@@ -262,9 +281,12 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                           <td className={table.td}>
                             <input type="number" value={editForm.service_charge} onChange={(e) => setEditForm({ ...editForm, service_charge: e.target.value })} className={`${field.input} text-xl! w-32`} />
                           </td>
+                          {recordStock && (
+                            <td className={table.td}>{item.current_stock ?? "—"}</td>
+                          )}
                           <td className={table.td}>
-                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active && !isComputedOutOfStock(item) ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                              {item.is_active ? (isComputedOutOfStock(item) ? "Out of Stock" : "In Stock") : "Out of Stock"}
+                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${statusBadge(item).className}`}>
+                              {statusBadge(item).label}
                             </span>
                           </td>
                           <td className={table.td}>
@@ -281,9 +303,12 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                           <td className={`${table.td} font-medium`}>{item.name}</td>
                           <td className={table.td}>{money(item.price)}</td>
                           <td className={table.td}>{money(item.service_charge)}</td>
+                          {recordStock && (
+                            <td className={table.td}>{item.current_stock ?? "—"}</td>
+                          )}
                           <td className={table.td}>
-                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${item.is_active && !isComputedOutOfStock(item) ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                              {item.is_active ? (isComputedOutOfStock(item) ? "Out of Stock" : "In Stock") : "Out of Stock"}
+                            <span className={`text-sm font-bold uppercase tracking-wide px-2.5 py-1 rounded-full whitespace-nowrap ${statusBadge(item).className}`}>
+                              {statusBadge(item).label}
                             </span>
                           </td>
                           <td className={table.td}>
@@ -319,7 +344,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                     </tr>
                     {recordStock && stockAdjustId === item.id && (
                       <tr className={table.row}>
-                        <td colSpan={5} className={`${table.td} bg-[color:var(--text-color)]/3`}>
+                        <td colSpan={columnCount} className={`${table.td} bg-[color:var(--text-color)]/3`}>
                           <div className="flex flex-wrap gap-4 items-end">
                             <span className="text-xl font-semibold whitespace-nowrap">Adjust stock — {item.name}</span>
                             <div className="flex flex-col gap-2">
@@ -327,11 +352,21 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                               <select value={stockForm.movement_type} onChange={(e) => setStockForm({ ...stockForm, movement_type: e.target.value })} className={`${field.select} text-xl!`}>
                                 <option value="added">Added (restock)</option>
                                 <option value="damaged">Damaged (breakage/spillage/expiry)</option>
+                                <option value="correction">Correction (fix a mistaken entry)</option>
                               </select>
                             </div>
                             <div className="flex flex-col gap-2">
                               <label className={field.label}>Quantity</label>
-                              <input type="number" min="1" value={stockForm.quantity} onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })} className={`${field.input} text-xl! w-32`} />
+                              <input
+                                type="number"
+                                min={stockForm.movement_type === "correction" ? undefined : "1"}
+                                value={stockForm.quantity}
+                                onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })}
+                                className={`${field.input} text-xl! w-32`}
+                              />
+                              {stockForm.movement_type === "correction" && (
+                                <span className="text-base text-[color:var(--text-color)]/60">Positive to add, negative to reduce (e.g. -10)</span>
+                              )}
                             </div>
                             <div className="flex flex-col gap-2 flex-1 min-w-48">
                               <label className={field.label}>Notes (optional)</label>
