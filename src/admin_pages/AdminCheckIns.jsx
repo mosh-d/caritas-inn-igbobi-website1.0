@@ -71,14 +71,17 @@ export default function AdminCheckInsPage() {
   const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
   const [walkInBlacklisted, setWalkInBlacklisted] = useState(false);
   const [walkInKnownNames, setWalkInKnownNames] = useState([]);
-  // Guest-profile lookup as the name is typed — distinct from
+  // Guest-profile lookup as name, phone, OR email is typed — distinct from
   // walkInKnownNames above (that one's the SAME guest's own alternate
   // aliases, keyed off the phone they just typed; this is ACROSS every
-  // guest profile, keyed off the name, for "is this person already in our
-  // system" — since two different guests can share a first name, matches
-  // show phone alongside the name so staff can tell them apart.
+  // guest profile, for "is this person already in our system" — since two
+  // different guests can share a first name, matches show phone alongside
+  // the name so staff can tell them apart. walkInActiveGuestField tracks
+  // which of the three fields is currently focused, since that's what
+  // decides both the search term (see the effect below) and which row's
+  // dropdown to render the results under.
   const [walkInGuestMatches, setWalkInGuestMatches] = useState([]);
-  const [walkInGuestFieldFocused, setWalkInGuestFieldFocused] = useState(false);
+  const [walkInActiveGuestField, setWalkInActiveGuestField] = useState(null); // 'name' | 'phone' | 'email' | null
   const [walkInReceipt, setWalkInReceipt] = useState(null);
   const [walkInPaymentWarning, setWalkInPaymentWarning] = useState(null);
 
@@ -163,15 +166,25 @@ export default function AdminCheckInsPage() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [walkIn.phone]);
 
-  // Live guest-profile search as the name is typed, so an existing guest
-  // (repeat visitor, or someone already in the system from an online
-  // booking) can be picked and have their details prefilled instead of
-  // re-typed. Searches first+last together so it works whichever field is
-  // still being typed into; the backend's own search already ORs against
-  // first_name, last_name, and the two concatenated (see GuestsService.
-  // getGuests), so a partial full name matches too.
+  // Live guest-profile search as name, phone, OR email is typed, so an
+  // existing guest (repeat visitor, or someone already in the system from
+  // an online booking) can be picked and have their details prefilled
+  // instead of re-typed. The search term comes from whichever field is
+  // actually focused, not all four combined — email/phone are encrypted at
+  // rest and matched via an exact-value hash (see GuestsService.getGuests),
+  // so mixing them with the name into one string would never hash-match
+  // anything; each field's own value is what has to reach the backend
+  // untouched. Name search stays partial (ILIKE), so it can suggest before
+  // the full name is typed; phone/email can only ever match once the
+  // complete value is typed, for the same encryption reason — still worth
+  // searching on every keystroke since a paste or autofill lands the full
+  // value in one change.
   useEffect(() => {
-    const term = `${walkIn.guestFirstName} ${walkIn.guestLastName}`.trim();
+    let term = "";
+    if (walkInActiveGuestField === "name") term = `${walkIn.guestFirstName} ${walkIn.guestLastName}`.trim();
+    else if (walkInActiveGuestField === "phone") term = walkIn.phone.trim();
+    else if (walkInActiveGuestField === "email") term = walkIn.email.trim();
+
     if (term.length < 2) {
       setWalkInGuestMatches([]);
       return;
@@ -183,7 +196,7 @@ export default function AdminCheckInsPage() {
         .catch(() => { if (!cancelled) setWalkInGuestMatches([]); });
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [walkIn.guestFirstName, walkIn.guestLastName]);
+  }, [walkInActiveGuestField, walkIn.guestFirstName, walkIn.guestLastName, walkIn.phone, walkIn.email]);
 
   const selectWalkInGuestMatch = (guest) => {
     setWalkIn((p) => ({
@@ -194,8 +207,26 @@ export default function AdminCheckInsPage() {
       email: guest.email || p.email,
     }));
     setWalkInGuestMatches([]);
-    setWalkInGuestFieldFocused(false);
+    setWalkInActiveGuestField(null);
   };
+
+  // Shared by the name row and the phone/email row below — same dropdown,
+  // just rendered under whichever row is currently active.
+  const renderWalkInGuestMatches = () => (
+    <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white border border-[color:var(--text-color)]/15 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+      {walkInGuestMatches.map((g) => (
+        <button
+          key={g.id}
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); selectWalkInGuestMatch(g); }}
+          className="w-full text-left px-4 py-3 hover:bg-black/5 flex items-center justify-between gap-4 text-lg border-b border-[color:var(--text-color)]/8 last:border-b-0 cursor-pointer"
+        >
+          <span className="font-medium text-[color:var(--black)]">{g.first_name} {g.last_name}</span>
+          <span className="text-[color:var(--text-color)]/60 whitespace-nowrap">{g.phone}</span>
+        </button>
+      ))}
+    </div>
+  );
 
   const handleCheckIn = async () => {
     if (!selected) return;
@@ -330,6 +361,7 @@ export default function AdminCheckInsPage() {
       setWalkIn(EMPTY_WALK_IN);
       setAvailability(null);
       setWalkInGuestMatches([]);
+      setWalkInActiveGuestField(null);
     } catch (err) {
       setWalkInError(err.response?.data?.message || "Walk-in check-in failed. Please try again.");
     } finally {
@@ -743,8 +775,8 @@ export default function AdminCheckInsPage() {
                           placeholder="First name"
                           value={walkIn.guestFirstName}
                           onChange={(e) => setWalkIn((p) => ({ ...p, guestFirstName: e.target.value }))}
-                          onFocus={() => setWalkInGuestFieldFocused(true)}
-                          onBlur={() => setWalkInGuestFieldFocused(false)}
+                          onFocus={() => setWalkInActiveGuestField("name")}
+                          onBlur={() => setWalkInActiveGuestField(null)}
                           className={field.input}
                         />
                       </div>
@@ -755,8 +787,8 @@ export default function AdminCheckInsPage() {
                           placeholder="Last name"
                           value={walkIn.guestLastName}
                           onChange={(e) => setWalkIn((p) => ({ ...p, guestLastName: e.target.value }))}
-                          onFocus={() => setWalkInGuestFieldFocused(true)}
-                          onBlur={() => setWalkInGuestFieldFocused(false)}
+                          onFocus={() => setWalkInActiveGuestField("name")}
+                          onBlur={() => setWalkInActiveGuestField(null)}
                           className={field.input}
                         />
                       </div>
@@ -764,50 +796,43 @@ export default function AdminCheckInsPage() {
                     {/* Existing-guest matches — mousedown (not click) fires
                         before the input's onBlur closes this, so a selection
                         registers instead of the list vanishing first. */}
-                    {walkInGuestFieldFocused && walkInGuestMatches.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white border border-[color:var(--text-color)]/15 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                        {walkInGuestMatches.map((g) => (
-                          <button
-                            key={g.id}
-                            type="button"
-                            onMouseDown={(e) => { e.preventDefault(); selectWalkInGuestMatch(g); }}
-                            className="w-full text-left px-4 py-3 hover:bg-black/5 flex items-center justify-between gap-4 text-lg border-b border-[color:var(--text-color)]/8 last:border-b-0 cursor-pointer"
-                          >
-                            <span className="font-medium text-[color:var(--black)]">{g.first_name} {g.last_name}</span>
-                            <span className="text-[color:var(--text-color)]/60 whitespace-nowrap">{g.phone}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {walkInActiveGuestField === "name" && walkInGuestMatches.length > 0 && renderWalkInGuestMatches()}
                   </div>
-                  <div className="flex gap-4 flex-wrap">
-                    <div className="flex flex-col gap-2 flex-1 min-w-48">
-                      <label className={field.label}>
-                        Phone <span className="text-red-500">*</span>
-                        {walkInBlacklisted && (
-                          <span className="ml-3 text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
-                        )}
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="+234..."
-                        value={walkIn.phone}
-                        onChange={(e) => setWalkIn((p) => ({ ...p, phone: e.target.value }))}
-                        className={field.input}
-                      />
+                  <div className="relative">
+                    <div className="flex gap-4 flex-wrap">
+                      <div className="flex flex-col gap-2 flex-1 min-w-48">
+                        <label className={field.label}>
+                          Phone <span className="text-red-500">*</span>
+                          {walkInBlacklisted && (
+                            <span className="ml-3 text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
+                          )}
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="+234..."
+                          value={walkIn.phone}
+                          onChange={(e) => setWalkIn((p) => ({ ...p, phone: e.target.value }))}
+                          onFocus={() => setWalkInActiveGuestField("phone")}
+                          onBlur={() => setWalkInActiveGuestField(null)}
+                          className={field.input}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2 flex-1 min-w-48">
+                        <label className={field.label}>
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="guest@example.com"
+                          value={walkIn.email}
+                          onChange={(e) => setWalkIn((p) => ({ ...p, email: e.target.value }))}
+                          onFocus={() => setWalkInActiveGuestField("email")}
+                          onBlur={() => setWalkInActiveGuestField(null)}
+                          className={field.input}
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-2 flex-1 min-w-48">
-                      <label className={field.label}>
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="guest@example.com"
-                        value={walkIn.email}
-                        onChange={(e) => setWalkIn((p) => ({ ...p, email: e.target.value }))}
-                        className={field.input}
-                      />
-                    </div>
+                    {(walkInActiveGuestField === "phone" || walkInActiveGuestField === "email") && walkInGuestMatches.length > 0 && renderWalkInGuestMatches()}
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className={field.label}>
