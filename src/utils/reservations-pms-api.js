@@ -159,6 +159,20 @@ export const fetchHouseStatus = async () => {
   return response.data;
 };
 
+// Sets a physical room's manual status flag — 'complementary' is what
+// excludes it from the room charge posted at check-in/night-audit (see
+// ReservationsService.postStayChargesForDay's billableRooms). id is the
+// room_inventory row's own id (from fetchAvailableRoomNumbers' `available`
+// list), not the room number string.
+export const updateRoomStatus = async (roomInventoryId, status) => {
+  const response = await axios.patch(
+    `${baseUrl}/api/rooms/inventory/${roomInventoryId}/status`,
+    { status },
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+};
+
 export const createAdminReservation = async (payload) => {
   const response = await axios.post(`${baseUrl}/api/reservations`, payload, {
     headers: { ...getAuthHeaders(), "Content-Type": "application/json" },

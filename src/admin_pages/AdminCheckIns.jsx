@@ -21,6 +21,7 @@ import {
   createAdminReservation,
   confirmReservationById,
   fetchAvailableRoomNumbers,
+  updateRoomStatus,
 } from "../utils/reservations-pms-api";
 import { fetchFolios, recordPayment } from "../utils/folios-api";
 
@@ -41,7 +42,7 @@ const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).
 
 const EMPTY_WALK_IN = {
   checkOut: "", roomsBooked: 1, roomTypeId: "", guestFirstName: "", guestLastName: "", phone: "", email: "",
-  roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "", withoutBreakfast: false,
+  roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "", withoutBreakfast: false, complementary: false,
   paymentSplits: [{ amount: "", payment_method: "cash" }], paymentReceiptNumber: "", paymentNotes: "",
 };
 
@@ -238,6 +239,20 @@ export default function AdminCheckInsPage() {
       // checkIn both now require every booked room to already have a room
       // number (see reservations.service.ts), so this has to run first.
       await assignRoom(internalId, validRoomNumbers);
+
+      // Must happen before checkInReservation below — postStayChargesForDay
+      // reads each assigned room's CURRENT status when posting the first
+      // night's charge, so a room only gets excluded from it if this runs
+      // first. Resolved against the room list fetched for the picker
+      // (still valid: assigning a room doesn't change its own inventory id,
+      // only its status/assignment) rather than needing a re-fetch.
+      if (walkIn.complementary) {
+        const roomIds = validRoomNumbers
+          .map((num) => walkInAvailableRooms?.available?.find((r) => r.room_number === num)?.id)
+          .filter(Boolean);
+        await Promise.all(roomIds.map((id) => updateRoomStatus(id, "complementary")));
+      }
+
       await confirmReservationById(internalId);
       await checkInReservation(internalId);
 
@@ -629,6 +644,27 @@ export default function AdminCheckInsPage() {
                   />
                   <label htmlFor="walkin-without-breakfast" className={`${field.label} cursor-pointer`}>
                     Without Breakfast
+                  </label>
+                </div>
+
+                {/* Complementary — flags the assigned room(s) complementary the
+                    moment check-in runs, so no room charge posts for them at
+                    all (see postStayChargesForDay's billableRooms) — a
+                    discount only shrinks the amount charged, this removes the
+                    room charge outright and marks the room itself comped
+                    (visible on Rooms/Room Chart too). Independent of Discount
+                    above; combining them is harmless (a comped room posts
+                    nothing regardless of what total_rate says). */}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="walkin-complementary"
+                    checked={walkIn.complementary}
+                    onChange={(e) => setWalkIn((p) => ({ ...p, complementary: e.target.checked }))}
+                    className="w-5 h-5 cursor-pointer"
+                  />
+                  <label htmlFor="walkin-complementary" className={`${field.label} cursor-pointer`}>
+                    Complementary (no room charge, sets room status)
                   </label>
                 </div>
 
