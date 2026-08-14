@@ -7,7 +7,7 @@ import StatusBadge from "../components/shared/StatusBadge";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchCheckInList } from "../utils/front-office-api";
-import { checkGuestBlacklist } from "../utils/guests-api";
+import { checkGuestBlacklist, fetchGuests } from "../utils/guests-api";
 import { localTodayISO, currentBusinessDateISO, minWalkInCheckOutISO } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
@@ -71,6 +71,14 @@ export default function AdminCheckInsPage() {
   const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
   const [walkInBlacklisted, setWalkInBlacklisted] = useState(false);
   const [walkInKnownNames, setWalkInKnownNames] = useState([]);
+  // Guest-profile lookup as the name is typed — distinct from
+  // walkInKnownNames above (that one's the SAME guest's own alternate
+  // aliases, keyed off the phone they just typed; this is ACROSS every
+  // guest profile, keyed off the name, for "is this person already in our
+  // system" — since two different guests can share a first name, matches
+  // show phone alongside the name so staff can tell them apart.
+  const [walkInGuestMatches, setWalkInGuestMatches] = useState([]);
+  const [walkInGuestFieldFocused, setWalkInGuestFieldFocused] = useState(false);
   const [walkInReceipt, setWalkInReceipt] = useState(null);
   const [walkInPaymentWarning, setWalkInPaymentWarning] = useState(null);
 
@@ -154,6 +162,40 @@ export default function AdminCheckInsPage() {
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [walkIn.phone]);
+
+  // Live guest-profile search as the name is typed, so an existing guest
+  // (repeat visitor, or someone already in the system from an online
+  // booking) can be picked and have their details prefilled instead of
+  // re-typed. Searches first+last together so it works whichever field is
+  // still being typed into; the backend's own search already ORs against
+  // first_name, last_name, and the two concatenated (see GuestsService.
+  // getGuests), so a partial full name matches too.
+  useEffect(() => {
+    const term = `${walkIn.guestFirstName} ${walkIn.guestLastName}`.trim();
+    if (term.length < 2) {
+      setWalkInGuestMatches([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      fetchGuests({ search: term, limit: 6 })
+        .then((data) => { if (!cancelled) setWalkInGuestMatches(data?.data || []); })
+        .catch(() => { if (!cancelled) setWalkInGuestMatches([]); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [walkIn.guestFirstName, walkIn.guestLastName]);
+
+  const selectWalkInGuestMatch = (guest) => {
+    setWalkIn((p) => ({
+      ...p,
+      guestFirstName: guest.first_name || "",
+      guestLastName: guest.last_name || "",
+      phone: guest.phone || p.phone,
+      email: guest.email || p.email,
+    }));
+    setWalkInGuestMatches([]);
+    setWalkInGuestFieldFocused(false);
+  };
 
   const handleCheckIn = async () => {
     if (!selected) return;
@@ -287,6 +329,7 @@ export default function AdminCheckInsPage() {
       setWalkInSuccess({ bookingRef, guestName: guestFullName });
       setWalkIn(EMPTY_WALK_IN);
       setAvailability(null);
+      setWalkInGuestMatches([]);
     } catch (err) {
       setWalkInError(err.response?.data?.message || "Walk-in check-in failed. Please try again.");
     } finally {
@@ -689,29 +732,53 @@ export default function AdminCheckInsPage() {
                       </select>
                     </div>
                   )}
-                  <div className="flex gap-4 flex-wrap">
-                    <div className="flex flex-col gap-2 flex-1 min-w-48">
-                      <label className={field.label}>
-                        First Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="First name"
-                        value={walkIn.guestFirstName}
-                        onChange={(e) => setWalkIn((p) => ({ ...p, guestFirstName: e.target.value }))}
-                        className={field.input}
-                      />
+                  <div className="relative">
+                    <div className="flex gap-4 flex-wrap">
+                      <div className="flex flex-col gap-2 flex-1 min-w-48">
+                        <label className={field.label}>
+                          First Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="First name"
+                          value={walkIn.guestFirstName}
+                          onChange={(e) => setWalkIn((p) => ({ ...p, guestFirstName: e.target.value }))}
+                          onFocus={() => setWalkInGuestFieldFocused(true)}
+                          onBlur={() => setWalkInGuestFieldFocused(false)}
+                          className={field.input}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2 flex-1 min-w-48">
+                        <label className={field.label}>Last Name</label>
+                        <input
+                          type="text"
+                          placeholder="Last name"
+                          value={walkIn.guestLastName}
+                          onChange={(e) => setWalkIn((p) => ({ ...p, guestLastName: e.target.value }))}
+                          onFocus={() => setWalkInGuestFieldFocused(true)}
+                          onBlur={() => setWalkInGuestFieldFocused(false)}
+                          className={field.input}
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-2 flex-1 min-w-48">
-                      <label className={field.label}>Last Name</label>
-                      <input
-                        type="text"
-                        placeholder="Last name"
-                        value={walkIn.guestLastName}
-                        onChange={(e) => setWalkIn((p) => ({ ...p, guestLastName: e.target.value }))}
-                        className={field.input}
-                      />
-                    </div>
+                    {/* Existing-guest matches — mousedown (not click) fires
+                        before the input's onBlur closes this, so a selection
+                        registers instead of the list vanishing first. */}
+                    {walkInGuestFieldFocused && walkInGuestMatches.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white border border-[color:var(--text-color)]/15 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                        {walkInGuestMatches.map((g) => (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); selectWalkInGuestMatch(g); }}
+                            className="w-full text-left px-4 py-3 hover:bg-black/5 flex items-center justify-between gap-4 text-lg border-b border-[color:var(--text-color)]/8 last:border-b-0 cursor-pointer"
+                          >
+                            <span className="font-medium text-[color:var(--black)]">{g.first_name} {g.last_name}</span>
+                            <span className="text-[color:var(--text-color)]/60 whitespace-nowrap">{g.phone}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-4 flex-wrap">
                     <div className="flex flex-col gap-2 flex-1 min-w-48">
