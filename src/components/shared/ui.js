@@ -34,8 +34,11 @@ export const field = {
     "w-full border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl bg-white text-[color:var(--text-color)] placeholder:text-[color:var(--text-color)]/30 focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] focus:border-transparent transition-shadow",
   select:
     "w-auto border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl bg-white text-[color:var(--text-color)] focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] focus:border-transparent transition-shadow cursor-pointer",
+  // resize-none + overflow-hidden since height is driven by AutoGrowTextarea
+  // (see components/shared/AutoGrowTextarea.jsx) — a manual resize handle
+  // would just get overridden on the next keystroke anyway.
   textarea:
-    "w-full border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl bg-white text-[color:var(--text-color)] placeholder:text-[color:var(--text-color)]/30 focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] focus:border-transparent transition-shadow min-h-[8rem] resize-y",
+    "w-full border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl bg-white text-[color:var(--text-color)] placeholder:text-[color:var(--text-color)]/30 focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] focus:border-transparent transition-shadow resize-none overflow-hidden",
 };
 
 export const table = {

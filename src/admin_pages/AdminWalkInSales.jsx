@@ -7,6 +7,7 @@ import StatusBadge from "../components/shared/StatusBadge";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
+import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
@@ -780,11 +781,10 @@ export default function AdminWalkInSalesPage() {
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Remarks</label>
-                        <input
-                          type="text"
+                        <AutoGrowTextarea
                           value={paymentForm.notes}
                           onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                          className={field.input}
+                          className={field.textarea}
                         />
                       </div>
                     </div>

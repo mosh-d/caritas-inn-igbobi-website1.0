@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, Fragment } from "react";
 import { IoRestaurantOutline } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
+import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
 import { isManager } from "../utils/auth";
 import {
@@ -334,7 +335,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                             </div>
                             <div className="flex flex-col gap-2 flex-1 min-w-48">
                               <label className={field.label}>Notes (optional)</label>
-                              <input type="text" value={stockForm.notes} onChange={(e) => setStockForm({ ...stockForm, notes: e.target.value })} className={`${field.input} text-xl!`} />
+                              <AutoGrowTextarea value={stockForm.notes} onChange={(e) => setStockForm({ ...stockForm, notes: e.target.value })} className={`${field.textarea} text-xl!`} />
                             </div>
                             <div className={table.actions}>
                               <button onClick={() => handleSaveStockAdjust(item.id)} disabled={savingStockId === item.id || !Number(stockForm.quantity)} className={btn.rowPrimary}>

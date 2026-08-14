@@ -10,6 +10,7 @@ import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import ContactRow from "../components/shared/ContactRow";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
+import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import {
@@ -899,7 +900,7 @@ export default function AdminReservationsPage() {
                 <h3 className="text-2xl font-bold text-[color:var(--black)]">Details</h3>
                 <div className="flex flex-col gap-2">
                   <label className={field.label}>Special Requests</label>
-                  <textarea
+                  <AutoGrowTextarea
                     value={editFields.special_requests}
                     onChange={(e) => setEditFields({ ...editFields, special_requests: e.target.value })}
                     className={field.textarea}
@@ -1077,7 +1078,7 @@ export default function AdminReservationsPage() {
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Remarks (optional)</label>
-                        <input type="text" value={depositForm.notes} onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })} className={field.input} />
+                        <AutoGrowTextarea value={depositForm.notes} onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })} className={field.textarea} />
                       </div>
                     </div>
                     <button onClick={handleRecordDeposit} disabled={recordingDeposit || !hasValidDepositSplits} className={`${btn.primary} self-start`}>
@@ -1153,7 +1154,7 @@ export default function AdminReservationsPage() {
           </p>
           <div className="flex flex-col gap-2">
             <label className={field.label}>Reason (optional)</label>
-            <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className={field.textarea} />
+            <AutoGrowTextarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className={field.textarea} />
           </div>
         </Modal>
       )}

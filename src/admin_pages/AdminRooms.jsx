@@ -5,6 +5,7 @@ import { IoClose, IoBedOutline } from "react-icons/io5";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
+import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { canManageRoomPrices, getAuthHeaders } from "../utils/auth";
@@ -139,7 +140,7 @@ function AddRoomModal({ onClose, onSuccess, onError }) {
 
         <div className="flex flex-col gap-2">
           <label className={field.label}>Summary *</label>
-          <textarea
+          <AutoGrowTextarea
             name="summary"
             value={form.summary}
             onChange={handleChange}
@@ -626,7 +627,7 @@ function ViewRoomModal({
           <>
             <div className="flex flex-col gap-2">
               <label className={field.label}>Summary</label>
-              <textarea
+              <AutoGrowTextarea
                 value={detailsForm.summary}
                 onChange={(e) => setDetailsForm({ ...detailsForm, summary: e.target.value })}
                 className={field.textarea}

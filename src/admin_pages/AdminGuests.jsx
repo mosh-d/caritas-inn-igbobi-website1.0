@@ -6,6 +6,7 @@ import Modal from '../components/shared/Modal';
 import PageHeading from '../components/shared/PageHeading';
 import StatusBadge from '../components/shared/StatusBadge';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
+import AutoGrowTextarea from '../components/shared/AutoGrowTextarea';
 import { btn, field, table } from '../components/shared/ui';
 import {
   fetchGuests,
@@ -594,7 +595,7 @@ export default function AdminGuestsPage() {
                 {editForm.is_blacklisted && (
                   <div className='flex flex-col gap-2'>
                     <label className={field.label}>Blacklist Reason</label>
-                    <textarea
+                    <AutoGrowTextarea
                       value={editForm.blacklist_reason || ''}
                       onChange={(e) =>
                         setEditForm({

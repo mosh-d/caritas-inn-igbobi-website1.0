@@ -14,6 +14,7 @@ import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
+import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import {
   checkInReservation,
   assignRoom,
@@ -916,12 +917,11 @@ export default function AdminCheckInsPage() {
                     </div>
                     <div className="flex flex-col gap-2 flex-1 min-w-48">
                       <label className={field.label}>Remarks</label>
-                      <input
-                        type="text"
+                      <AutoGrowTextarea
                         placeholder="e.g. cash received at check-in"
                         value={walkIn.paymentNotes}
                         onChange={(e) => setWalkIn((p) => ({ ...p, paymentNotes: e.target.value }))}
-                        className={field.input}
+                        className={field.textarea}
                       />
                     </div>
                   </div>

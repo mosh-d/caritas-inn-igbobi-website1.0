@@ -12,6 +12,7 @@ import TransactionReceiptModal from "../components/shared/TransactionReceiptModa
 import CopyIconButton from "../components/shared/CopyIconButton";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
+import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import {
@@ -812,7 +813,7 @@ export default function AdminFoliosPage() {
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Description</label>
-                        <input type="text" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.input} />
+                        <AutoGrowTextarea value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.textarea} />
                       </div>
                     </div>
                     {isFoodOrDrinkCharge && (
@@ -843,7 +844,7 @@ export default function AdminFoliosPage() {
                     )}
                     <div className="flex flex-col gap-2">
                       <label className={field.label}>Remarks (optional)</label>
-                      <input type="text" value={itemForm.notes} onChange={(e) => setItemForm({ ...itemForm, notes: e.target.value })} className={field.input} />
+                      <AutoGrowTextarea value={itemForm.notes} onChange={(e) => setItemForm({ ...itemForm, notes: e.target.value })} className={field.textarea} />
                     </div>
                     {itemForm.item_type === "adjustment" && (
                       <p className="text-lg text-[color:var(--text-color)]/60 -mt-1">
@@ -918,12 +919,11 @@ export default function AdminFoliosPage() {
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Remarks</label>
-                        <input
-                          type="text"
+                        <AutoGrowTextarea
                           placeholder="e.g. cash received at front desk"
                           value={paymentForm.notes}
                           onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                          className={field.input}
+                          className={field.textarea}
                         />
                       </div>
                     </div>
@@ -969,12 +969,11 @@ export default function AdminFoliosPage() {
                       </div>
                       <div className="col-span-2 max-sm:col-span-1 flex flex-col gap-2">
                         <label className={field.label}>Remarks</label>
-                        <input
-                          type="text"
+                        <AutoGrowTextarea
                           placeholder="e.g. cash refunded to guest at checkout"
                           value={refundForm.notes}
                           onChange={(e) => setRefundForm({ ...refundForm, notes: e.target.value })}
-                          className={field.input}
+                          className={field.textarea}
                         />
                       </div>
                     </div>
