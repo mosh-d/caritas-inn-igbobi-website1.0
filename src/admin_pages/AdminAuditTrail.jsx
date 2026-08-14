@@ -97,7 +97,8 @@ export default function AdminAuditTrail() {
   const [filterAction, setFilterAction] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
-  const hasFilters = filterStaffId || filterRole || filterAction || filterFrom || filterTo;
+  const [filterSearch, setFilterSearch] = useState("");
+  const hasFilters = filterStaffId || filterRole || filterAction || filterFrom || filterTo || filterSearch;
 
   const load = useCallback(async (p = 1, filters = {}) => {
     try {
@@ -110,6 +111,7 @@ export default function AdminAuditTrail() {
         action: filters.action || undefined,
         from: filters.from || undefined,
         to: filters.to || undefined,
+        search: filters.search || undefined,
       });
       setEntries(data.data || []);
       setTotal(data.total || 0);
@@ -134,9 +136,21 @@ export default function AdminAuditTrail() {
   const { isConnected } = useWebSocketContext();
   useEffect(() => {
     if (!canView || !isConnected) return;
-    load(1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo });
+    load(1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo, search: filterSearch });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, canView]);
+
+  // Debounced — unlike the dropdown/date filters below (which fire
+  // immediately since each change is one discrete action), reloading on
+  // every keystroke here would mean one request per character typed.
+  useEffect(() => {
+    if (!canView) return;
+    const timer = setTimeout(() => {
+      load(1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo, search: filterSearch });
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterSearch]);
 
   const applyFilters = (next) => {
     const merged = {
@@ -145,6 +159,7 @@ export default function AdminAuditTrail() {
       action: filterAction,
       from: filterFrom,
       to: filterTo,
+      search: filterSearch,
       ...next,
     };
     setFilterStaffId(merged.staffId);
@@ -152,6 +167,7 @@ export default function AdminAuditTrail() {
     setFilterAction(merged.action);
     setFilterFrom(merged.from);
     setFilterTo(merged.to);
+    setFilterSearch(merged.search);
     load(1, merged);
   };
 
@@ -161,6 +177,7 @@ export default function AdminAuditTrail() {
     setFilterAction("");
     setFilterFrom("");
     setFilterTo("");
+    setFilterSearch("");
     load(1, {});
   };
 
@@ -186,6 +203,17 @@ export default function AdminAuditTrail() {
       </div>
 
       <div className="w-full flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-2 flex-1 min-w-64">
+          <label className={field.label}>Search</label>
+          <input
+            type="text"
+            placeholder="Guest name, staff, action…"
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
+            className={field.input}
+          />
+        </div>
+
         <div className="flex flex-col gap-2">
           <label className={field.label}>Staff</label>
           <select
@@ -319,7 +347,7 @@ export default function AdminAuditTrail() {
               <div className="flex justify-center items-center gap-4 w-full mt-6">
                 <Button
                   variant="emphasis"
-                  onClick={() => load(page - 1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo })}
+                  onClick={() => load(page - 1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo, search: filterSearch })}
                   disabled={page === 1}
                   className={page === 1 ? "opacity-30 cursor-not-allowed" : ""}
                 >
@@ -328,7 +356,7 @@ export default function AdminAuditTrail() {
                 <span className="text-lg font-medium">Page {page} of {pages}</span>
                 <Button
                   variant="emphasis"
-                  onClick={() => load(page + 1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo })}
+                  onClick={() => load(page + 1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo, search: filterSearch })}
                   disabled={page === pages}
                   className={page === pages ? "opacity-30 cursor-not-allowed" : ""}
                 >
