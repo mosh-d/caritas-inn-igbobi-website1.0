@@ -157,9 +157,9 @@ export default function AdminReportsPage() {
           : activeTab === "accommodation"
           ? "One row per room in use on a given date — guest, room, tariff, payment, and whether they checked in, checked out, or are still in-house."
           : activeTab === "food-sales"
-          ? "Every food order for a given date — charged to a room's folio or a walk-in folio — with quantity, amount, payment status, and payment method."
+          ? "Every food order for a given date — charged to a room's folio or a non-guest folio — with quantity, amount, payment status, and payment method."
           : activeTab === "drink-sales"
-          ? "Every drink order for a given date — charged to a room's folio or a walk-in folio — with quantity, amount, payment status, and payment method."
+          ? "Every drink order for a given date — charged to a room's folio or a non-guest folio — with quantity, amount, payment status, and payment method."
           : "Every active drink item for a given date — opening, added, damaged, sold, and closing stock, plus what sold for. Digitizes the paper Bar Analysis sheet."}
       </p>
 

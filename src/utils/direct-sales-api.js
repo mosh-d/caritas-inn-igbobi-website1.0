@@ -6,7 +6,7 @@ const baseUrl = SERVER_BASE_URL.endsWith("/")
   ? SERVER_BASE_URL.slice(0, -1)
   : SERVER_BASE_URL;
 
-// Walk-in (non-guest) itemized sales — no guest, no reservation, no folio.
+// Legacy non-guest itemized sales — no guest, no reservation, no folio.
 export const fetchDirectSales = async (date) => {
   const response = await axios.get(`${baseUrl}/api/direct-sales`, {
     headers: getAuthHeaders(),

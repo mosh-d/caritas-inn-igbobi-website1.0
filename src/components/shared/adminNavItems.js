@@ -48,9 +48,9 @@ export const ADMIN_NAV_ITEMS = [
   { to: "/admin/folios", label: "GUEST FOLIOS", icon: IoReceiptOutline, waitstaffVisible: true },
   // waitstaffVisible: waiters/waitresses record these directly; no
   // managerOnly, so receptionist/manager see it too (they can also ring in
-  // a walk-in order, e.g. covering the bar when no waitstaff is on duty) —
+  // a non-guest order, e.g. covering the bar when no waitstaff is on duty) —
   // accountant is the only role that never sees it, same as GUEST FOLIOS.
-  { to: "/admin/walk-in-sales", label: "WALK-IN SALES", icon: IoCartOutline, waitstaffVisible: true },
+  { to: "/admin/non-guest-sales", label: "NON-GUEST SALES", icon: IoCartOutline, waitstaffVisible: true },
   { to: "/admin/check-ins", label: "CHECK-INS", icon: IoLogInOutline },
   { to: "/admin/check-outs", label: "CHECK-OUTS", icon: IoLogOutOutline },
   { to: "/admin/in-house", label: "IN-HOUSE", icon: IoHomeOutline },

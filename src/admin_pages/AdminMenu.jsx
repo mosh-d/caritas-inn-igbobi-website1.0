@@ -37,7 +37,7 @@ export default function AdminMenu() {
     <div data-component="AdminMenu" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
       <PageHeading icon={IoRestaurantOutline}>Menu</PageHeading>
       <p className="text-xl text-[color:var(--text-color)]/76">
-        Food and drink items a waiter/waitress picks from when posting a charge to a folio, or when recording a walk-in sale. Prices set here are what auto-fills — always still editable at the point of charging.
+        Food and drink items a waiter/waitress picks from when posting a charge to a folio, or when recording a non-guest sale. Prices set here are what auto-fills — always still editable at the point of charging.
       </p>
 
       <div className="flex gap-3 text-xl flex-wrap">

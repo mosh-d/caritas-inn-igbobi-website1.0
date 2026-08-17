@@ -12,16 +12,16 @@ import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import {
-  fetchWalkInFolios,
-  fetchWalkInFolioById,
-  createWalkInFolio,
-  addWalkInFolioItem,
-  updateWalkInFolioGuestInfo,
-  closeWalkInFolio,
-  recordWalkInPayment,
-  fetchWalkInCredits,
-  applyWalkInCredit,
-} from "../utils/walk-in-folios-api";
+  fetchNonGuestFolios,
+  fetchNonGuestFolioById,
+  createNonGuestFolio,
+  addNonGuestFolioItem,
+  updateNonGuestFolioGuestInfo,
+  closeNonGuestFolio,
+  recordNonGuestPayment,
+  fetchNonGuestCredits,
+  applyNonGuestCredit,
+} from "../utils/non-guest-folios-api";
 
 const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", bill_no: "", is_complementary: false, is_manager: false };
 const emptyNewFolioForm = { guest_name: "", guest_phone: "", rows: [{ ...emptyRow }] };
@@ -30,7 +30,7 @@ const emptyPaymentForm = { splits: [{ amount: "", payment_method: "cash" }], rec
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDateTime = (d) => d ? new Date(d).toLocaleString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
 
-export default function AdminWalkInSalesPage() {
+export default function AdminNonGuestSalesPage() {
   // Nav already hides this page from an accountant session (see
   // adminNavItems.js) — same defense-in-depth fallback every other
   // role-gated page already has.
@@ -50,7 +50,7 @@ export default function AdminWalkInSalesPage() {
   const isCompOrManager = (row) => row.is_complementary || row.is_manager;
   // Preview only — the backend re-resolves price/service_charge itself from
   // the same menu item at posting time, same "never trust the client"
-  // reasoning as AdminFolios.jsx/AdminWalkInSales.jsx.
+  // reasoning as AdminFolios.jsx/AdminNonGuestSales.jsx.
   const rowAmount = (row) => {
     const item = itemFor(row);
     if (!item || isCompOrManager(row)) return 0;
@@ -67,7 +67,7 @@ export default function AdminWalkInSalesPage() {
 
   // === New folio form — a folio is created the moment the first charge is
   // added, so this doubles as both "create" and "add first charge" in one
-  // submit, mirroring AdminWalkInSales.jsx's old multi-row form almost
+  // submit, mirroring AdminNonGuestSales.jsx's old multi-row form almost
   // exactly, minus the payment step (that's a separate action now). ===
   const [newFolio, setNewFolio] = useState(emptyNewFolioForm);
   const [creating, setCreating] = useState(false);
@@ -84,7 +84,7 @@ export default function AdminWalkInSalesPage() {
       return;
     }
     const timeout = setTimeout(() => {
-      fetchWalkInCredits(name).then(setNameCredits).catch(() => setNameCredits([]));
+      fetchNonGuestCredits(name).then(setNameCredits).catch(() => setNameCredits([]));
     }, 400);
     return () => clearTimeout(timeout);
   }, [newFolio.guest_name]);
@@ -105,7 +105,7 @@ export default function AdminWalkInSalesPage() {
     try {
       setCreating(true);
       setCreateError(null);
-      await createWalkInFolio({
+      await createNonGuestFolio({
         guest_name: newFolio.guest_name.trim() || undefined,
         guest_phone: newFolio.guest_phone.trim() || undefined,
         items: newFolio.rows.map((row) => ({
@@ -119,11 +119,11 @@ export default function AdminWalkInSalesPage() {
       });
       setNewFolio(emptyNewFolioForm);
       setNameCredits([]);
-      setSuccessMessage("Walk-in folio opened.");
+      setSuccessMessage("Non-guest folio opened.");
       setTimeout(() => setSuccessMessage(""), 5000);
       loadFolios();
     } catch (err) {
-      setCreateError(err.response?.data?.message || "Failed to open walk-in folio.");
+      setCreateError(err.response?.data?.message || "Failed to open non-guest folio.");
     } finally {
       setCreating(false);
     }
@@ -149,14 +149,14 @@ export default function AdminWalkInSalesPage() {
       const params = { page, limit };
       if (searchTerm) params.search = searchTerm;
       else if (statusFilter !== "all") params.status = statusFilter;
-      const result = await fetchWalkInFolios(params);
+      const result = await fetchNonGuestFolios(params);
       if (seq !== loadSeq.current) return;
       setFolios(result.data || []);
       setTotalPages(result.totalPages || 1);
       setError(null);
     } catch (err) {
       if (seq !== loadSeq.current) return;
-      setError((err.response?.data?.message || "Failed to load walk-in folios.") + " Please refresh the page.");
+      setError((err.response?.data?.message || "Failed to load non-guest folios.") + " Please refresh the page.");
     } finally {
       if (seq === loadSeq.current) setLoading(false);
     }
@@ -181,7 +181,7 @@ export default function AdminWalkInSalesPage() {
   const [transactionReceipt, setTransactionReceipt] = useState(null);
 
   // No guest_name means there's nothing to match a credit against yet —
-  // fetchWalkInCredits(undefined) would otherwise fall back to the bare
+  // fetchNonGuestCredits(undefined) would otherwise fall back to the bare
   // "every pending credit at the branch" list, which is the wrong thing to
   // show here.
   const loadFolioCredits = async (guestName) => {
@@ -190,7 +190,7 @@ export default function AdminWalkInSalesPage() {
       return;
     }
     try {
-      setFolioCredits(await fetchWalkInCredits(guestName));
+      setFolioCredits(await fetchNonGuestCredits(guestName));
     } catch {
       setFolioCredits([]);
     }
@@ -204,12 +204,12 @@ export default function AdminWalkInSalesPage() {
     setPaymentForm(emptyPaymentForm);
     setPaymentError(null);
     try {
-      const full = await fetchWalkInFolioById(folio.id);
+      const full = await fetchNonGuestFolioById(folio.id);
       setSelectedFolio(full);
       setGuestInfoForm({ guest_name: full.guest_name || "", guest_phone: full.guest_phone || "" });
       await loadFolioCredits(full.guest_name);
     } catch (err) {
-      setError((err.response?.data?.message || "Failed to load walk-in folio.") + " Please refresh the page.");
+      setError((err.response?.data?.message || "Failed to load non-guest folio.") + " Please refresh the page.");
     } finally {
       setDetailLoading(false);
     }
@@ -217,7 +217,7 @@ export default function AdminWalkInSalesPage() {
 
   const refreshSelectedFolio = async () => {
     if (!selectedFolio) return;
-    const full = await fetchWalkInFolioById(selectedFolio.id);
+    const full = await fetchNonGuestFolioById(selectedFolio.id);
     setSelectedFolio(full);
     setGuestInfoForm({ guest_name: full.guest_name || "", guest_phone: full.guest_phone || "" });
     await loadFolioCredits(full.guest_name);
@@ -233,7 +233,7 @@ export default function AdminWalkInSalesPage() {
     try {
       setSavingGuestInfo(true);
       setGuestInfoError(null);
-      await updateWalkInFolioGuestInfo(selectedFolio.id, {
+      await updateNonGuestFolioGuestInfo(selectedFolio.id, {
         guest_name: guestInfoForm.guest_name,
         guest_phone: guestInfoForm.guest_phone,
       });
@@ -255,7 +255,7 @@ export default function AdminWalkInSalesPage() {
     try {
       setAddingItem(true);
       setItemError(null);
-      await addWalkInFolioItem(selectedFolio.id, {
+      await addNonGuestFolioItem(selectedFolio.id, {
         item_kind: itemForm.item_kind,
         reference_id: Number(itemForm.reference_id),
         quantity: Number(itemForm.quantity),
@@ -280,8 +280,8 @@ export default function AdminWalkInSalesPage() {
     try {
       setRecordingPayment(true);
       setPaymentError(null);
-      const result = await recordWalkInPayment({
-        walk_in_folio_id: selectedFolio.id,
+      const result = await recordNonGuestPayment({
+        non_guest_folio_id: selectedFolio.id,
         payments: paymentForm.splits.map((s) => ({ amount: Number(s.amount), payment_method: s.payment_method })),
         receipt_number: paymentForm.receipt_number || undefined,
         notes: paymentForm.notes || undefined,
@@ -311,7 +311,7 @@ export default function AdminWalkInSalesPage() {
     try {
       setApplyingCreditId(creditId);
       setPaymentError(null);
-      await applyWalkInCredit(creditId, selectedFolio.id);
+      await applyNonGuestCredit(creditId, selectedFolio.id);
       await refreshSelectedFolio();
       loadFolios();
       setSuccessMessage("Credit applied.");
@@ -331,13 +331,13 @@ export default function AdminWalkInSalesPage() {
     if (!selectedFolio) return;
     try {
       setClosing(true);
-      await closeWalkInFolio(selectedFolio.id);
-      setSuccessMessage("Walk-in folio closed.");
+      await closeNonGuestFolio(selectedFolio.id);
+      setSuccessMessage("Non-guest folio closed.");
       setTimeout(() => setSuccessMessage(""), 5000);
       closeFolioDetail();
       loadFolios();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to close walk-in folio.");
+      setError(err.response?.data?.message || "Failed to close non-guest folio.");
     } finally {
       setClosing(false);
     }
@@ -347,7 +347,7 @@ export default function AdminWalkInSalesPage() {
 
   if (!canAccess) {
     return (
-      <div data-component="AdminWalkInSales" className="px-[4rem] max-sm:px-[1rem] py-[4rem]">
+      <div data-component="AdminNonGuestSales" className="px-[4rem] max-sm:px-[1rem] py-[4rem]">
         <p className="text-2xl text-[color:var(--text-color)]/68">
           You don't have permission to view this page.
         </p>
@@ -356,8 +356,8 @@ export default function AdminWalkInSalesPage() {
   }
 
   return (
-    <div data-component="AdminWalkInSales" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
-      <PageHeading icon={IoCartOutline}>Walk-In Sales</PageHeading>
+    <div data-component="AdminNonGuestSales" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
+      <PageHeading icon={IoCartOutline}>Non-Guest Sales</PageHeading>
       <p className="text-xl text-[color:var(--text-color)]/76">
         Record a food/drink order for someone who isn't a hotel guest — name is optional. Payment can be recorded now or later; it closes out automatically once the balance is settled.
       </p>
@@ -367,7 +367,7 @@ export default function AdminWalkInSalesPage() {
 
       {/* ==== New folio form ==== */}
       <div className="w-full flex flex-col gap-4 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6">
-        <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">New Walk-In Order</p>
+        <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">New Non-Guest Order</p>
         {createError && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{createError}</p>}
 
         <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
@@ -542,7 +542,7 @@ export default function AdminWalkInSalesPage() {
               {loading ? (
                 <tr><td colSpan={7} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
               ) : folios.length === 0 ? (
-                <tr><td colSpan={7} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No walk-in folios match that search." : "No walk-in folios yet."}</td></tr>
+                <tr><td colSpan={7} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No non-guest folios match that search." : "No non-guest folios yet."}</td></tr>
               ) : (
                 folios.map((f) => (
                   <tr key={f.id} className={table.row}>
