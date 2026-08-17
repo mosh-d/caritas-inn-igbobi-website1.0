@@ -451,12 +451,21 @@ function AccommodationSnapshot({ data }) {
                 <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
                 <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_type_name}</td>
                 <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_number}</td>
-                <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.room_price)}</td>
-                <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.breakfast_price)}</td>
+                <td className="px-6 py-4 text-[color:var(--text-color)]/84">
+                  {r.is_complementary ? <s className="text-[color:var(--text-color)]/50">{money(r.room_price)}</s> : money(r.room_price)}
+                </td>
+                <td className="px-6 py-4 text-[color:var(--text-color)]/84">
+                  {r.is_complementary ? <s className="text-[color:var(--text-color)]/50">{money(r.breakfast_price)}</s> : money(r.breakfast_price)}
+                </td>
                 <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.payment_mode}</td>
                 <td className="px-6 py-4"><StatusBadge status={r.payment_status} /></td>
                 <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount_paid)}</td>
-                <td className="px-6 py-4"><StatusBadge status={r.remarks} /></td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <StatusBadge status={r.remarks} />
+                    {r.is_complementary && <StatusBadge status="Complementary" />}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
