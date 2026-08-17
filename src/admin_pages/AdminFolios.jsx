@@ -370,8 +370,12 @@ export default function AdminFoliosPage() {
       setPaymentForm(emptyPaymentForm);
       await refreshSelectedFolio();
       loadFolios();
-      setSuccessMessage("Payment recorded.");
-      setTimeout(() => setSuccessMessage(""), 5000);
+      setSuccessMessage(
+        result.overpayment_deposit
+          ? `Payment recorded — ${money(result.overpayment_deposit.amount)} over the balance kept on file as a deposit.`
+          : "Payment recorded.",
+      );
+      setTimeout(() => setSuccessMessage(""), 6000);
       setTransactionReceipt({
         title: "Payment Recorded",
         items: result.payments.map((p) => ({ reference: p.payment_reference, amount: money(p.amount), method: p.payment_method })),

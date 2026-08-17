@@ -336,6 +336,7 @@ export default function AdminCheckInsPage() {
       // check-in that already succeeded; it's reported as a separate
       // warning, directing staff to record it from the folio instead.
       const validPaymentSplits = walkIn.paymentSplits.filter((s) => Number(s.amount) > 0);
+      let overpaymentDeposit = null;
       if (validPaymentSplits.length > 0) {
         try {
           const folios = await fetchFolios({ reservation_id: internalId });
@@ -360,6 +361,7 @@ export default function AdminCheckInsPage() {
             title: "Payment Recorded",
             items: result.payments.map((p) => ({ reference: p.payment_reference, amount: fmtCurrency(p.amount), method: p.payment_method })),
           });
+          overpaymentDeposit = result.overpayment_deposit;
         } catch (payErr) {
           setWalkInPaymentWarning(
             (payErr.response?.data?.message || "Failed to record the payment") +
@@ -368,7 +370,7 @@ export default function AdminCheckInsPage() {
         }
       }
 
-      setWalkInSuccess({ bookingRef, guestName: guestFullName });
+      setWalkInSuccess({ bookingRef, guestName: guestFullName, overpaymentDeposit });
       setWalkIn(EMPTY_WALK_IN);
       setAvailability(null);
       setWalkInGuestMatches([]);
@@ -575,6 +577,11 @@ export default function AdminCheckInsPage() {
                   Checked in · Booking Ref: <strong className="text-[color:var(--black)]">{walkInSuccess.bookingRef}</strong>
                 </p>
                 <p className="text-xl text-[color:var(--text-color)]/68">Guest profile and folio have been created.</p>
+                {walkInSuccess.overpaymentDeposit && (
+                  <p className="text-blue-700 text-xl bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 max-w-lg">
+                    {fmtCurrency(walkInSuccess.overpaymentDeposit.amount)} over the balance was kept on file as a deposit.
+                  </p>
+                )}
                 {walkInPaymentWarning && (
                   <p className="text-orange-700 text-xl bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 max-w-lg">{walkInPaymentWarning}</p>
                 )}
