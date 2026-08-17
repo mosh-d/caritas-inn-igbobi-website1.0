@@ -391,7 +391,14 @@ export default function AdminCheckInsPage() {
   // base rate (not the total) — staff think in "rate per night", and the
   // label alongside shows the resulting total live as they override it.
   const walkInRoomRate = walkIn.roomRate !== "" ? Number(walkIn.roomRate) : Number(selectedWalkInRoomType?.base_rate || 0);
-  const walkInTotal = walkInRoomRate * Number(walkIn.roomsBooked || 1) * walkInNights;
+  // Breakfast is priced/discounted separately from the room rate (the
+  // Discount % below only ever applies to roomRate) — folded in here so the
+  // live total actually matches what postStayChargesForDay bills each
+  // night, and updates immediately when Without Breakfast is toggled.
+  const walkInBreakfastRate = Number(selectedWalkInRoomType?.breakfast_rate || 0);
+  const walkInBreakfastIncluded = !walkIn.withoutBreakfast && walkInBreakfastRate > 0;
+  const walkInPerNightRate = walkInRoomRate + (walkInBreakfastIncluded ? walkInBreakfastRate : 0);
+  const walkInTotal = walkInPerNightRate * Number(walkIn.roomsBooked || 1) * walkInNights;
   const walkInValidRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
   const walkInBaseRate = Number(selectedWalkInRoomType?.base_rate || 0);
 
@@ -401,8 +408,12 @@ export default function AdminCheckInsPage() {
   const walkInComplementaryRoomNumbers = walkInValidRoomNumbers.filter(
     (num) => walkInAvailableRooms?.available?.find((r) => r.room_number === num)?.status === "complementary",
   );
+  // Combines rooms already flagged complementary (from a prior visit) with
+  // the Complementary checkbox above (this stay, not yet submitted) — either
+  // way the total should show waived right away, not just after check-in.
   const walkInAllSelectedComplementary =
     walkInValidRoomNumbers.length > 0 && walkInComplementaryRoomNumbers.length === walkInValidRoomNumbers.length;
+  const walkInEffectivelyComplementary = walkInAllSelectedComplementary || walkIn.complementary;
 
   // Discount is a one-shot calculator, not a persisted field — touching it
   // recomputes the per-night Room Rate from the room type's own base rate
@@ -657,13 +668,17 @@ export default function AdminCheckInsPage() {
                       <span className="text-xl text-[color:var(--text-color)]/76 whitespace-nowrap flex items-center gap-2 flex-wrap">
                         {walkInNights} night{walkInNights > 1 ? "s" : ""}
                         {Number(walkIn.roomsBooked) > 1 ? ` × ${walkIn.roomsBooked} rooms` : ""}
-                        {" × "}{fmtCurrency(walkInRoomRate)} ={" "}
-                        {walkInAllSelectedComplementary ? (
+                        {" × "}{fmtCurrency(walkInPerNightRate)}
+                        {walkInBreakfastIncluded && (
+                          <span className="text-lg text-[color:var(--text-color)]/60">(incl. {fmtCurrency(walkInBreakfastRate)} breakfast)</span>
+                        )}
+                        {" = "}
+                        {walkInEffectivelyComplementary ? (
                           <s className="text-[color:var(--text-color)]/50">{fmtCurrency(walkInTotal)}</s>
                         ) : (
                           <strong className="text-[color:var(--black)]">{fmtCurrency(walkInTotal)}</strong>
                         )}
-                        {walkInAllSelectedComplementary && (
+                        {walkInEffectivelyComplementary && (
                           <span className="flex items-center gap-2">
                             <RoomStatusTag status="complementary" />
                             <span className="text-lg text-[color:var(--text-color)]/68">no charge at check-in</span>
