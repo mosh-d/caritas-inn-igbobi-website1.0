@@ -1115,6 +1115,41 @@ function SalesTotals({ data }) {
   );
 }
 
+// A written summary below the table, matching the paper version's own
+// convention of a short notes block after the figures — Payment Methods
+// restates SalesTotals' cards above as a plain line (that's the ask); PB/
+// Owing/Total Sold/Total Service Charge aren't shown anywhere else on this
+// report. lineTotal matches buildSalesTotals' own definition on the backend
+// (amount + service_charge is the real, chargeable/paid total per row).
+function SalesNotes({ data }) {
+  const rows = data.rows || [];
+  const lineTotal = (r) => Number(r.amount) + Number(r.service_charge);
+  const pbTotal = rows.filter((r) => r.status === "PB").reduce((s, r) => s + lineTotal(r), 0);
+  const owingTotal = rows.filter((r) => r.status === "owing").reduce((s, r) => s + lineTotal(r), 0);
+  const totalSold = rows.reduce((s, r) => s + lineTotal(r), 0);
+  const totalServiceCharge = rows.reduce((s, r) => s + Number(r.service_charge), 0);
+
+  return (
+    <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-col gap-3 w-full">
+      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Notes</p>
+      <ul className="flex flex-col gap-2 text-xl text-[color:var(--text-color)]/84 list-disc pl-6">
+        <li>
+          Payment methods: {data.payment_breakdown.length === 0 ? "none" : data.payment_breakdown.map((p, i) => (
+            <span key={i}>
+              {p.payment_method === "charged_to_room" ? "Charged to Room" : p.payment_method}: <strong className="text-[color:var(--black)]">{money(p.total)}</strong>
+              {i < data.payment_breakdown.length - 1 ? " · " : ""}
+            </span>
+          ))}
+        </li>
+        <li>Paid Before (PB): <strong className="text-[color:var(--black)]">{money(pbTotal)}</strong></li>
+        <li>Debt (Owing): <strong className="text-[color:var(--black)]">{money(owingTotal)}</strong></li>
+        <li>Total Sold: <strong className="text-[color:var(--black)]">{money(totalSold)}</strong></li>
+        <li>Total Service Charge: <strong className="text-[color:var(--black)]">{money(totalServiceCharge)}</strong></li>
+      </ul>
+    </div>
+  );
+}
+
 function FoodSalesReportTab({ shift }) {
   const [date, setDate] = useState(localTodayISO());
   const [data, setData] = useState(null);
@@ -1218,6 +1253,7 @@ function FoodSalesReportTab({ shift }) {
               </table>
             )}
           </ReportSection>
+          <SalesNotes data={data} />
         </div>
       )}
 
@@ -1333,6 +1369,7 @@ function DrinkSalesReportTab({ shift }) {
               </table>
             )}
           </ReportSection>
+          <SalesNotes data={data} />
         </div>
       )}
 
@@ -1435,7 +1472,7 @@ function BarStockReportTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Stock", "Opening", "Added", "Total (before sales)", "Damaged", "Sold", "Unit Cost Price", "Total Amount", "Closing", "Remark"]} />
+                <TableHead cells={["Stock", "Opening", "Added", "Total (before sales)", "Damaged", "Sold", "Unit Cost Price", "Total Amount", "Closing", "Service Charge", "Remark"]} />
                 <tbody>
                   {data.rows.map((r) => (
                     <tr key={r.drink_item_id} className="border-b border-[color:var(--text-color)]/10">
@@ -1448,6 +1485,7 @@ function BarStockReportTab({ shift }) {
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.unit_cost_price)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.total_amount)}</td>
                       <td className={`px-6 py-4 font-semibold ${r.closing_stock < 0 ? "text-red-600" : "text-[color:var(--black)]"}`}>{r.closing_stock}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.service_charge)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.remark || "—"}</td>
                     </tr>
                   ))}

@@ -504,6 +504,39 @@ function SalesTotalsSnapshot({ data }) {
   );
 }
 
+// Mirrors AdminReports.jsx's SalesNotes — kept as its own copy for the same
+// reason SalesTotalsSnapshot above is: this file renders a frozen
+// snapshot_data object, not live state.
+function SalesNotesSnapshot({ data }) {
+  const rows = data?.rows || [];
+  const lineTotal = (r) => Number(r.amount) + Number(r.service_charge);
+  const pbTotal = rows.filter((r) => r.status === "PB").reduce((s, r) => s + lineTotal(r), 0);
+  const owingTotal = rows.filter((r) => r.status === "owing").reduce((s, r) => s + lineTotal(r), 0);
+  const totalSold = rows.reduce((s, r) => s + lineTotal(r), 0);
+  const totalServiceCharge = rows.reduce((s, r) => s + Number(r.service_charge), 0);
+  const paymentBreakdown = data?.payment_breakdown || [];
+
+  return (
+    <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-col gap-3 w-full">
+      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Notes</p>
+      <ul className="flex flex-col gap-2 text-xl text-[color:var(--text-color)]/84 list-disc pl-6">
+        <li>
+          Payment methods: {paymentBreakdown.length === 0 ? "none" : paymentBreakdown.map((p, i) => (
+            <span key={i}>
+              {p.payment_method === "charged_to_room" ? "Charged to Room" : p.payment_method}: <strong className="text-[color:var(--black)]">{money(p.total)}</strong>
+              {i < paymentBreakdown.length - 1 ? " · " : ""}
+            </span>
+          ))}
+        </li>
+        <li>Paid Before (PB): <strong className="text-[color:var(--black)]">{money(pbTotal)}</strong></li>
+        <li>Debt (Owing): <strong className="text-[color:var(--black)]">{money(owingTotal)}</strong></li>
+        <li>Total Sold: <strong className="text-[color:var(--black)]">{money(totalSold)}</strong></li>
+        <li>Total Service Charge: <strong className="text-[color:var(--black)]">{money(totalServiceCharge)}</strong></li>
+      </ul>
+    </div>
+  );
+}
+
 function FoodSalesSnapshot({ data }) {
   const rows = data?.rows || [];
   return (
@@ -531,6 +564,7 @@ function FoodSalesSnapshot({ data }) {
           </table>
         )}
       </ReportSection>
+      <SalesNotesSnapshot data={data} />
     </div>
   );
 }
@@ -562,6 +596,7 @@ function DrinkSalesSnapshot({ data }) {
           </table>
         )}
       </ReportSection>
+      <SalesNotesSnapshot data={data} />
     </div>
   );
 }
@@ -579,7 +614,7 @@ function BarStockSnapshot({ data }) {
       <ReportSection title="Stock">
         {rows.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Stock", "Opening", "Added", "Total (before sales)", "Damaged", "Sold", "Unit Cost Price", "Total Amount", "Closing", "Remark"]} />
+            <TableHead cells={["Stock", "Opening", "Added", "Total (before sales)", "Damaged", "Sold", "Unit Cost Price", "Total Amount", "Closing", "Service Charge", "Remark"]} />
             <tbody>
               {rows.map((r) => (
                 <tr key={r.drink_item_id} className="border-b border-[color:var(--text-color)]/10">
@@ -592,6 +627,7 @@ function BarStockSnapshot({ data }) {
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.unit_cost_price)}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.total_amount)}</td>
                   <td className={`px-6 py-4 font-semibold ${r.closing_stock < 0 ? "text-red-600" : "text-[color:var(--black)]"}`}>{r.closing_stock}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.service_charge)}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.remark || "—"}</td>
                 </tr>
               ))}
