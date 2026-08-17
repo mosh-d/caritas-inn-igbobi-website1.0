@@ -53,7 +53,16 @@ const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 // a flat figure, picked via tax_mode/discount_mode.
 const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "", menu_item_id: "", quantity: "1", notes: "", date: "", bill_no: "", is_complementary: false };
 const emptyCreateForm = { reservation_id: "", guest_id: "", total_amount: "0", amount_paid: "0" };
-const emptyPaymentForm = { splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "" };
+// tax_mode/tax and discount_mode/discount mirror the Add-a-Charge item form
+// above — posted together as one 'adjustment' folio item (the same
+// mechanism already used to discount/correct an already-posted charge, see
+// the Adjustment type's own help text below) right before the payment
+// itself is recorded, so the payment posts against the already-adjusted
+// balance.
+const emptyPaymentForm = {
+  splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "",
+  tax_mode: "fixed", tax: "", discount_mode: "percentage", discount: "",
+};
 const emptyRefundForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -324,12 +333,34 @@ export default function AdminFoliosPage() {
   };
 
   const hasValidPaymentSplits = paymentForm.splits.length > 0 && paymentForm.splits.every((s) => Number(s.amount) > 0);
+  // Both computed against the folio's current balance (already on screen) —
+  // unlike the Add-a-Charge Tax/Discount above, which are a % of the ONE
+  // new charge being posted, these adjust what's already owed overall.
+  const paymentTaxAmount = selectedFolio
+    ? paymentForm.tax_mode === "percentage"
+      ? Number(selectedFolio.balance) * (Number(paymentForm.tax || 0) / 100)
+      : Number(paymentForm.tax || 0)
+    : 0;
+  const paymentDiscountAmount = selectedFolio
+    ? paymentForm.discount_mode === "percentage"
+      ? Number(selectedFolio.balance) * (Number(paymentForm.discount || 0) / 100)
+      : Number(paymentForm.discount || 0)
+    : 0;
 
   const handleRecordPayment = async () => {
     if (!selectedFolio || !hasValidPaymentSplits) return;
     setPaymentError(null);
     try {
       setRecordingPayment(true);
+      if (paymentTaxAmount > 0 || paymentDiscountAmount > 0) {
+        await addFolioItem(selectedFolio.id, {
+          description: "Tax/discount adjustment applied at payment",
+          amount: 0,
+          tax: paymentTaxAmount,
+          discount: paymentDiscountAmount,
+          item_type: "adjustment",
+        });
+      }
       const result = await recordPayment({
         folio_id: selectedFolio.id,
         payments: paymentForm.splits.map((s) => ({ amount: Number(s.amount), payment_method: s.payment_method })),
@@ -906,6 +937,53 @@ export default function AdminFoliosPage() {
                       {" "}— {hasOutstandingBalance ? `balance due: ${money(selectedFolio.balance)}` : hasCreditBalance ? `credit on account: ${money(Math.abs(Number(selectedFolio.balance)))}` : "balance settled"}
                     </p>
                     <PaymentSplitRows splits={paymentForm.splits} setSplits={(splits) => setPaymentForm({ ...paymentForm, splits })} />
+                    {hasOutstandingBalance && (
+                      <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                        <div className="flex flex-col gap-2">
+                          <label className={field.label}>Tax ({paymentForm.tax_mode === "percentage" ? "%" : "₦"}) — optional</label>
+                          <div className="flex flex-col gap-2">
+                            <select
+                              value={paymentForm.tax_mode}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, tax_mode: e.target.value })}
+                              className={`${field.select} w-auto`}
+                            >
+                              <option value="fixed">Fixed (₦)</option>
+                              <option value="percentage">Percentage (%)</option>
+                            </select>
+                            <input
+                              type="number"
+                              value={paymentForm.tax}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, tax: e.target.value })}
+                              className={field.input}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <label className={field.label}>Discount ({paymentForm.discount_mode === "percentage" ? "%" : "₦"}) — optional</label>
+                          <div className="flex flex-col gap-2">
+                            <select
+                              value={paymentForm.discount_mode}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, discount_mode: e.target.value })}
+                              className={`${field.select} w-auto`}
+                            >
+                              <option value="fixed">Fixed (₦)</option>
+                              <option value="percentage">Percentage (%)</option>
+                            </select>
+                            <input
+                              type="number"
+                              value={paymentForm.discount}
+                              onChange={(e) => setPaymentForm({ ...paymentForm, discount: e.target.value })}
+                              className={field.input}
+                            />
+                          </div>
+                        </div>
+                        {(paymentTaxAmount > 0 || paymentDiscountAmount > 0) && (
+                          <p className="text-lg text-[color:var(--text-color)]/68 col-span-2 max-sm:col-span-1">
+                            → balance after tax/discount: <strong>{money(Math.max(Number(selectedFolio.balance) + paymentTaxAmount - paymentDiscountAmount, 0))}</strong>
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Receipt Number</label>

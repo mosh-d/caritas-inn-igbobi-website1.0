@@ -24,7 +24,7 @@ import {
   fetchAvailableRoomNumbers,
   updateRoomStatus,
 } from "../utils/reservations-pms-api";
-import { fetchFolios, recordPayment } from "../utils/folios-api";
+import { fetchFolios, recordPayment, addFolioItem } from "../utils/folios-api";
 
 const BRANCH_ID = 3;
 const formatDate = (d) =>
@@ -45,6 +45,7 @@ const EMPTY_WALK_IN = {
   checkOut: "", roomsBooked: 1, roomTypeId: "", guestFirstName: "", guestLastName: "", phone: "", email: "",
   roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "", withoutBreakfast: false, complementary: false,
   paymentSplits: [{ amount: "", payment_method: "cash" }], paymentReceiptNumber: "", paymentNotes: "",
+  paymentTaxMode: "fixed", paymentTax: "", paymentDiscountMode: "percentage", paymentDiscount: "",
 };
 
 export default function AdminCheckInsPage() {
@@ -340,6 +341,15 @@ export default function AdminCheckInsPage() {
           const folios = await fetchFolios({ reservation_id: internalId });
           const folioId = folios?.data?.[0]?.id;
           if (!folioId) throw new Error("Folio not found");
+          if (walkInPaymentTaxAmount > 0 || walkInPaymentDiscountAmount > 0) {
+            await addFolioItem(folioId, {
+              description: "Tax/discount adjustment applied at check-in payment",
+              amount: 0,
+              tax: walkInPaymentTaxAmount,
+              discount: walkInPaymentDiscountAmount,
+              item_type: "adjustment",
+            });
+          }
           const result = await recordPayment({
             folio_id: folioId,
             payments: validPaymentSplits.map((s) => ({ amount: Number(s.amount), payment_method: s.payment_method })),
@@ -401,6 +411,20 @@ export default function AdminCheckInsPage() {
   const walkInTotal = walkInPerNightRate * Number(walkIn.roomsBooked || 1) * walkInNights;
   const walkInValidRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
   const walkInBaseRate = Number(selectedWalkInRoomType?.base_rate || 0);
+
+  // Tax/Discount applied at payment time — distinct from the Discount above
+  // (which adjusts the Room Rate the stay bills at going forward). These
+  // post as one 'adjustment' folio item right before the payment is
+  // recorded (same mechanism AdminFolios.jsx's Record Payment uses), so
+  // they only ever apply alongside an actual payment. No real folio balance
+  // exists yet to compute a percentage against until after check-in
+  // succeeds, so it's computed against the stay total shown above instead.
+  const walkInPaymentTaxAmount = walkIn.paymentTaxMode === "percentage"
+    ? walkInTotal * (Number(walkIn.paymentTax || 0) / 100)
+    : Number(walkIn.paymentTax || 0);
+  const walkInPaymentDiscountAmount = walkIn.paymentDiscountMode === "percentage"
+    ? walkInTotal * (Number(walkIn.paymentDiscount || 0) / 100)
+    : Number(walkIn.paymentDiscount || 0);
 
   // A complementary room's own charge is already excluded at check-in time
   // (see postStayChargesForDay's billableRooms) — this just makes that fact
@@ -919,6 +943,51 @@ export default function AdminCheckInsPage() {
                     splits={walkIn.paymentSplits}
                     setSplits={(splits) => setWalkIn((p) => ({ ...p, paymentSplits: splits }))}
                   />
+                  <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                    <div className="flex flex-col gap-2">
+                      <label className={field.label}>Tax ({walkIn.paymentTaxMode === "percentage" ? "%" : "₦"}) — optional</label>
+                      <div className="flex flex-col gap-2">
+                        <select
+                          value={walkIn.paymentTaxMode}
+                          onChange={(e) => setWalkIn((p) => ({ ...p, paymentTaxMode: e.target.value }))}
+                          className={`${field.select} w-auto`}
+                        >
+                          <option value="fixed">Fixed (₦)</option>
+                          <option value="percentage">Percentage (%)</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={walkIn.paymentTax}
+                          onChange={(e) => setWalkIn((p) => ({ ...p, paymentTax: e.target.value }))}
+                          className={field.input}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className={field.label}>Discount ({walkIn.paymentDiscountMode === "percentage" ? "%" : "₦"}) — optional</label>
+                      <div className="flex flex-col gap-2">
+                        <select
+                          value={walkIn.paymentDiscountMode}
+                          onChange={(e) => setWalkIn((p) => ({ ...p, paymentDiscountMode: e.target.value }))}
+                          className={`${field.select} w-auto`}
+                        >
+                          <option value="fixed">Fixed (₦)</option>
+                          <option value="percentage">Percentage (%)</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={walkIn.paymentDiscount}
+                          onChange={(e) => setWalkIn((p) => ({ ...p, paymentDiscount: e.target.value }))}
+                          className={field.input}
+                        />
+                      </div>
+                    </div>
+                    {(walkInPaymentTaxAmount > 0 || walkInPaymentDiscountAmount > 0) && (
+                      <p className="text-lg text-[color:var(--text-color)]/68 col-span-2 max-sm:col-span-1">
+                        Net {fmtCurrency(walkInPaymentTaxAmount - walkInPaymentDiscountAmount)} adjustment, applied when the payment below is recorded
+                      </p>
+                    )}
+                  </div>
                   <div className="flex gap-4 flex-wrap">
                     <div className="flex flex-col gap-2 flex-1 min-w-48">
                       <label className={field.label}>Receipt Number</label>
