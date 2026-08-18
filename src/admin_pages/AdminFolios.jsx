@@ -645,7 +645,7 @@ export default function AdminFoliosPage() {
                             holding — surface it so the row isn't misread as
                             fully closed out. */}
                         {Number(f.credit_on_file) > 0 && (
-                          <span className="block text-base font-medium text-blue-700">+{money(f.credit_on_file)} credit</span>
+                          <span className="block text-base font-medium text-green-700">+{money(f.credit_on_file)} credit</span>
                         )}
                       </td>
                       <td className={`${table.td} hidden md:table-cell`}><StatusBadge status={f.status} /></td>
@@ -729,24 +729,24 @@ export default function AdminFoliosPage() {
                   Without this the folio reads "Settled" with no sign the
                   credit exists at all. */}
               {Number(selectedFolio.credit_on_file?.total) > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-5 py-4 flex flex-col gap-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg px-5 py-4 flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <span className="text-blue-700 font-bold text-xl">Credit on File:</span>
-                    <span className="text-blue-700 font-bold text-2xl">{money(selectedFolio.credit_on_file.total)}</span>
+                    <span className="text-green-700 font-bold text-xl">Credit on File:</span>
+                    <span className="text-green-700 font-bold text-2xl">{money(selectedFolio.credit_on_file.total)}</span>
                   </div>
                   {selectedFolio.credit_on_file.entries.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between gap-4 text-lg text-blue-700/90 flex-wrap">
+                    <div key={c.id} className="flex items-center justify-between gap-4 text-lg text-green-700/90 flex-wrap">
                       <span>
                         <span className="font-mono text-base">{c.deposit_reference}</span>
                         <span className="ml-2">{c.from_overpayment ? "from an overpayment" : "advance deposit"}</span>
                         {Number(c.amount_applied) > 0 && (
-                          <span className="ml-2 text-blue-700/70">· {money(c.amount_applied)} of {money(c.amount)} already used</span>
+                          <span className="ml-2 text-green-700/70">· {money(c.amount_applied)} of {money(c.amount)} already used</span>
                         )}
                       </span>
                       <span className="font-bold whitespace-nowrap">{money(c.available)}</span>
                     </div>
                   ))}
-                  <p className="text-lg text-blue-700/80">
+                  <p className="text-lg text-green-700/80">
                     Applies automatically to the next night's charge. To hand it back instead, use Refund in this reservation's Deposits section.
                   </p>
                 </div>
