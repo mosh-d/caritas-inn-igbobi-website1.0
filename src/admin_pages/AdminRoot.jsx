@@ -6,6 +6,8 @@ import { verifyToken, getDefaultAdminRoute } from "../utils/auth";
 import AdminNavBar from "../components/shared/AdminNavBar";
 import AdminTopBar from "../components/shared/AdminTopBar";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
+import { fetchBusinessDate } from "../utils/front-office-api";
+import { applyServerClock, deviceClockDriftMinutes } from "../utils/date-utils";
 
 export default function AdminRootLayout() {
   const [hasNewReservation, setHasNewReservation] = useState(false);
@@ -25,6 +27,26 @@ export default function AdminRootLayout() {
     const unsubscribe = subscribe(handleNewReservation, 'reservations');
     return unsubscribe;
   }, [subscribe, handleNewReservation]);
+
+  // Anchor every admin-facing date helper to the server's clock, once per
+  // session. A front-desk PC with a wrong clock or timezone otherwise shows
+  // the wrong day's arrivals and defaults every report to the wrong date —
+  // the client half of the fix that followed the 2026-08-11 midnight
+  // walk-in incident. Failure is deliberately silent: the helpers keep
+  // using the device clock exactly as before, so a network blip degrades to
+  // the old behaviour rather than blocking the page.
+  const [clockDriftMinutes, setClockDriftMinutes] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetchBusinessDate()
+      .then((d) => {
+        if (cancelled || !d?.server_time) return;
+        applyServerClock(d.server_time);
+        setClockDriftMinutes(deviceClockDriftMinutes());
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,6 +146,19 @@ export default function AdminRootLayout() {
               <IoClose size={24} />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* The dates on screen are already correct — they follow the server,
+          not this machine. This tells whoever is on the desk that the PC
+          itself needs fixing, since its clock still drives everything
+          outside this app. 10 minutes is wide enough to ignore ordinary
+          drift and network latency. */}
+      {Math.abs(clockDriftMinutes) > 10 && (
+        <div className="bg-orange-50 border-b border-orange-200 px-6 py-3 text-orange-800 text-lg shrink-0">
+          This computer's clock is off by about {Math.abs(clockDriftMinutes)} minutes
+          ({clockDriftMinutes > 0 ? "behind" : "ahead of"} the hotel's server).
+          Dates shown here are correct, but please have the clock corrected.
         </div>
       )}
 

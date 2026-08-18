@@ -51,7 +51,7 @@ export const hasPassedNoonCutoff = (dateOnly, now = new Date()) => {
 // here. Worst case if this helper is ever wrong: a picker's minimum date is
 // off by a day; it can never produce an incorrect reservation record.
 const BUSINESS_DAY_START_HOUR = 6;
-const shiftedBusinessDateUTC = (now = new Date()) => {
+const shiftedBusinessDateUTC = (now = serverNow()) => {
   const shifted = new Date(now.getTime() + (WAT_OFFSET_MINUTES - BUSINESS_DAY_START_HOUR * 60) * 60000);
   return Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
 };
@@ -70,3 +70,43 @@ export const currentBusinessDateISO = () => isoFromUTCms(shiftedBusinessDateUTC(
 // arrived before the cutover); at/after 6am it resolves to TOMORROW (a
 // normal one-night stay), exactly matching the confirmed hotel policy.
 export const minWalkInCheckOutISO = () => isoFromUTCms(shiftedBusinessDateUTC() + 24 * 60 * 60 * 1000);
+
+// ---------------------------------------------------------------------------
+// Server clock anchoring
+// ---------------------------------------------------------------------------
+// Everything above reads the device's own clock. That is right for the
+// guest-facing booking pages (a guest should see their own date), but wrong
+// for the admin panel: a front-desk PC with a mis-set clock or timezone
+// quietly shows the wrong day's arrivals and defaults every report to the
+// wrong date. The server is the only source of truth for "today" in Lagos
+// terms — see reservation-rules.constants.ts's own note on exactly this.
+//
+// Rather than re-plumbing 21 call sites, we measure the difference between
+// the server's clock and this device's once at admin load, then apply that
+// offset wherever an admin-facing date is derived. Until the sync lands (or
+// if it fails outright) every helper below behaves exactly as it did before,
+// so a network hiccup degrades to today's behaviour rather than breaking the
+// page.
+let serverClockOffsetMs = 0;
+
+export const applyServerClock = (serverTimeISO) => {
+  const serverMs = new Date(serverTimeISO).getTime();
+  if (!Number.isFinite(serverMs)) return;
+  serverClockOffsetMs = serverMs - Date.now();
+};
+
+// How far off this device is, in minutes — surfaced so the admin panel can
+// warn staff that the machine's own clock needs fixing, rather than silently
+// papering over it forever.
+export const deviceClockDriftMinutes = () => Math.round(serverClockOffsetMs / 60000);
+
+const serverNow = () => new Date(Date.now() + serverClockOffsetMs);
+
+// The Lagos calendar date, anchored to the server's clock — the admin-panel
+// counterpart to localTodayISO(). Derived by shifting a real instant by the
+// fixed WAT offset and reading UTC fields, so it is correct even on a device
+// whose display timezone is not Africa/Lagos.
+export const adminTodayISO = () => {
+  const shifted = new Date(serverNow().getTime() + WAT_OFFSET_MINUTES * 60000);
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(shifted.getUTCDate()).padStart(2, "0")}`;
+};

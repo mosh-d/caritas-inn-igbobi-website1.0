@@ -8,7 +8,7 @@ import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchCheckInList } from "../utils/front-office-api";
 import { checkGuestBlacklist, fetchGuests } from "../utils/guests-api";
-import { localTodayISO, currentBusinessDateISO, minWalkInCheckOutISO } from "../utils/date-utils";
+import { adminTodayISO, currentBusinessDateISO, minWalkInCheckOutISO } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
@@ -29,7 +29,7 @@ import { fetchFolios, recordPayment, addFolioItem } from "../utils/folios-api";
 const BRANCH_ID = 3;
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
-const todayISO = () => localTodayISO();
+const todayISO = () => adminTodayISO();
 // A Walk-In's check-in is always "right now" — but the reservation it
 // creates must be dated by the hotel's business day (6am Lagos cutover, see
 // date-utils.js), not the raw calendar date, so an arrival before 6am can

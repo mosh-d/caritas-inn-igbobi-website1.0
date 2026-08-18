@@ -25,7 +25,7 @@ import {
 } from "../utils/reports-api";
 import { fetchStaffAccounts } from "../utils/staff-accounts-api";
 import { sendReportToAccountant } from "../utils/sent-reports-api";
-import { localTodayISO } from "../utils/date-utils";
+import { adminTodayISO } from "../utils/date-utils";
 import { isAccountant, isReceptionist } from "../utils/auth";
 
 // money/pct/formatDate/formatDateTime plus the shared render bits below
@@ -518,7 +518,7 @@ function DashboardTab({ shift }) {
 // ─── Manifest ─────────────────────────────────────────────────────────────────
 
 function ManifestTab({ shift }) {
-  const [date, setDate] = useState(localTodayISO());
+  const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -801,7 +801,7 @@ function AnalysisTab({ shift }) {
 // ─── PMS Report (Evening / Morning) ─────────────────────────────────────────────
 
 function PmsReportTab({ shift }) {
-  const [date, setDate] = useState(localTodayISO());
+  const [date, setDate] = useState(adminTodayISO());
   const [variant, setVariant] = useState("evening");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -984,7 +984,7 @@ function PmsReportTab({ shift }) {
 // ─── Accommodation Report ───────────────────────────────────────────────────
 
 function AccommodationReportTab({ shift }) {
-  const [date, setDate] = useState(localTodayISO());
+  const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1183,7 +1183,7 @@ function SalesNotes({ data }) {
 }
 
 function FoodSalesReportTab({ shift }) {
-  const [date, setDate] = useState(localTodayISO());
+  const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1299,7 +1299,7 @@ function FoodSalesReportTab({ shift }) {
 }
 
 function DrinkSalesReportTab({ shift }) {
-  const [date, setDate] = useState(localTodayISO());
+  const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1415,7 +1415,7 @@ function DrinkSalesReportTab({ shift }) {
 }
 
 function BarStockReportTab({ shift }) {
-  const [date, setDate] = useState(localTodayISO());
+  const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

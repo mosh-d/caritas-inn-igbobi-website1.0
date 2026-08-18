@@ -8,12 +8,12 @@ import { btn, table } from "../components/shared/ui";
 import { fetchCheckOutList } from "../utils/front-office-api";
 import { checkOutReservation, emergencyCheckout } from "../utils/reservations-pms-api";
 import { fetchFolios } from "../utils/folios-api";
-import { localTodayISO, hasPassedNoonCutoff } from "../utils/date-utils";
+import { adminTodayISO, hasPassedNoonCutoff } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-const todayISO = () => localTodayISO();
+const todayISO = () => adminTodayISO();
 // Whether this reservation's scheduled checkout has actually become due
 // (noon Lagos on check_out) — the date picker above can be browsed to a
 // future date, so a listed reservation isn't necessarily due yet. Decides

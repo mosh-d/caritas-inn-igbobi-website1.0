@@ -35,3 +35,14 @@ export const fetchInHouseById = async (id) => {
   });
   return response.data;
 };
+
+// What day the SERVER thinks it is — both the Lagos calendar date and the
+// 6am-to-6am business date. The admin panel anchors its own date helpers to
+// this at load (see date-utils.js's applyServerClock) so a front-desk PC
+// with a wrong clock stops silently showing the wrong day's data.
+export const fetchBusinessDate = async () => {
+  const response = await axios.get(`${baseUrl}/api/front-office/business-date`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};

@@ -27,7 +27,7 @@ import { fetchAlerts } from "../utils/alerts-api";
 import { fetchReportsDashboard } from "../utils/reports-api";
 import { fetchNightAuditHistory } from "../utils/night-audit-api";
 import { fetchReservations } from "../utils/reservations-pms-api";
-import { localTodayISO } from "../utils/date-utils";
+import { adminTodayISO } from "../utils/date-utils";
 
 // Local-getter based, not toISOString() — toISOString() always converts to
 // UTC first, which for Lagos (WAT, UTC+1) silently reports the wrong
@@ -41,7 +41,7 @@ const toLocalISO = (d) => {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 };
-const todayISO = () => localTodayISO();
+const todayISO = () => adminTodayISO();
 const monthStartISO = () => {
   const now = new Date();
   return toLocalISO(new Date(now.getFullYear(), now.getMonth(), 1));
