@@ -27,7 +27,7 @@ import {
   recordRefund,
 } from "../utils/folios-api";
 
-const CHARGE_TYPES = ["room_charge", "food_charge", "drink_charge", "laundry_charge", "penalty", "adjustment"];
+const CHARGE_TYPES = ["room_charge", "food_charge", "drink_charge", "laundry_charge", "penalty", "adjustment", "correction"];
 const CHARGE_TYPE_LABELS = {
   room_charge: "Room Charge",
   food_charge: "Food Charge",
@@ -35,6 +35,10 @@ const CHARGE_TYPE_LABELS = {
   laundry_charge: "Laundry Charge",
   penalty: "Penalty",
   adjustment: "Adjustment",
+  // For fixing an accommodation charge after the fact. Kept distinct from
+  // Room Charge so a correction stops being reported as an extra night of
+  // its own on the Accommodation and Debt Recovery reports.
+  correction: "Correction",
 };
 // Waitstaff only ever sell food/drink, so they're confined to those two
 // charge types; receptionists post everything else a front desk normally
@@ -44,7 +48,7 @@ const CHARGE_TYPE_LABELS = {
 // every type. Mirrors the backend's own gating in FoliosService.addFolioItem.
 const allowedChargeTypesForRole = (role) => {
   if (role === "waiter" || role === "waitress") return ["food_charge", "drink_charge"];
-  if (role === "receptionist") return ["room_charge", "laundry_charge", "penalty", "adjustment"];
+  if (role === "receptionist") return ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
   return CHARGE_TYPES;
 };
 const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
