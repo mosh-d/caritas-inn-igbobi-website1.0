@@ -400,26 +400,27 @@ export default function AdminFoliosPage() {
   // balance floors at 0 and that form never rendered for the very case it
   // exists to handle. This is the equivalent action for the new shape,
   // placed on the credit itself so staff don't have to leave the folio.
+  // Confirmed through the app's own Modal rather than window.confirm — a
+  // native browser dialog looks nothing like the rest of the admin panel
+  // and can't carry the reference/amount styling the other destructive
+  // confirmations use.
+  const [refundCreditTarget, setRefundCreditTarget] = useState(null);
   const [refundingCreditId, setRefundingCreditId] = useState(null);
-  const handleRefundCredit = async (credit) => {
-    if (!selectedFolio) return;
-    const ok = window.confirm(
-      `Refund ${money(credit.available)} to the guest from ${credit.deposit_reference}?
-
-` +
-      `This records the money as handed back. It can't be undone.`,
-    );
-    if (!ok) return;
+  const handleRefundCredit = async () => {
+    const credit = refundCreditTarget;
+    if (!selectedFolio || !credit) return;
     setRefundError(null);
     try {
       setRefundingCreditId(credit.id);
       const result = await refundDeposit(credit.id);
+      setRefundCreditTarget(null);
       await refreshSelectedFolio();
       loadFolios();
       setSuccessMessage(`Refunded ${money(result.refunded_amount ?? credit.available)} to the guest.`);
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
       setRefundError(err.response?.data?.message || "Failed to refund the credit.");
+      setRefundCreditTarget(null);
     } finally {
       setRefundingCreditId(null);
     }
@@ -780,7 +781,7 @@ export default function AdminFoliosPage() {
                       <span className="flex items-center gap-3">
                         <span className="font-bold whitespace-nowrap">{money(c.available)}</span>
                         <button
-                          onClick={() => handleRefundCredit(c)}
+                          onClick={() => setRefundCreditTarget(c)}
                           disabled={refundingCreditId === c.id}
                           className={btn.rowDanger}
                         >
@@ -1188,6 +1189,44 @@ export default function AdminFoliosPage() {
               <input type="number" value={createForm.amount_paid} onChange={(e) => setCreateForm({ ...createForm, amount_paid: e.target.value })} className={field.input} />
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* ==== Refund Credit Confirmation ==== */}
+      {refundCreditTarget && (
+        <Modal
+          onClose={() => setRefundCreditTarget(null)}
+          title={`Refund ${money(refundCreditTarget.available)}?`}
+          subtitle={`From ${refundCreditTarget.deposit_reference}${selectedFolio?.reservation?.guest_name ? ` — ${selectedFolio.reservation.guest_name}` : ""}`}
+          size="sm"
+          zIndex={1100}
+          footer={
+            <>
+              <button
+                onClick={() => setRefundCreditTarget(null)}
+                disabled={refundingCreditId === refundCreditTarget.id}
+                className={btn.secondary}
+              >
+                Back
+              </button>
+              <button
+                onClick={handleRefundCredit}
+                disabled={refundingCreditId === refundCreditTarget.id}
+                className={btn.dangerSolid}
+              >
+                {refundingCreditId === refundCreditTarget.id ? "Refunding..." : "Yes, Refund"}
+              </button>
+            </>
+          }
+        >
+          <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
+            This records {money(refundCreditTarget.available)} as handed back to the guest. It can't be undone — only refund once the money has actually left the drawer.
+          </p>
+          {Number(refundCreditTarget.amount_applied) > 0 && (
+            <p className="text-xl text-[color:var(--text-color)]/76">
+              {money(refundCreditTarget.amount_applied)} of the original {money(refundCreditTarget.amount)} has already gone toward a charge, so only the remaining {money(refundCreditTarget.available)} is refundable.
+            </p>
+          )}
         </Modal>
       )}
 
