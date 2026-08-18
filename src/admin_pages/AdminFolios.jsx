@@ -25,6 +25,7 @@ import {
   createFolio,
   recordPayment,
   recordRefund,
+  refundDeposit,
 } from "../utils/folios-api";
 
 const CHARGE_TYPES = ["room_charge", "food_charge", "drink_charge", "laundry_charge", "penalty", "adjustment", "correction"];
@@ -391,6 +392,39 @@ export default function AdminFoliosPage() {
     }
   };
 
+  // Hands a deposit-backed credit straight back from the folio.
+  //
+  // The older refund form below only appears when folio.balance is
+  // NEGATIVE, which no longer happens: an overpayment is now capped at the
+  // outstanding balance and the excess parked as a pending deposit, so the
+  // balance floors at 0 and that form never rendered for the very case it
+  // exists to handle. This is the equivalent action for the new shape,
+  // placed on the credit itself so staff don't have to leave the folio.
+  const [refundingCreditId, setRefundingCreditId] = useState(null);
+  const handleRefundCredit = async (credit) => {
+    if (!selectedFolio) return;
+    const ok = window.confirm(
+      `Refund ${money(credit.available)} to the guest from ${credit.deposit_reference}?
+
+` +
+      `This records the money as handed back. It can't be undone.`,
+    );
+    if (!ok) return;
+    setRefundError(null);
+    try {
+      setRefundingCreditId(credit.id);
+      const result = await refundDeposit(credit.id);
+      await refreshSelectedFolio();
+      loadFolios();
+      setSuccessMessage(`Refunded ${money(result.refunded_amount ?? credit.available)} to the guest.`);
+      setTimeout(() => setSuccessMessage(""), 5000);
+    } catch (err) {
+      setRefundError(err.response?.data?.message || "Failed to refund the credit.");
+    } finally {
+      setRefundingCreditId(null);
+    }
+  };
+
   const handleRecordRefund = async () => {
     if (!selectedFolio || !refundForm.amount) return;
     setRefundError(null);
@@ -743,11 +777,23 @@ export default function AdminFoliosPage() {
                           <span className="ml-2 text-green-700/70">· {money(c.amount_applied)} of {money(c.amount)} already used</span>
                         )}
                       </span>
-                      <span className="font-bold whitespace-nowrap">{money(c.available)}</span>
+                      <span className="flex items-center gap-3">
+                        <span className="font-bold whitespace-nowrap">{money(c.available)}</span>
+                        <button
+                          onClick={() => handleRefundCredit(c)}
+                          disabled={refundingCreditId === c.id}
+                          className={btn.rowDanger}
+                        >
+                          {refundingCreditId === c.id ? "Refunding..." : "Refund"}
+                        </button>
+                      </span>
                     </div>
                   ))}
+                  {refundError && (
+                    <p className="text-red-600 text-lg bg-red-50 border border-red-200 rounded-lg px-4 py-2">{refundError}</p>
+                  )}
                   <p className="text-lg text-green-700/80">
-                    Applies automatically to the next night's charge. To hand it back instead, use Refund in this reservation's Deposits section.
+                    Applies automatically to the next night's charge, or hand it back now with Refund.
                   </p>
                 </div>
               )}
