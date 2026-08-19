@@ -612,13 +612,22 @@ export default function AdminReservationsPage() {
     .reduce((sum, d) => sum + Number(d.amount || 0), 0);
 
   // Base total the Discount field below is calculated against — the same
-  // base_rate × rooms × nights formula the backend falls back to when no
-  // override is set. Only relevant pre-folio, same as Total Rate itself.
+  // (base_rate + breakfast) × rooms × nights formula the backend falls back
+  // to when no override is set (reservations.service.ts's
+  // createReservationHold). This used to be base_rate alone, silently
+  // dropping breakfast from the base a discount gets applied to — so
+  // discounting a breakfast-inclusive reservation left its total_rate
+  // permanently room-only, the same corruption postStayChargesForDay was
+  // just fixed to stop double-billing (reservation 1337/CDB251 hit this:
+  // total_rate=213,000, six nights room-only, when five of those nights had
+  // already been billed at the true 40,500/night). Only relevant pre-folio,
+  // same as Total Rate itself.
   const discountNights = res
     ? Math.max(1, Math.ceil((new Date(res.check_out) - new Date(editFields.check_in || res.check_in)) / (1000 * 60 * 60 * 24)))
     : 1;
+  const discountBreakfastRate = res && !res.without_breakfast ? Number(res.room_type?.breakfast_rate || 0) : 0;
   const discountBaseTotal = res
-    ? Number(res.room_type?.base_rate || 0) * Number(res.rooms_booked || 1) * discountNights
+    ? (Number(res.room_type?.base_rate || 0) + discountBreakfastRate) * Number(res.rooms_booked || 1) * discountNights
     : 0;
 
   // Discount is a one-shot calculator, not a persisted field — touching it
