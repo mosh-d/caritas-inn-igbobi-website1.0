@@ -629,7 +629,7 @@ function ManifestTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} />
+                <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} rightAlign={["Amount"]} />
                 <tbody>
                   {data.paid_before.map((d) => (
                     <tr key={d.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
@@ -651,7 +651,7 @@ function ManifestTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Guest", "Room", "Total Owed", "Total Paid", "Recovered On", "Method", "Reference"]} />
+                <TableHead cells={["Guest", "Room", "Total Owed", "Total Paid", "Recovered On", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
                 <tbody>
                   {data.debt_recovery.map((d, i) => (
                     <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
@@ -761,7 +761,7 @@ function AnalysisTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Room", "Receipt No.", "Reference", "Guest", "Method", "Date", "Amount"]} />
+                <TableHead cells={["Room", "Receipt No.", "Reference", "Guest", "Method", "Date", "Amount"]} rightAlign={["Amount"]} />
                 <tbody>
                   {data.payments.map((p) => (
                     <tr key={p.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">

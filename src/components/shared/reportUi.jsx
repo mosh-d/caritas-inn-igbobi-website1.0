@@ -17,14 +17,19 @@ export function ReportSection({ title, subtitle, children }) {
   );
 }
 
-export function TableHead({ cells }) {
+// `rightAlign` lists the column labels whose VALUES are right-aligned —
+// money and counts, where the digits need to line up. Without it the header
+// sat hard-left over right-aligned figures, so an "Amount" column read as
+// two unrelated columns. Matched by label rather than index so inserting a
+// column can't silently shift the alignment onto the wrong one.
+export function TableHead({ cells, rightAlign = [] }) {
   return (
     <thead>
       <tr className="border-b border-[color:var(--text-color)]/10">
         {cells.map((c, i) => (
           <th
             key={i}
-            className="px-6 py-3 text-left text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide"
+            className={`px-6 py-3 ${rightAlign.includes(c) ? "text-right" : "text-left"} text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide`}
           >
             {c}
           </th>

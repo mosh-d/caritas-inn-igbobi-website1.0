@@ -196,7 +196,7 @@ function DashboardSnapshot({ data }) {
       <ReportSection title="Revenue by Room Type">
         {revenueByRoomType.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Room Type", "Stays", "Revenue", "Avg / Stay"]} />
+            <TableHead cells={["Room Type", "Stays", "Revenue", "Avg / Stay"]} rightAlign={["Stays", "Revenue", "Avg / Stay"]} />
             <tbody>
               {revenueByRoomType.map((row, i) => (
                 <tr key={i} className="border-b border-[color:var(--text-color)]/10">
@@ -214,7 +214,7 @@ function DashboardSnapshot({ data }) {
       <ReportSection title="Payments by Method">
         {paymentMethods.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Method", "Count", "Total", "Share"]} />
+            <TableHead cells={["Method", "Count", "Total", "Share"]} rightAlign={["Count", "Total", "Share"]} />
             <tbody>
               {paymentMethods.map((row, i) => (
                 <tr key={i} className="border-b border-[color:var(--text-color)]/10">
@@ -234,7 +234,7 @@ function DashboardSnapshot({ data }) {
       <ReportSection title="Occupancy by Room Type">
         {occupancy.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Room Type", "Capacity", "Avail. Nights", "Occupied", "Occ. %"]} />
+            <TableHead cells={["Room Type", "Capacity", "Avail. Nights", "Occupied", "Occ. %"]} rightAlign={["Capacity", "Avail. Nights", "Occupied", "Occ. %"]} />
             <tbody>
               {occupancy.map((row, i) => (
                 <tr key={i} className="border-b border-[color:var(--text-color)]/10">
@@ -292,7 +292,7 @@ function ManifestSnapshot({ data }) {
       <ReportSection title="Reservation (Credit)">
         {paidBefore.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} />
+            <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} rightAlign={["Amount"]} />
             <tbody>
               {paidBefore.map((d) => (
                 <tr key={d.id} className="border-b border-[color:var(--text-color)]/10">
@@ -311,7 +311,7 @@ function ManifestSnapshot({ data }) {
       <ReportSection title="Debt Recovery">
         {debtRecovery.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Guest", "Room", "Total Owed", "Total Paid", "Recovered On", "Method", "Reference"]} />
+            <TableHead cells={["Guest", "Room", "Total Owed", "Total Paid", "Recovered On", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
             <tbody>
               {debtRecovery.map((d, i) => (
                 <tr key={i} className="border-b border-[color:var(--text-color)]/10">
@@ -358,7 +358,7 @@ function AnalysisSnapshot({ data }) {
       <ReportSection title="All Payments" subtitle={`${payments.length} transaction(s)`}>
         {payments.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Room", "Receipt No.", "Reference", "Guest", "Method", "Date", "Amount"]} />
+            <TableHead cells={["Room", "Receipt No.", "Reference", "Guest", "Method", "Date", "Amount"]} rightAlign={["Amount"]} />
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id} className="border-b border-[color:var(--text-color)]/10">
