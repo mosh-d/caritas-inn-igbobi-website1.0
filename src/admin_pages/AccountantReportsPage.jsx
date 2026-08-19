@@ -464,7 +464,7 @@ function AccommodationSnapshot({ data }) {
     <ReportSection title="Rooms in Use">
       {rows.length === 0 ? <EmptyRow /> : (
         <table className="w-full text-xl">
-          <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Room Price", "Breakfast Price", "Payment Mode", "Payment Status", "Amount Paid", "Remarks"]} />
+          <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Room Price", "Breakfast Price", "Payment Mode", "Payment Status", "Paid Today", "Remarks"]} />
           <tbody>
             {rows.map((r, i) => (
               <tr key={`${r.reservation_id}-${r.room_number}-${i}`} className="border-b border-[color:var(--text-color)]/10">
