@@ -673,7 +673,7 @@ export default function AdminFoliosPage() {
                         <td className={`${table.td} hidden md:table-cell`}>{formatDate(f.reservation?.check_out)}</td>
                       )}
                       <td className={table.td}>{money(f.total_amount)}</td>
-                      <td className={table.td}>{money(f.amount_paid)}</td>
+                      <td className={table.td}>{money(f.total_received ?? f.amount_paid)}</td>
                       <td className={`${table.td} font-bold ${Number(f.balance) > 0 ? "text-red-500" : Number(f.balance) < 0 ? "text-green-600" : ""}`}>
                         {Number(f.balance) < 0 ? `Credit: ${money(Math.abs(Number(f.balance)))}` : money(f.balance)}
                         {/* A ₦0 balance still hides credit the hotel is
@@ -745,7 +745,7 @@ export default function AdminFoliosPage() {
               <div className="grid grid-cols-1 gap-4">
                 <SummaryStat label="Guest" value={selectedFolio.guest ? `${selectedFolio.guest.first_name} ${selectedFolio.guest.last_name}` : (selectedFolio.reservation?.guest_name || "N/A")} />
                 <SummaryStat label="Total Charged" value={money(selectedFolio.total_amount)} />
-                <SummaryStat label="Total Paid" value={money(selectedFolio.amount_paid)} />
+                <SummaryStat label="Total Paid" value={money(selectedFolio.total_received ?? selectedFolio.amount_paid)} />
                 <SummaryStat
                   label="Balance Due"
                   value={hasOutstandingBalance ? money(selectedFolio.balance) : "Settled"}
@@ -819,7 +819,8 @@ export default function AdminFoliosPage() {
                   )}
                   {Number(selectedFolio.credit_on_file.total) > 0 && (
                     <p className="text-lg text-green-700/80">
-                      Applies automatically to the next night's charge, or hand it back now with Refund.
+                      Already counted in Total Paid above — this is the part not covering a charge yet.
+                      It applies automatically to the next night, or hand it back now with Refund.
                     </p>
                   )}
                 </div>
