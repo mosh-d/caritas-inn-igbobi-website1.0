@@ -616,7 +616,7 @@ export default function AdminFoliosPage() {
               <thead>
                 <tr className={table.headRow}>
                   <th className={table.th}>Folio #</th>
-                  <th className={`${table.th} hidden md:table-cell`}>Guest</th>
+                  <th className={table.th}>Guest</th>
                   {showGuestStatusColumn && <th className={table.th}>Guest Status</th>}
                   {showCheckOutDateColumn && <th className={`${table.th} hidden md:table-cell`}>Check-Out Date</th>}
                   <th className={table.th}>Total</th>
@@ -637,8 +637,8 @@ export default function AdminFoliosPage() {
                   folios.map((f) => (
                     <tr key={f.id} className={table.row}>
                       <td className={`${table.td} font-medium`}>{f.folio_number}</td>
-                      <td className={`${table.td} hidden md:table-cell`}>
-                        {f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : "N/A"}
+                      <td className={`${table.td} font-medium text-[color:var(--black)]`}>
+                        {f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : (f.reservation?.guest_name || "N/A")}
                       </td>
                       {showGuestStatusColumn && (
                         <td className={table.td}>
@@ -743,7 +743,7 @@ export default function AdminFoliosPage() {
             <>
               {/* Summary */}
               <div className="grid grid-cols-1 gap-4">
-                <SummaryStat label="Guest" value={selectedFolio.guest ? `${selectedFolio.guest.first_name} ${selectedFolio.guest.last_name}` : "N/A"} />
+                <SummaryStat label="Guest" value={selectedFolio.guest ? `${selectedFolio.guest.first_name} ${selectedFolio.guest.last_name}` : (selectedFolio.reservation?.guest_name || "N/A")} />
                 <SummaryStat label="Total Charged" value={money(selectedFolio.total_amount)} />
                 <SummaryStat label="Total Paid" value={money(selectedFolio.amount_paid)} />
                 <SummaryStat
