@@ -65,10 +65,10 @@ const emptyCreateForm = { reservation_id: "", guest_id: "", total_amount: "0", a
 // itself is recorded, so the payment posts against the already-adjusted
 // balance.
 const emptyPaymentForm = {
-  splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "",
+  splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "",
   tax_mode: "fixed", tax: "", discount_mode: "percentage", discount: "",
 };
-const emptyRefundForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
+const emptyRefundForm = { amount: "", payment_method: "transfer", receipt_number: "", notes: "" };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";

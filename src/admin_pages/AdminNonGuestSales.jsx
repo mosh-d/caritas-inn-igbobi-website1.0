@@ -25,7 +25,7 @@ import {
 
 const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", bill_no: "", is_complementary: false, is_manager: false };
 const emptyNewFolioForm = { guest_name: "", guest_phone: "", rows: [{ ...emptyRow }] };
-const emptyPaymentForm = { splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "" };
+const emptyPaymentForm = { splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "" };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDateTime = (d) => d ? new Date(d).toLocaleString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";

@@ -85,7 +85,7 @@ export default function AdminReservationsPage() {
   // "Save Room Assignments" still needs to be clicked first.
   const [pendingRoomSlots, setPendingRoomSlots] = useState([]);
 
-  const EMPTY_DEPOSIT_FORM = { splits: [{ amount: "", payment_method: "cash" }], receipt_number: "", notes: "" };
+  const EMPTY_DEPOSIT_FORM = { splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "" };
   const [deposits, setDeposits] = useState([]);
   const [depositForm, setDepositForm] = useState(EMPTY_DEPOSIT_FORM);
   const [recordingDeposit, setRecordingDeposit] = useState(false);

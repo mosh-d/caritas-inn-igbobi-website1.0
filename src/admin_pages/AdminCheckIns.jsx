@@ -44,7 +44,7 @@ const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).
 const EMPTY_WALK_IN = {
   checkOut: "", roomsBooked: 1, roomTypeId: "", guestFirstName: "", guestLastName: "", phone: "", email: "",
   roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "", withoutBreakfast: false, complementary: false,
-  paymentSplits: [{ amount: "", payment_method: "cash" }], paymentReceiptNumber: "", paymentNotes: "",
+  paymentSplits: [{ amount: "", payment_method: "transfer" }], paymentReceiptNumber: "", paymentNotes: "",
   paymentTaxMode: "fixed", paymentTax: "", paymentDiscountMode: "percentage", paymentDiscount: "",
 };
 

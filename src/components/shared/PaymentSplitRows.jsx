@@ -10,7 +10,7 @@ export default function PaymentSplitRows({ splits, setSplits }) {
   const updateSplit = (i, patch) => {
     setSplits(splits.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   };
-  const addSplit = () => setSplits([...splits, { amount: "", payment_method: "cash" }]);
+  const addSplit = () => setSplits([...splits, { amount: "", payment_method: "transfer" }]);
   const removeSplit = (i) => setSplits(splits.filter((_, idx) => idx !== i));
 
   return (
