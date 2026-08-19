@@ -311,15 +311,15 @@ function ManifestSnapshot({ data }) {
       <ReportSection title="Debt Recovery">
         {debtRecovery.length === 0 ? <EmptyRow /> : (
           <table className="w-full text-xl">
-            <TableHead cells={["Guest", "Room", "Total Owed", "Total Paid", "Recovered On", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
+            <TableHead cells={["Guest", "Room", "Date Owed", "Total Owed", "Total Paid", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
             <tbody>
               {debtRecovery.map((d, i) => (
                 <tr key={i} className="border-b border-[color:var(--text-color)]/10">
                   <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
+                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(d.debt_date)}</td>
                   <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_owed)}</td>
                   <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_paid)}</td>
-                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(d.payment_date)}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
                   <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.payment_reference}</td>
                 </tr>

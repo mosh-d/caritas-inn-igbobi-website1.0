@@ -646,20 +646,20 @@ function ManifestTab({ shift }) {
             )}
           </ReportSection>
 
-          <ReportSection title="Debt Recovery" subtitle="Past unpaid nights cleared by a fresh payment recorded on a later day">
+          <ReportSection title="Debt Recovery" subtitle="Old debt cleared by a payment received this business day">
             {data.debt_recovery.length === 0 ? (
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Guest", "Room", "Total Owed", "Total Paid", "Recovered On", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
+                <TableHead cells={["Guest", "Room", "Date Owed", "Total Owed", "Total Paid", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
                 <tbody>
                   {data.debt_recovery.map((d, i) => (
                     <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(d.debt_date)}</td>
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_owed)}</td>
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_paid)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(d.payment_date)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.payment_reference}</td>
                     </tr>
