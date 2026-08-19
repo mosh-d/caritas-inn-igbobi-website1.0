@@ -270,7 +270,7 @@ function ManifestRow(r) {
 }
 
 function ManifestSnapshot({ data }) {
-  const headers = ["Guest", "Room", "Room Price", "Breakfast Price", "Receipt No.", "Deposited", "Arrival", "Check-Out", "Source"];
+  const headers = ["Guest", "Room", "Room Price", "Breakfast Price", "Receipt No.", "Res. Credit", "Arrival", "Check-Out", "Source"];
   const checkIns = data?.check_ins || [];
   const checkOuts = data?.check_outs || [];
   const paidBefore = data?.paid_before || [];

@@ -565,7 +565,7 @@ function ManifestTab({ shift }) {
     </tr>
   );
 
-  const headers = ["Guest", "Room", "Room Price", "Breakfast Price", "Receipt No.", "Deposited", "Arrival", "Check-Out", "Source"];
+  const headers = ["Guest", "Room", "Room Price", "Breakfast Price", "Receipt No.", "Res. Credit", "Arrival", "Check-Out", "Source"];
 
   return (
     <div className="w-full flex flex-col items-start gap-[2.5rem]">

@@ -440,7 +440,7 @@ export default function AdminReservationsPage() {
       setReservationFolio((folioResult.data && folioResult.data[0]) || null);
       setDepositForm(EMPTY_DEPOSIT_FORM);
       setTransactionReceipt({
-        title: "Deposit Recorded",
+        title: "Reservation (Credit) Recorded",
         items: result.deposits.map((d) => ({ reference: d.deposit_reference, amount: money(d.amount), method: d.payment_method })),
       });
     } catch (err) {
@@ -634,7 +634,7 @@ export default function AdminReservationsPage() {
   };
 
   // Confirm used to only ever send the reservation ID — an amount typed
-  // into the deposit form without clicking "Record Deposit", or a room
+  // into the credit form without clicking "Record Reservation Credit", or a room
   // number typed into the picker without clicking "Save Room Assignments",
   // would just be silently lost the moment Confirm ran. Both are now
   // required to be resolved (recorded/saved, or cleared) before Confirm is
@@ -655,7 +655,7 @@ export default function AdminReservationsPage() {
     : res?.is_expired_hold
     ? "This hold expired and its room was released — reclaim the hold first if the guest still wants this booking."
     : hasUnsavedDeposit
-      ? "Record the deposit (or clear the amount field) before confirming."
+      ? "Record the reservation credit (or clear the amount field) before confirming."
       : hasUnsavedRoomAssignment
         ? "Save the room assignment changes (or revert them) before confirming."
         : roomAssignmentIncomplete
@@ -942,8 +942,8 @@ export default function AdminReservationsPage() {
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className={field.label}>Total Deposited (₦)</label>
-                    <div className={`${field.input} bg-[color:var(--text-color)]/3 flex items-center`} title="Set automatically from the Deposits ledger below — record an actual deposit there, not here.">
+                    <label className={field.label}>Total Reservation Credit (₦)</label>
+                    <div className={`${field.input} bg-[color:var(--text-color)]/3 flex items-center`} title="Set automatically from the Reservation (Credit) ledger below — record it there, not here.">
                       {money(depositsTotal)}
                     </div>
                   </div>
@@ -1037,7 +1037,7 @@ export default function AdminReservationsPage() {
 
               {/* Deposits */}
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
-                <h3 className="text-2xl font-bold text-[color:var(--black)]">Deposits</h3>
+                <h3 className="text-2xl font-bold text-[color:var(--black)]">Reservation (Credit)</h3>
                 {deposits.length > 0 && (
                   <div className="flex flex-col gap-2">
                     {deposits.map((dep) => (
@@ -1093,7 +1093,7 @@ export default function AdminReservationsPage() {
                       </div>
                     </div>
                     <button onClick={handleRecordDeposit} disabled={recordingDeposit || !hasValidDepositSplits} className={`${btn.primary} self-start`}>
-                      {recordingDeposit ? "Recording..." : "Record Deposit"}
+                      {recordingDeposit ? "Recording..." : "Record Reservation Credit"}
                     </button>
                   </div>
                 )}

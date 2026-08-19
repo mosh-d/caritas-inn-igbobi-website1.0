@@ -763,39 +763,65 @@ export default function AdminFoliosPage() {
                   at payment time, or an advance deposit nobody has drawn on.
                   Without this the folio reads "Settled" with no sign the
                   credit exists at all. */}
-              {Number(selectedFolio.credit_on_file?.total) > 0 && (
+              {/* Every reservation credit ever held against this stay —
+                  including ones already spent or refunded. A consumed credit
+                  used to disappear entirely, which left the folio unable to
+                  explain the gap between what was tendered and what the
+                  charges came to. */}
+              {selectedFolio.credit_on_file?.entries?.length > 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-lg px-5 py-4 flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <span className="text-green-700 font-bold text-xl">Credit on File:</span>
-                    <span className="text-green-700 font-bold text-2xl">{money(selectedFolio.credit_on_file.total)}</span>
+                    <span className="text-green-700 font-bold text-xl">
+                      Reservation (Credit){Number(selectedFolio.credit_on_file.total) > 0 ? " Available:" : ""}
+                    </span>
+                    {Number(selectedFolio.credit_on_file.total) > 0 ? (
+                      <span className="text-green-700 font-bold text-2xl">{money(selectedFolio.credit_on_file.total)}</span>
+                    ) : (
+                      <span className="text-lg text-green-700/70">Nothing left to claim</span>
+                    )}
                   </div>
-                  {selectedFolio.credit_on_file.entries.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between gap-4 text-lg text-green-700/90 flex-wrap">
-                      <span>
-                        <span className="font-mono text-base">{c.deposit_reference}</span>
-                        <span className="ml-2">{c.from_overpayment ? "from an overpayment" : "advance deposit"}</span>
-                        {Number(c.amount_applied) > 0 && (
-                          <span className="ml-2 text-green-700/70">· {money(c.amount_applied)} of {money(c.amount)} already used</span>
-                        )}
-                      </span>
-                      <span className="flex items-center gap-3">
-                        <span className="font-bold whitespace-nowrap">{money(c.available)}</span>
-                        <button
-                          onClick={() => setRefundCreditTarget(c)}
-                          disabled={refundingCreditId === c.id}
-                          className={btn.rowDanger}
-                        >
-                          {refundingCreditId === c.id ? "Refunding..." : "Refund"}
-                        </button>
-                      </span>
-                    </div>
-                  ))}
+                  {selectedFolio.credit_on_file.entries.map((c) => {
+                    const spent = Number(c.amount_applied) > 0;
+                    const refunded = c.status === "refunded";
+                    return (
+                      <div key={c.id} className="flex items-center justify-between gap-4 text-lg text-green-700/90 flex-wrap">
+                        <span>
+                          <span className="font-mono text-base">{c.deposit_reference}</span>
+                          <span className="ml-2">{c.from_overpayment ? "from an overpayment" : "paid in advance"}</span>
+                          {refunded ? (
+                            <span className="ml-2 text-green-700/70">· refunded to the guest</span>
+                          ) : spent ? (
+                            <span className="ml-2 text-green-700/70">
+                              · {money(c.amount_applied)} of {money(c.amount)} went to charges
+                              {Number(c.available) > 0 ? "" : " (fully used)"}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="flex items-center gap-3">
+                          <span className={`font-bold whitespace-nowrap ${Number(c.available) > 0 ? "" : "text-green-700/50 line-through"}`}>
+                            {money(Number(c.available) > 0 ? c.available : c.amount)}
+                          </span>
+                          {Number(c.available) > 0 && (
+                            <button
+                              onClick={() => setRefundCreditTarget(c)}
+                              disabled={refundingCreditId === c.id}
+                              className={btn.rowDanger}
+                            >
+                              {refundingCreditId === c.id ? "Refunding..." : "Refund"}
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
                   {refundError && (
                     <p className="text-red-600 text-lg bg-red-50 border border-red-200 rounded-lg px-4 py-2">{refundError}</p>
                   )}
-                  <p className="text-lg text-green-700/80">
-                    Applies automatically to the next night's charge, or hand it back now with Refund.
-                  </p>
+                  {Number(selectedFolio.credit_on_file.total) > 0 && (
+                    <p className="text-lg text-green-700/80">
+                      Applies automatically to the next night's charge, or hand it back now with Refund.
+                    </p>
+                  )}
                 </div>
               )}
 
