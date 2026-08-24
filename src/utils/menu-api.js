@@ -8,7 +8,7 @@ const baseUrl = SERVER_BASE_URL.endsWith("/")
 
 // Food and drink menus — two separate endpoints/tables, identical shape
 // (name, price, is_active). Read access is open to any authenticated staff
-// (a waiter/waitress needs to browse it to post a charge); create/update
+// (a waitron needs to browse it to post a charge); create/update
 // are manager-only, enforced server-side regardless of what the frontend
 // shows.
 export const fetchFoodItems = async (includeInactive = false) => {

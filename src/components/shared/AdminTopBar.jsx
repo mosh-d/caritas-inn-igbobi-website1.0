@@ -12,12 +12,8 @@ import {
 import StatusBadge from './StatusBadge';
 
 // Roles a developer can "view as" to confirm what each one's UI actually
-// looks like, without needing a separate login per role. Waiter/waitress
-// are functionally identical everywhere gating is concerned (see
-// isWaitstaff() in utils/auth.js) but both are offered since they're
-// genuinely distinct accounts a developer might want to individually
-// spot-check.
-const SIMULATABLE_ROLES = ['manager', 'receptionist', 'accountant', 'waiter', 'waitress'];
+// looks like, without needing a separate login per role.
+const SIMULATABLE_ROLES = ['manager', 'receptionist', 'accountant', 'waitron'];
 
 // Branch names in the DB are stored as "<Brand> <Location>" (e.g. "Caritas Inn
 // Ilasan") since one branches table spans all three hotel brands. The logo

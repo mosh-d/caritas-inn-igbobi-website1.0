@@ -341,13 +341,10 @@ export const isAccountant = () => {
   return role === "accountant" || role === "developer";
 };
 
-// "waiter" and "waitress" are two separate role values, not one role with a
-// display-label override — they need identical permissions/views, just a
-// different label, so this treats them as one group everywhere gating is
-// concerned. Same developer-bypass reasoning as isManager()/isAccountant().
+// Same developer-bypass reasoning as isManager()/isAccountant().
 export const isWaitstaff = () => {
   const role = getStoredStaffRole();
-  return role === "waiter" || role === "waitress" || role === "developer";
+  return role === "waitron" || role === "developer";
 };
 
 // No developer bypass here, unlike isManager()/isAccountant()/isWaitstaff()
@@ -361,15 +358,15 @@ export const isReceptionist = () => getStoredStaffRole() === "receptionist";
 // /admin URL while already authenticated. An accountant's nav (see
 // visibleAdminNavItems()) has no link back to Overview at all, so landing
 // there by default is a dead end — send them straight to their own report
-// list instead; same reasoning for waitstaff, whose only real page is
-// Folios. Checked against the raw stored role, not isAccountant()/
-// isWaitstaff() above: a developer session should still default to the
-// normal Overview, not a role-specific landing page, since developer sees
-// everything.
+// list instead; same reasoning for waitron, whose primary page is Guest
+// Sales (posting food/drink to a guest folio — see adminNavItems.js).
+// Checked against the raw stored role, not isAccountant()/isWaitstaff()
+// above: a developer session should still default to the normal Overview,
+// not a role-specific landing page, since developer sees everything.
 export const getDefaultAdminRoute = () => {
   const role = getStoredStaffRole();
   if (role === "accountant") return "/admin/accountant-reports";
-  if (role === "waiter" || role === "waitress") return "/admin/folios";
+  if (role === "waitron") return "/admin/guest-sales";
   return "/admin/overview";
 };
 

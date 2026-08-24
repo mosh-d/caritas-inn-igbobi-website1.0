@@ -22,10 +22,9 @@ const STYLES = {
   // Missing before now — never actually rendered anywhere until accountant
   // actions started appearing in the Audit Trail (they now can: Reports/
   // Audit Trail access), which is when the plain-gray fallback would have
-  // first been visible. Found while adding waiter/waitress below.
+  // first been visible. Found while adding waitron below.
   accountant: "bg-teal-100 text-teal-700",
-  waiter: "bg-amber-100 text-amber-700",
-  waitress: "bg-amber-100 text-amber-700",
+  waitron: "bg-amber-100 text-amber-700",
   // Payment status (Accommodation Report)
   paid: "bg-green-100 text-green-700",
   owing: "bg-red-100 text-red-700",

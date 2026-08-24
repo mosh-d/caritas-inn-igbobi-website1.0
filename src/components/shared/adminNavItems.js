@@ -24,7 +24,7 @@ import { getStoredStaffRole } from "../../utils/auth";
 // `showAlertBadge` marks the item that renders the live alert count.
 // `managerOnly` items are hidden from a receptionist session; `accountantOnly`
 // items are shown ONLY to an accountant session; `waitstaffOnly` items are
-// shown ONLY to a waiter/waitress session; `alwaysVisible` items stay
+// shown ONLY to a waitron session; `alwaysVisible` items stay
 // visible even in an accountant session, which otherwise sees only
 // accountantOnly items — an accountant reviews front-office-sent reports
 // (ACCOUNTANT REPORTS, accountantOnly), but can also run their own reports
@@ -47,7 +47,7 @@ export const ADMIN_NAV_ITEMS = [
   { to: "/admin/reservations", label: "RESERVATIONS", icon: IoCalendarOutline },
   { to: "/admin/guests", label: "GUESTS", icon: IoPeopleOutline },
   // GUEST FOLIOS no longer posts food/drink (that moved to GUEST SALES
-  // below) — a waiter/waitress has no reason to be here anymore, so this
+  // below) — a waitron has no reason to be here anymore, so this
   // lost its waitstaffVisible flag; receptionist/manager still use it for
   // everything else a folio needs (payments, room/laundry/other charges).
   { to: "/admin/folios", label: "GUEST FOLIOS", icon: IoReceiptOutline },
@@ -61,7 +61,7 @@ export const ADMIN_NAV_ITEMS = [
   // applies. No such restriction on non-guest sales (see below), so that
   // one's still open to receptionist/manager pinch-hitting.
   { to: "/admin/guest-sales", label: "GUEST SALES", icon: IoFastFoodOutline, waitstaffVisible: true, receptionistHidden: true },
-  // waitstaffVisible: waiters/waitresses record these directly; no
+  // waitstaffVisible: waitrons record these directly; no
   // managerOnly, so receptionist/manager see it too (they can also ring in
   // a non-guest order, e.g. covering the bar when no waitstaff is on duty) —
   // accountant is the only role that never sees it, same as GUEST FOLIOS.
@@ -93,7 +93,7 @@ export function visibleAdminNavItems() {
   const isDeveloper = role === "developer";
   const isManagerRole = role === "manager" || isDeveloper;
   const isAccountantRole = role === "accountant" || isDeveloper;
-  const isWaitstaffRole = role === "waiter" || role === "waitress";
+  const isWaitstaffRole = role === "waitron";
 
   return ADMIN_NAV_ITEMS.filter((item) => {
     if (item.accountantOnly) return isAccountantRole;

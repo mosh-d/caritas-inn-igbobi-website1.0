@@ -40,7 +40,7 @@ const CHARGE_TYPE_LABELS = {
 };
 // Food/drink moved to the dedicated Guest Sales page (AdminGuestSales.jsx —
 // a guest picker plus the printed receipt, instead of hunting for a folio
-// here first) — waiter/waitress has nothing left to post on this page, so
+// here first) — waitron has nothing left to post on this page, so
 // their charge-type list is empty rather than special-cased; the "Add a
 // charge" form's own item_type guard (see handleAddItem) already refuses to
 // submit with nothing selected, so a waitstaff account that still finds
@@ -48,7 +48,7 @@ const CHARGE_TYPE_LABELS = {
 // it. Receptionist/manager/developer are unaffected — they never touched
 // food/drink here anyway.
 const allowedChargeTypesForRole = (role) => {
-  if (role === "waiter" || role === "waitress") return [];
+  if (role === "waitron") return [];
   return CHARGE_TYPES;
 };
 const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
@@ -79,7 +79,7 @@ export default function AdminFoliosPage() {
   // check-in) — so their view of this page is locked to exactly that
   // slice: no tab/status switching, no "+ Create Folio".
   const staffRole = getStoredStaffRole();
-  const isWaitstaffSession = staffRole === "waiter" || staffRole === "waitress";
+  const isWaitstaffSession = staffRole === "waitron";
 
   const [subTab, setSubTab] = useState("all");
   const [statusFilter, setStatusFilter] = useState(isWaitstaffSession ? "open" : "all");
@@ -500,7 +500,7 @@ export default function AdminFoliosPage() {
         <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
           <PageHeading icon={IoReceiptOutline}>Guest Folios</PageHeading>
           {/* Waitstaff never creates a folio — that's a front-desk task tied
-              to a reservation/check-in, not something a waiter/waitress does. */}
+              to a reservation/check-in, not something a waitron does. */}
           {!isWaitstaffSession && (
             <button onClick={() => setIsCreateOpen(true)} className={`${btn.primary} whitespace-nowrap`}>
               + Create Folio

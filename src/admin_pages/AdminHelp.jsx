@@ -94,16 +94,13 @@ const SECTIONS = [
     id: "folios",
     icon: IoReceiptOutline,
     label: "Guest Folios",
-    waitstaffVisible: true,
     summary: "The financial ledger for each reservation — charges, tax, discounts, payments, refunds, reservation credit, and the running balance.",
     workflow: [
       "Tabs: All (every folio), Outstanding Balance (open folios with money still owed), Overdue (guests who are supposed to have checked out by now but still owe money — checks the scheduled checkout date, not whether they've actually left).",
       "Overdue only starts counting from noon on the scheduled checkout date — matches the hotel's actual noon checkout time, same rule Alerts uses.",
       "Guest Ledger vs. City Ledger (standard hotel accounting terms, shown as the Guest Status column on Outstanding Balance/Overdue): a balance owed by a guest who's still registered/in-house is Guest Ledger — a front-desk matter. Once that same guest has actually checked out and still owes, it becomes City Ledger — a receivable to collect, not something front desk can resolve just by finishing checkout.",
       "Checkout is never blocked by an outstanding balance — the room still has to be released for housekeeping/resale, and the folio simply stays open as a City Ledger receivable instead of auto-closing. The checkout screen shows a clear warning with the exact amount before staff confirm, but it's a warning, not a hard stop — standard PMS behavior.",
-      "Charge Type (top of Add-a-Charge) determines the rest of the form — Room Charge, Food Charge, Drink Charge, Laundry Charge, Penalty, or Adjustment. Food/Drink Charge shows a menu-item picker (pick an item + quantity) instead of a plain description/amount — it pre-fills both, but they're still editable afterward.",
-      "Waiters/waitresses can only post Food Charge or Drink Charge; receptionists can post everything except those two — food/drink charges always stay attributed to whoever actually rang the item in, not whoever happened to be at the front desk.",
-      "A waiter/waitress session only sees open folios here — no tabs, no status filter, no Create Folio button. They can only ever post to a folio that's still open for business, so there's nothing else for them to switch between.",
+      "Charge Type (top of Add-a-Charge) determines the rest of the form — Room Charge, Laundry Charge, Penalty, Adjustment, or Correction. Food and drink charges are posted from Guest Sales instead, not from here.",
       "Discount on a charge is always a percentage. Tax can be switched between a fixed amount or a percentage — both convert to a real amount before saving.",
       "For a discount of a specific amount rather than a percentage, post a charge with a negative amount instead (e.g. -2,000) — it reduces the balance by exactly that much.",
       "Recording a payment, refund, or reservation credit shows a popup with the reference number large and in monospace — write it down or read it to the guest before dismissing it (it won't auto-hide).",
@@ -121,7 +118,7 @@ const SECTIONS = [
       "Guest name is optional — a non-guest customer shouldn't have to give their name just to order food. Opening a sale and posting its first charge happen together in one step: pick one or more items (Food or Drink, from the same menu Guest Folios' charge picker uses) and a quantity each, then Open Folio. More charges can be added afterward from that sale's own page, as long as it's still open.",
       "Bill No (from the F&B docket/bill book) is required for every food item — unlike a guest folio, where it's optional, since there guest name/room already identify the folio. Drinks don't have one, same as on a guest folio. That's how a nameless sale is found again later, via the list's search.",
       "Guest Name/Phone can be added or changed at any time, open or closed — worth doing once it's clear it needs to be traced back to a person: an unpaid balance, or a credit from an overpayment.",
-      "Available to waiters/waitresses, receptionists, and managers — not accountants.",
+      "Available to waitrons, receptionists, and managers — not accountants.",
       "Payment is a separate step from opening the sale — Record Payment supports splitting across methods, same as a guest folio. It auto-closes the instant its balance reaches zero; there's no separate \"close\" step for the normal case.",
       "If a guest overpays and there's no change to give back, enter the full amount received anyway — the excess is kept on file automatically as credit, surfaced as Credit on File (with an Apply Credit button) the next time a sale is opened with that same guest name. Matching is by name, so a credit is only findable this way once a name has been added.",
       "Payment Status on the list is Owing (balance still due), Paid (settled by a fresh payment), or PB — Paid Before (settled at least partly by applying an existing credit). In practice PB/Owing are rare here — a non-guest sale is almost always paid in full on the spot; Guest Folios (room-based stays) is where those statuses mostly come from.",
@@ -240,7 +237,7 @@ const SECTIONS = [
     icon: IoRestaurantOutline,
     label: "Menu",
     managerOnly: true,
-    summary: "The food and drink item list — name and price — that Guest Folios' Food/Drink Charge picker and Non-Guest Sales both pull from.",
+    summary: "The food and drink item list — name and price — that Guest Sales and Non-Guest Sales both pull from.",
     workflow: [
       "Manager-only, same tier as room pricing.",
       "Setting an item Out of Stock (instead of deleting it) keeps it out of future pickers while preserving any past folio charge or non-guest sale that already referenced it.",
@@ -262,10 +259,10 @@ const SECTIONS = [
 export default function AdminHelpPage() {
   const manager = isManager();
   const role = getStoredStaffRole();
-  const isWaitstaffRole = role === "waiter" || role === "waitress";
+  const isWaitstaffRole = role === "waitron";
   // Same shape as visibleAdminNavItems() (adminNavItems.js) — an accountant
   // session sees only accountantOnly + alwaysVisible sections, and a
-  // waiter/waitress session sees only alwaysVisible + waitstaffVisible ones,
+  // waitron session sees only alwaysVisible + waitstaffVisible ones,
   // since none of the other front-desk pages apply to either.
   const visibleSections = SECTIONS.filter((s) => {
     if (s.accountantOnly) return isAccountant();
