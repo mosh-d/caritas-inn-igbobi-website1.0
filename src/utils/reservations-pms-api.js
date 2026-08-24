@@ -214,6 +214,21 @@ export const fetchAvailableRoomNumbers = async ({ roomTypeId, checkIn, checkOut 
   return response.data;
 };
 
+// Moves a reservation to a different room type — hold, confirmed, or
+// already checked in. The backend recomputes total_rate from the new
+// type's own rate (every night already billed stays untouched and
+// correctly attributed to the old type in reports; every night still to
+// come, including tonight's if not yet posted, bills at the new rate) and
+// reassigns the physical room.
+export const changeRoomType = async (id, payload) => {
+  const response = await axios.post(
+    `${baseUrl}/api/reservations/${id}/change-room-type`,
+    payload,
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+};
+
 export const checkOutReservation = async (id) => {
   const response = await axios.post(`${baseUrl}/api/reservations/${id}/check-out`, {}, { headers: getAuthHeaders() });
   return response.data;
