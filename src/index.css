@@ -5,3 +5,23 @@
 @import "tailwindcss";
 
 /* Additional app-wide styles go here */
+
+/* Print-only scoping for PrintReceiptModal (components/shared/PrintReceiptModal.jsx) —
+   when printing, hide everything on the page except the #print-receipt
+   block and lay it out as its own page, rather than opening a separate
+   window/tab just to print a receipt. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-receipt,
+  #print-receipt * {
+    visibility: visible;
+  }
+  #print-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

@@ -17,6 +17,7 @@ import AdminRoomChart from "./admin_pages/AdminRoomChart";
 import AdminReservations from "./admin_pages/AdminReservations";
 import AdminGuests from "./admin_pages/AdminGuests";
 import AdminFolios from "./admin_pages/AdminFolios";
+import AdminGuestSales from "./admin_pages/AdminGuestSales";
 import AdminCheckIns from "./admin_pages/AdminCheckIns";
 import AdminCheckOuts from "./admin_pages/AdminCheckOuts";
 import AdminInHouse from "./admin_pages/AdminInHouse";
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
       { path: "reservations", element: <AdminReservations /> },
       { path: "guests", element: <AdminGuests /> },
       { path: "folios", element: <AdminFolios /> },
+      { path: "guest-sales", element: <AdminGuestSales /> },
       { path: "check-ins", element: <AdminCheckIns /> },
       { path: "check-outs", element: <AdminCheckOuts /> },
       { path: "in-house", element: <AdminInHouse /> },

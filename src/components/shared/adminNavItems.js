@@ -16,6 +16,7 @@ import {
   IoHelpCircleOutline,
   IoRestaurantOutline,
   IoCartOutline,
+  IoFastFoodOutline,
 } from "react-icons/io5";
 import { getStoredStaffRole } from "../../utils/auth";
 
@@ -31,8 +32,12 @@ import { getStoredStaffRole } from "../../utils/auth";
 // both alwaysVisible) — they just never run the front desk itself, so
 // nothing else on this list applies to them. `waitstaffVisible` is the same
 // idea for waitstaff, who otherwise see nothing but alwaysVisible items —
-// their whole job here is posting food/drink charges (FOLIOS), not running
-// the front desk either. See visibleAdminNavItems() below, the one place
+// their whole job here is posting food/drink charges (GUEST SALES,
+// NON-GUEST SALES), not running the front desk either. `receptionistHidden`
+// hides an item from receptionist specifically while leaving every other
+// role's access alone — used where the backend itself restricts that one
+// role (see GUEST SALES below); developer still sees it, same as every
+// other restriction here. See visibleAdminNavItems() below, the one place
 // both consumers (AdminNavBar.jsx, AdminMobileMenu.jsx) get this filtered
 // list from, so they can never drift from each other.
 export const ADMIN_NAV_ITEMS = [
@@ -41,11 +46,21 @@ export const ADMIN_NAV_ITEMS = [
   { to: "/admin/room-chart", label: "ROOM CHART", icon: IoAppsOutline },
   { to: "/admin/reservations", label: "RESERVATIONS", icon: IoCalendarOutline },
   { to: "/admin/guests", label: "GUESTS", icon: IoPeopleOutline },
-  // waitstaffVisible: a waiter/waitress needs to find a guest's open folio
-  // to post a food/drink charge to it — nothing else on this list applies
-  // to them (see AdminFolios.jsx for how the page itself scopes down
-  // further for this role: open folios only, no tabs, no Create Folio).
-  { to: "/admin/folios", label: "GUEST FOLIOS", icon: IoReceiptOutline, waitstaffVisible: true },
+  // GUEST FOLIOS no longer posts food/drink (that moved to GUEST SALES
+  // below) — a waiter/waitress has no reason to be here anymore, so this
+  // lost its waitstaffVisible flag; receptionist/manager still use it for
+  // everything else a folio needs (payments, room/laundry/other charges).
+  { to: "/admin/folios", label: "GUEST FOLIOS", icon: IoReceiptOutline },
+  // waitstaffVisible: this is now the only way to post a food/drink charge
+  // to a guest folio — an in-house-guest picker instead of hunting for a
+  // folio first, plus the printed receipt. Not shown to receptionist: the
+  // backend blocks that role from guest-folio food/drink specifically (see
+  // FoliosService.addFolioItemsBatch), so a page that's exclusively
+  // food/drink has nothing they could actually submit — same
+  // defense-in-depth reasoning AdminGuestSales.jsx's own canAccess check
+  // applies. No such restriction on non-guest sales (see below), so that
+  // one's still open to receptionist/manager pinch-hitting.
+  { to: "/admin/guest-sales", label: "GUEST SALES", icon: IoFastFoodOutline, waitstaffVisible: true, receptionistHidden: true },
   // waitstaffVisible: waiters/waitresses record these directly; no
   // managerOnly, so receptionist/manager see it too (they can also ring in
   // a non-guest order, e.g. covering the bar when no waitstaff is on duty) —
@@ -85,6 +100,9 @@ export function visibleAdminNavItems() {
     if (role === "accountant") return item.alwaysVisible === true;
     if (isWaitstaffRole) return item.alwaysVisible === true || item.waitstaffVisible === true;
     if (item.managerOnly) return isManagerRole;
+    // Developer still sees everything, same as it overrides every other
+    // role restriction on this list.
+    if (item.receptionistHidden && role === "receptionist") return false;
     return true;
   });
 }

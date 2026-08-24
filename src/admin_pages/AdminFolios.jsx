@@ -14,7 +14,6 @@ import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { getStoredStaffRole } from "../utils/auth";
-import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import {
   fetchFolios,
   fetchPendingFolios,
@@ -28,11 +27,9 @@ import {
   refundDeposit,
 } from "../utils/folios-api";
 
-const CHARGE_TYPES = ["room_charge", "food_charge", "drink_charge", "laundry_charge", "penalty", "adjustment", "correction"];
+const CHARGE_TYPES = ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
 const CHARGE_TYPE_LABELS = {
   room_charge: "Room Charge",
-  food_charge: "Food Charge",
-  drink_charge: "Drink Charge",
   laundry_charge: "Laundry Charge",
   penalty: "Penalty",
   adjustment: "Adjustment",
@@ -41,22 +38,24 @@ const CHARGE_TYPE_LABELS = {
   // its own on the Accommodation and Debt Recovery reports.
   correction: "Correction",
 };
-// Waitstaff only ever sell food/drink, so they're confined to those two
-// charge types; receptionists post everything else a front desk normally
-// handles (including laundry) but never food/drink — that stays attributed
-// to whichever waiter/waitress actually rang it in. Manager/developer
-// sessions (and any other role, though none currently reach this page) see
-// every type. Mirrors the backend's own gating in FoliosService.addFolioItem.
+// Food/drink moved to the dedicated Guest Sales page (AdminGuestSales.jsx —
+// a guest picker plus the printed receipt, instead of hunting for a folio
+// here first) — waiter/waitress has nothing left to post on this page, so
+// their charge-type list is empty rather than special-cased; the "Add a
+// charge" form's own item_type guard (see handleAddItem) already refuses to
+// submit with nothing selected, so a waitstaff account that still finds
+// this page via a direct link or an old bookmark can't post anything from
+// it. Receptionist/manager/developer are unaffected — they never touched
+// food/drink here anyway.
 const allowedChargeTypesForRole = (role) => {
-  if (role === "waiter" || role === "waitress") return ["food_charge", "drink_charge"];
-  if (role === "receptionist") return ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
+  if (role === "waiter" || role === "waitress") return [];
   return CHARGE_TYPES;
 };
 const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 
 // Both tax and discount can be either a percentage of the charge amount or
 // a flat figure, picked via tax_mode/discount_mode.
-const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "", menu_item_id: "", quantity: "1", notes: "", date: "", bill_no: "", is_complementary: false };
+const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "", notes: "", date: "" };
 const emptyCreateForm = { reservation_id: "", guest_id: "", total_amount: "0", amount_paid: "0" };
 // tax_mode/tax and discount_mode/discount mirror the Add-a-Charge item form
 // above — posted together as one 'adjustment' folio item (the same
@@ -109,53 +108,11 @@ export default function AdminFoliosPage() {
     }
   }, [highlightPaymentId, selectedFolio]);
   const allowedChargeTypes = allowedChargeTypesForRole(staffRole);
-  const canChargeFoodOrDrink = allowedChargeTypes.includes("food_charge");
   const resetItemForm = () => ({ ...emptyItemForm, item_type: allowedChargeTypes[0] || "" });
 
   const [itemForm, setItemForm] = useState(resetItemForm);
   const [addingItem, setAddingItem] = useState(false);
   const [closing, setClosing] = useState(false);
-
-  // Only loaded for a role that can actually post a food/drink charge —
-  // receptionist sessions never need these lists.
-  const [foodItems, setFoodItems] = useState([]);
-  const [drinkItems, setDrinkItems] = useState([]);
-  useEffect(() => {
-    if (!canChargeFoodOrDrink) return;
-    fetchFoodItems().then(setFoodItems).catch(() => {});
-    fetchDrinkItems().then(setDrinkItems).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const isFoodOrDrinkCharge = itemForm.item_type === "food_charge" || itemForm.item_type === "drink_charge";
-  const menuItemOptions = itemForm.item_type === "food_charge" ? foodItems : itemForm.item_type === "drink_charge" ? drinkItems : [];
-  const selectedMenuItem = menuItemOptions.find((i) => String(i.id) === String(itemForm.menu_item_id));
-  const isComplementary = itemForm.is_complementary;
-  // Preview only — automatically set from the picked menu item's own rate
-  // (configured on the Menu page), never hand-edited, and always 0 once
-  // Complementary is checked. The backend re-resolves this itself from the
-  // same menu item at posting time, so this is purely so staff can see what
-  // will be added before submitting.
-  const previewServiceCharge = isComplementary || !selectedMenuItem ? 0 : Number(selectedMenuItem.service_charge || 0) * (Number(itemForm.quantity) || 1);
-
-  // Recomputes description/amount from the picked menu item + quantity —
-  // still plain inputs underneath, so staff can hand-edit the result
-  // afterward (e.g. a note like "no ice") until they change the item or
-  // quantity again, which recomputes and overwrites once more. Skipped
-  // while Complementary is checked — amount stays locked at 0 (see the
-  // checkbox's own onChange) until it's unchecked again.
-  useEffect(() => {
-    if (!isFoodOrDrinkCharge || !itemForm.menu_item_id || isComplementary) return;
-    const selected = menuItemOptions.find((i) => String(i.id) === String(itemForm.menu_item_id));
-    if (!selected) return;
-    const qty = Number(itemForm.quantity) || 1;
-    setItemForm((prev) => ({
-      ...prev,
-      description: `${selected.name} x${qty}`,
-      amount: String(Number(selected.price) * qty),
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemForm.menu_item_id, itemForm.quantity, itemForm.item_type, isComplementary]);
 
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
   const [recordingPayment, setRecordingPayment] = useState(false);
@@ -300,7 +257,6 @@ export default function AdminFoliosPage() {
 
   const handleAddItem = async () => {
     if (!selectedFolio || !itemForm.item_type || !itemForm.description || !itemForm.amount) return;
-    if (isFoodOrDrinkCharge && !itemForm.menu_item_id) return;
     try {
       setAddingItem(true);
       const amount = Number(itemForm.amount);
@@ -320,12 +276,8 @@ export default function AdminFoliosPage() {
         tax: taxAmount,
         discount: discountAmount,
         item_type: itemForm.item_type,
-        reference_id: itemForm.menu_item_id ? Number(itemForm.menu_item_id) : undefined,
-        quantity: isFoodOrDrinkCharge ? Number(itemForm.quantity) || 1 : undefined,
         notes: itemForm.notes.trim() || undefined,
         date: itemForm.date || undefined,
-        bill_no: itemForm.item_type === "food_charge" && itemForm.bill_no.trim() ? itemForm.bill_no.trim() : undefined,
-        is_complementary: isFoodOrDrinkCharge ? itemForm.is_complementary : undefined,
       });
       setItemForm(resetItemForm());
       await refreshSelectedFolio();
@@ -877,59 +829,21 @@ export default function AdminFoliosPage() {
                         <label className={field.label}>Charge Type</label>
                         <select
                           value={itemForm.item_type}
-                          onChange={(e) => setItemForm({ ...itemForm, item_type: e.target.value, menu_item_id: "", quantity: "1", description: "", amount: "", bill_no: "", is_complementary: false })}
+                          onChange={(e) => setItemForm({ ...itemForm, item_type: e.target.value, description: "", amount: "" })}
                           className={field.select}
                         >
                           {allowedChargeTypes.map((t) => <option key={t} value={t}>{CHARGE_TYPE_LABELS[t]}</option>)}
                         </select>
                       </div>
-                      {isFoodOrDrinkCharge && (
-                        <>
-                          <div className="flex flex-col gap-2">
-                            <label className={field.label}>Item</label>
-                            <select
-                              value={itemForm.menu_item_id}
-                              onChange={(e) => setItemForm({ ...itemForm, menu_item_id: e.target.value })}
-                              className={field.select}
-                            >
-                              <option value="">Select an item</option>
-                              {menuItemOptions.map((i) => <option key={i.id} value={i.id}>{i.name} — {money(i.price)}</option>)}
-                            </select>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <label className={field.label}>Quantity</label>
-                            <input type="number" min="1" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} className={field.input} />
-                          </div>
-                        </>
-                      )}
-                      {itemForm.item_type === "food_charge" && (
-                        <div className="flex flex-col gap-2">
-                          <label className={field.label}>Bill No</label>
-                          <input
-                            type="text"
-                            placeholder="From the F&B docket/bill book"
-                            value={itemForm.bill_no}
-                            onChange={(e) => setItemForm({ ...itemForm, bill_no: e.target.value })}
-                            className={field.input}
-                          />
-                        </div>
-                      )}
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Amount (₦)</label>
                         <input
                           type="number"
                           value={itemForm.amount}
-                          disabled={isComplementary}
                           onChange={(e) => setItemForm({ ...itemForm, amount: e.target.value })}
-                          className={`${field.input} ${isComplementary ? "opacity-60 cursor-not-allowed" : ""}`}
+                          className={field.input}
                         />
                       </div>
-                      {isFoodOrDrinkCharge && (
-                        <div className="flex flex-col gap-2">
-                          <label className={field.label}>Service Charge (₦)</label>
-                          <input type="text" readOnly value={money(previewServiceCharge)} className={`${field.input} opacity-60 cursor-not-allowed`} />
-                        </div>
-                      )}
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Tax ({itemForm.tax_mode === "percentage" ? "%" : "₦"})</label>
                         <div className="flex flex-col gap-2">
@@ -963,32 +877,6 @@ export default function AdminFoliosPage() {
                         <AutoGrowTextarea value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.textarea} />
                       </div>
                     </div>
-                    {isFoodOrDrinkCharge && (
-                      <div className="flex gap-6 flex-wrap items-center">
-                        <label className="flex items-center gap-2 text-xl cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={itemForm.is_complementary}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              const qty = Number(itemForm.quantity) || 1;
-                              setItemForm({
-                                ...itemForm,
-                                is_complementary: checked,
-                                amount: checked ? "0" : selectedMenuItem ? String(Number(selectedMenuItem.price) * qty) : itemForm.amount,
-                              });
-                            }}
-                            className="w-5 h-5 cursor-pointer"
-                          />
-                          Complementary
-                        </label>
-                        <p className="text-lg text-[color:var(--text-color)]/60">
-                          {itemForm.is_complementary
-                            ? "This posts as complementary — no charge, still attributed to the room as usual."
-                            : "Check if this item is being given away free."}
-                        </p>
-                      </div>
-                    )}
                     <div className="flex flex-col gap-2">
                       <label className={field.label}>Remarks (optional)</label>
                       <AutoGrowTextarea value={itemForm.notes} onChange={(e) => setItemForm({ ...itemForm, notes: e.target.value })} className={field.textarea} />
@@ -1000,7 +888,7 @@ export default function AdminFoliosPage() {
                         (e.g. -3000.00). This keeps the original charge visible for audit.
                       </p>
                     )}
-                    <button onClick={handleAddItem} disabled={addingItem || !itemForm.description || !itemForm.amount || (isFoodOrDrinkCharge && !itemForm.menu_item_id)} className={`${btn.primary} self-start`}>
+                    <button onClick={handleAddItem} disabled={addingItem || !itemForm.item_type || !itemForm.description || !itemForm.amount} className={`${btn.primary} self-start`}>
                       {addingItem ? "Adding..." : "Add Charge"}
                     </button>
                   </div>

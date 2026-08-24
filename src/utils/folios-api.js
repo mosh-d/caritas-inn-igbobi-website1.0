@@ -49,6 +49,15 @@ export const addFolioItem = async (id, payload) => {
   return response.data;
 };
 
+// Posts a whole order (Guest Sales) as one atomic batch — payload is
+// { items: [...], bill_no? } — instead of one addFolioItem call per line.
+export const addFolioItemsBatch = async (id, payload) => {
+  const response = await axios.post(`${baseUrl}/api/folios/${id}/items/batch`, payload, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
 export const closeFolio = async (id) => {
   const response = await axios.put(
     `${baseUrl}/api/folios/${id}/close`,

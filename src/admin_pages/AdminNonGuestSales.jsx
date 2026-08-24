@@ -7,6 +7,7 @@ import StatusBadge from "../components/shared/StatusBadge";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
+import PrintReceiptModal from "../components/shared/PrintReceiptModal";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
@@ -23,8 +24,13 @@ import {
   applyNonGuestCredit,
 } from "../utils/non-guest-folios-api";
 
-const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", bill_no: "", is_complementary: false, is_manager: false };
-const emptyNewFolioForm = { guest_name: "", guest_phone: "", rows: [{ ...emptyRow }] };
+// bill_no lives at the order level now (one receipt number covers the whole
+// order), not per row — see emptyNewFolioForm below. The single-item "Add a
+// charge" form is its own order in that sense (its own receipt when
+// submitted), so it keeps a bill_no of its own — see emptyItemForm.
+const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", is_complementary: false, is_manager: false };
+const emptyNewFolioForm = { guest_name: "", guest_phone: "", bill_no: "", rows: [{ ...emptyRow }] };
+const emptyItemForm = { ...emptyRow, bill_no: "" };
 const emptyPaymentForm = { splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "" };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -90,9 +96,10 @@ export default function AdminNonGuestSalesPage() {
   }, [newFolio.guest_name]);
 
   const newFolioTotal = newFolio.rows.reduce((sum, row) => sum + rowAmount(row) + rowServiceCharge(row), 0);
-  // Bill No is required for food (not drink) — guest_name is optional, so
-  // it's often the only identifier this folio has at all.
-  const newFolioRowsValid = newFolio.rows.length > 0 && newFolio.rows.every((row) => row.reference_id && Number(row.quantity) > 0 && (row.item_kind !== "food" || row.bill_no.trim()));
+  // Bill No is optional — the system generates a receipt number if it's
+  // left blank (see PrintReceiptModal), so it's no longer required here the
+  // way a docket/bill book number used to be.
+  const newFolioRowsValid = newFolio.rows.length > 0 && newFolio.rows.every((row) => row.reference_id && Number(row.quantity) > 0);
 
   const updateNewFolioRow = (index, patch) => {
     setNewFolio({ ...newFolio, rows: newFolio.rows.map((row, i) => (i === index ? { ...row, ...patch } : row)) });
@@ -105,14 +112,14 @@ export default function AdminNonGuestSalesPage() {
     try {
       setCreating(true);
       setCreateError(null);
-      await createNonGuestFolio({
+      const result = await createNonGuestFolio({
         guest_name: newFolio.guest_name.trim() || undefined,
         guest_phone: newFolio.guest_phone.trim() || undefined,
+        bill_no: newFolio.bill_no.trim() || undefined,
         items: newFolio.rows.map((row) => ({
           item_kind: row.item_kind,
           reference_id: Number(row.reference_id),
           quantity: Number(row.quantity),
-          bill_no: row.item_kind === "food" && row.bill_no.trim() ? row.bill_no.trim() : undefined,
           is_complementary: row.is_complementary,
           is_manager: row.is_manager,
         })),
@@ -122,6 +129,13 @@ export default function AdminNonGuestSalesPage() {
       setSuccessMessage("Non-guest folio opened.");
       setTimeout(() => setSuccessMessage(""), 5000);
       loadFolios();
+      setPrintReceipt({
+        billNo: result.items[0]?.bill_no,
+        who: { guest_name: result.guest_name },
+        items: result.items.map((i) => ({ description: i.description, quantity: i.quantity, line_total: Number(i.amount) + Number(i.service_charge) })),
+        serviceCharge: result.items.reduce((s, i) => s + Number(i.service_charge || 0), 0),
+        total: result.total_amount,
+      });
     } catch (err) {
       setCreateError(err.response?.data?.message || "Failed to open non-guest folio.");
     } finally {
@@ -166,7 +180,7 @@ export default function AdminNonGuestSalesPage() {
   // === Folio detail modal ===
   const [selectedFolio, setSelectedFolio] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [itemForm, setItemForm] = useState({ ...emptyRow });
+  const [itemForm, setItemForm] = useState({ ...emptyItemForm });
   const [addingItem, setAddingItem] = useState(false);
   const [itemError, setItemError] = useState(null);
   const [guestInfoForm, setGuestInfoForm] = useState({ guest_name: "", guest_phone: "" });
@@ -179,6 +193,7 @@ export default function AdminNonGuestSalesPage() {
   const [folioCredits, setFolioCredits] = useState([]);
   const [applyingCreditId, setApplyingCreditId] = useState(null);
   const [transactionReceipt, setTransactionReceipt] = useState(null);
+  const [printReceipt, setPrintReceipt] = useState(null);
 
   // No guest_name means there's nothing to match a credit against yet —
   // fetchNonGuestCredits(undefined) would otherwise fall back to the bare
@@ -198,7 +213,7 @@ export default function AdminNonGuestSalesPage() {
 
   const openFolioDetail = async (folio) => {
     setDetailLoading(true);
-    setItemForm({ ...emptyRow });
+    setItemForm({ ...emptyItemForm });
     setItemError(null);
     setGuestInfoError(null);
     setPaymentForm(emptyPaymentForm);
@@ -248,24 +263,31 @@ export default function AdminNonGuestSalesPage() {
     }
   };
 
-  const itemFormValid = itemForm.reference_id && Number(itemForm.quantity) > 0 && (itemForm.item_kind !== "food" || itemForm.bill_no.trim());
+  const itemFormValid = itemForm.reference_id && Number(itemForm.quantity) > 0;
 
   const handleAddItem = async () => {
     if (!selectedFolio || !itemFormValid) return;
     try {
       setAddingItem(true);
       setItemError(null);
-      await addNonGuestFolioItem(selectedFolio.id, {
+      const result = await addNonGuestFolioItem(selectedFolio.id, {
         item_kind: itemForm.item_kind,
         reference_id: Number(itemForm.reference_id),
         quantity: Number(itemForm.quantity),
-        bill_no: itemForm.item_kind === "food" && itemForm.bill_no.trim() ? itemForm.bill_no.trim() : undefined,
+        bill_no: itemForm.bill_no.trim() || undefined,
         is_complementary: itemForm.is_complementary,
         is_manager: itemForm.is_manager,
       });
-      setItemForm({ ...emptyRow });
+      setItemForm({ ...emptyItemForm });
       await refreshSelectedFolio();
       loadFolios();
+      setPrintReceipt({
+        billNo: result.bill_no,
+        who: { guest_name: selectedFolio.guest_name },
+        items: [{ description: result.description, quantity: itemForm.quantity, line_total: result.total }],
+        serviceCharge: result.service_charge,
+        total: result.total,
+      });
     } catch (err) {
       setItemError(err.response?.data?.message || "Failed to add charge.");
     } finally {
@@ -390,9 +412,19 @@ export default function AdminNonGuestSalesPage() {
               className={field.input}
             />
           </div>
+          <div className="flex flex-col gap-2">
+            <label className={field.label}>Bill No (optional)</label>
+            <input
+              type="text"
+              placeholder="Leave blank to have the system generate one"
+              value={newFolio.bill_no}
+              onChange={(e) => setNewFolio({ ...newFolio, bill_no: e.target.value })}
+              className={field.input}
+            />
+          </div>
         </div>
         <p className="text-lg text-[color:var(--text-color)]/60">
-          Each food item needs its own Bill No, from the F&amp;B docket/bill book — that's how this order is found again later, name or not. Drinks don't have one, same as on a guest folio.
+          One receipt number covers the whole order — leave it blank and the system fills one in.
         </p>
 
         {nameCredits.length > 0 && (
@@ -407,7 +439,7 @@ export default function AdminNonGuestSalesPage() {
               <label className={field.label}>Kind</label>
               <select
                 value={row.item_kind}
-                onChange={(e) => updateNewFolioRow(index, { item_kind: e.target.value, reference_id: "", bill_no: "", is_complementary: false, is_manager: false })}
+                onChange={(e) => updateNewFolioRow(index, { item_kind: e.target.value, reference_id: "", is_complementary: false, is_manager: false })}
                 className={field.select}
               >
                 <option value="food">Food</option>
@@ -429,18 +461,6 @@ export default function AdminNonGuestSalesPage() {
               <label className={field.label}>Quantity</label>
               <input type="number" min="1" value={row.quantity} onChange={(e) => updateNewFolioRow(index, { quantity: e.target.value })} className={field.input} />
             </div>
-            {row.item_kind === "food" && (
-              <div className="flex flex-col gap-2">
-                <label className={field.label}>Bill No *</label>
-                <input
-                  type="text"
-                  placeholder="From the F&B docket/bill book"
-                  value={row.bill_no}
-                  onChange={(e) => updateNewFolioRow(index, { bill_no: e.target.value })}
-                  className={field.input}
-                />
-              </div>
-            )}
             <div className="flex gap-6 flex-wrap items-center">
               <label className="flex items-center gap-2 text-xl cursor-pointer">
                 <input
@@ -698,12 +718,16 @@ export default function AdminNonGuestSalesPage() {
                         <label className={field.label}>Quantity</label>
                         <input type="number" min="1" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} className={field.input} />
                       </div>
-                      {itemForm.item_kind === "food" && (
-                        <div className="flex flex-col gap-2">
-                          <label className={field.label}>Bill No *</label>
-                          <input type="text" value={itemForm.bill_no} onChange={(e) => setItemForm({ ...itemForm, bill_no: e.target.value })} className={field.input} />
-                        </div>
-                      )}
+                      <div className="flex flex-col gap-2">
+                        <label className={field.label}>Bill No (optional)</label>
+                        <input
+                          type="text"
+                          placeholder="Leave blank to have the system generate one"
+                          value={itemForm.bill_no}
+                          onChange={(e) => setItemForm({ ...itemForm, bill_no: e.target.value })}
+                          className={field.input}
+                        />
+                      </div>
                     </div>
                     <div className="flex gap-6 flex-wrap items-center">
                       <label className="flex items-center gap-2 text-xl cursor-pointer">
@@ -825,6 +849,17 @@ export default function AdminNonGuestSalesPage() {
           title={transactionReceipt.title}
           items={transactionReceipt.items}
           onClose={() => setTransactionReceipt(null)}
+        />
+      )}
+
+      {printReceipt && (
+        <PrintReceiptModal
+          billNo={printReceipt.billNo}
+          who={printReceipt.who}
+          items={printReceipt.items}
+          serviceCharge={printReceipt.serviceCharge}
+          total={printReceipt.total}
+          onClose={() => setPrintReceipt(null)}
         />
       )}
     </div>
