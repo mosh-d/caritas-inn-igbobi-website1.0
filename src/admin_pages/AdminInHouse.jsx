@@ -13,12 +13,15 @@ import {
   emergencyCheckout,
   extendStay,
   assignRoom,
+  changeRoomType,
+  fetchAvailableRoomNumbers,
   fetchRoomStatusList,
   fetchReservationNotes,
   addReservationNote,
   deleteReservationNote,
 } from "../utils/reservations-pms-api";
 import { fetchFolios } from "../utils/folios-api";
+import { fetchRoomDetails } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { hasPassedNoonCutoff } from "../utils/date-utils";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
@@ -53,6 +56,16 @@ export default function AdminInHousePage() {
   const [roomTypeFilter, setRoomTypeFilter] = useState("all");
   const [showEarlyCheckoutConfirm, setShowEarlyCheckoutConfirm] = useState(false);
   const [earlyCheckoutError, setEarlyCheckoutError] = useState("");
+
+  // === Change Room Type ===
+  const [roomTypeChoices, setRoomTypeChoices] = useState([]);
+  const [loadingRoomTypeChoices, setLoadingRoomTypeChoices] = useState(false);
+  const [selectedNewRoomTypeId, setSelectedNewRoomTypeId] = useState("");
+  const [newTypeRoomOptions, setNewTypeRoomOptions] = useState(null);
+  const [loadingNewTypeRoomOptions, setLoadingNewTypeRoomOptions] = useState(false);
+  const [newTypeRoomSlots, setNewTypeRoomSlots] = useState([""]);
+  const [changingRoomType, setChangingRoomType] = useState(false);
+  const [roomTypeChangeError, setRoomTypeChangeError] = useState(null);
 
   const loadRoomStatus = useCallback(async () => {
     try {
@@ -150,6 +163,10 @@ export default function AdminInHousePage() {
     setNotesError("");
     setShowEarlyCheckoutConfirm(false);
     setEarlyCheckoutError("");
+    setSelectedNewRoomTypeId("");
+    setNewTypeRoomOptions(null);
+    setNewTypeRoomSlots([""]);
+    setRoomTypeChangeError(null);
   };
   const balanceDue = folio && Number(folio.balance) > 0;
 
@@ -252,6 +269,78 @@ export default function AdminInHousePage() {
       setModalError(err.response?.data?.message || "Failed to assign room.");
     } finally {
       setAssigningRoom(false);
+    }
+  };
+
+  // Every guest on this page is already checked in, so the window that
+  // matters is always today through check_out — past nights are already
+  // consumed and don't need the new type to have been available then
+  // (mirrors the same window the backend re-validates against).
+  const roomTypeChangeWindowStart = (reservation) => {
+    if (!reservation) return null;
+    const checkIn = new Date(reservation.check_in);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today > checkIn ? today : checkIn;
+  };
+
+  // Refetches whenever a different guest's detail is opened.
+  useEffect(() => {
+    if (!selected) {
+      setRoomTypeChoices([]);
+      return;
+    }
+    const windowStart = roomTypeChangeWindowStart(selected);
+    setLoadingRoomTypeChoices(true);
+    fetchRoomDetails(windowStart.toISOString().split("T")[0], selected.check_out)
+      .then((data) => setRoomTypeChoices(data.room_types || []))
+      .catch(() => setRoomTypeChoices([]))
+      .finally(() => setLoadingRoomTypeChoices(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  // Refetches whenever staff picks a different new room type to switch to.
+  useEffect(() => {
+    if (!selected || !selectedNewRoomTypeId) {
+      setNewTypeRoomOptions(null);
+      return;
+    }
+    const windowStart = roomTypeChangeWindowStart(selected);
+    setLoadingNewTypeRoomOptions(true);
+    setNewTypeRoomSlots([""]);
+    fetchAvailableRoomNumbers({
+      roomTypeId: selectedNewRoomTypeId,
+      checkIn: windowStart.toISOString().split("T")[0],
+      checkOut: selected.check_out,
+    })
+      .then((data) => setNewTypeRoomOptions(data))
+      .catch(() => setNewTypeRoomOptions({ available: [], unlabeled_rooms: 0, labeled_rooms: 0 }))
+      .finally(() => setLoadingNewTypeRoomOptions(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNewRoomTypeId]);
+
+  const handleChangeRoomType = async () => {
+    if (!selected || !selectedNewRoomTypeId) return;
+    try {
+      setChangingRoomType(true);
+      setRoomTypeChangeError(null);
+      const roomNumbers = newTypeRoomSlots.map((s) => s.trim()).filter(Boolean);
+      await changeRoomType(selected.id, {
+        new_room_type_id: Number(selectedNewRoomTypeId),
+        room_numbers: roomNumbers,
+      });
+      const full = await fetchInHouseById(selected.id);
+      setSelected(full);
+      setSelectedNewRoomTypeId("");
+      setNewTypeRoomOptions(null);
+      setNewTypeRoomSlots([""]);
+      loadList();
+      setSuccessMessage("Room type changed.");
+      setTimeout(() => setSuccessMessage(""), 5000);
+    } catch (err) {
+      setRoomTypeChangeError(err.response?.data?.message || "Failed to change room type.");
+    } finally {
+      setChangingRoomType(false);
     }
   };
 
@@ -480,6 +569,87 @@ export default function AdminInHousePage() {
                   onSave={handleAssignRoom}
                   saving={assigningRoom}
                 />
+              </section>
+
+              <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+                <h3 className="text-2xl font-bold text-[color:var(--black)]">Change Room Type</h3>
+                <p className="text-lg text-[color:var(--text-color)]/68">
+                  Currently {selected.room_type?.name || "—"}. Switching moves the guest to a different room type — any
+                  nights already billed keep their original rate; every night from here on bills at the new type's rate.
+                </p>
+                {roomTypeChangeError && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{roomTypeChangeError}</p>}
+                {loadingRoomTypeChoices ? (
+                  <LoadingSpinner />
+                ) : (
+                  <select
+                    value={selectedNewRoomTypeId}
+                    onChange={(e) => setSelectedNewRoomTypeId(e.target.value)}
+                    className={field.select}
+                  >
+                    <option value="">-- Select a new room type --</option>
+                    {roomTypeChoices
+                      .filter((rt) => rt.room_type_id !== selected.room_type_id)
+                      .map((rt) => (
+                        <option key={rt.room_type_id} value={rt.room_type_id}>
+                          {rt.room_type_name} — {rt.available_rooms} available
+                        </option>
+                      ))}
+                  </select>
+                )}
+                {selectedNewRoomTypeId && (
+                  <>
+                    {loadingNewTypeRoomOptions ? (
+                      <LoadingSpinner />
+                    ) : newTypeRoomOptions && newTypeRoomOptions.labeled_rooms > 0 && newTypeRoomOptions.available.length === 0 ? (
+                      <p className="text-lg text-red-600">No rooms of this type are currently free.</p>
+                    ) : newTypeRoomOptions && newTypeRoomOptions.labeled_rooms > 0 ? (
+                      <div className="flex flex-col gap-3">
+                        {newTypeRoomSlots.map((value, index) => {
+                          const options = newTypeRoomOptions.available.filter(
+                            (r) => r.room_number === value || !newTypeRoomSlots.includes(r.room_number),
+                          );
+                          return (
+                            <div key={index} className="flex gap-3 flex-nowrap items-center">
+                              <select
+                                value={value}
+                                onChange={(e) => setNewTypeRoomSlots((prev) => prev.map((v, i) => (i === index ? e.target.value : v)))}
+                                className={field.select}
+                              >
+                                <option value="">-- Select a room --</option>
+                                {options.map((r) => (
+                                  <option key={r.id} value={r.room_number}>
+                                    {r.room_number}{r.status === "complementary" ? " (Complementary)" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                              {newTypeRoomSlots.length > 1 && (
+                                <button type="button" onClick={() => setNewTypeRoomSlots((prev) => prev.filter((_, i) => i !== index))} className={btn.rowSecondary}>
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {(!selected.rooms_booked || newTypeRoomSlots.length < selected.rooms_booked) && (
+                          <button type="button" onClick={() => setNewTypeRoomSlots((prev) => [...prev, ""])} className={`${btn.rowSecondary} self-start`}>
+                            + Add Room
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
+                    <button
+                      onClick={handleChangeRoomType}
+                      disabled={
+                        changingRoomType ||
+                        loadingNewTypeRoomOptions ||
+                        (newTypeRoomOptions?.labeled_rooms > 0 && newTypeRoomSlots.every((s) => !s.trim()))
+                      }
+                      className={`${btn.primary} self-start`}
+                    >
+                      {changingRoomType ? "Changing..." : "Change Room Type"}
+                    </button>
+                  </>
+                )}
               </section>
 
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
