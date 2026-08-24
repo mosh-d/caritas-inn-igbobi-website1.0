@@ -207,10 +207,22 @@ export default function AdminFoliosPage() {
     }
   };
 
+  // Always called right after a mutation (add charge, record payment/refund,
+  // close folio) has already succeeded — a network blip on this GET must
+  // never surface as that action failing, so it swallows its own errors
+  // rather than letting the caller's try/catch mistake a stale-data refresh
+  // failure for the mutation itself failing (which would show "Failed to
+  // add charge" etc. after the charge was actually posted, and risk a staff
+  // member retrying and double-charging).
   const refreshSelectedFolio = async () => {
     if (!selectedFolio) return;
-    const full = await fetchFolioById(selectedFolio.id);
-    setSelectedFolio(full);
+    try {
+      const full = await fetchFolioById(selectedFolio.id);
+      setSelectedFolio(full);
+    } catch {
+      // Stale data until the next successful refresh — not worth surfacing
+      // as an error for an action that already succeeded.
+    }
   };
 
   const closeFolioDetail = () => {
@@ -554,7 +566,7 @@ export default function AdminFoliosPage() {
           {searchTerm
             ? `Folios matching folio #, guest name, or payment/refund reference "${searchTerm}".`
             : isWaitstaffSession
-            ? "Open folios only — find the guest's folio to post a food or drink charge to it."
+            ? "Open folios only. Food and drink orders are posted from Guest Sales — this page is for payments, corrections, and other charges."
             : subTab === "all"
             ? "Every folio across all guests, open and closed."
             : subTab === "pending"

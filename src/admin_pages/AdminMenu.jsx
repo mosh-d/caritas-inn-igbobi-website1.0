@@ -17,7 +17,7 @@ import {
   recordDrinkStockMovement,
 } from "../utils/menu-api";
 
-const money = (v) => `₦${Number(v || 0).toLocaleString()}`;
+const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 export default function AdminMenu() {
   const manager = isManager();

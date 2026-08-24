@@ -9,7 +9,7 @@ import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import { fetchInHouse } from "../utils/front-office-api";
 import { addFolioItemsBatch } from "../utils/folios-api";
 
-const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", is_complementary: false, is_manager: false };
+const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", is_complementary: false };
 const emptyOrder = { reservation_id: "", bill_no: "", rows: [{ ...emptyRow }] };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -47,18 +47,18 @@ export default function AdminGuestSalesPage() {
 
   const menuFor = (kind) => (kind === "food" ? foodItems : drinkItems);
   const itemFor = (row) => menuFor(row.item_kind).find((i) => String(i.id) === String(row.reference_id));
-  const isCompOrManager = (row) => row.is_complementary || row.is_manager;
+  const isComp = (row) => row.is_complementary;
   // Preview only — the backend always re-resolves price/service_charge
   // itself from the live menu item at posting time, same "never trust the
   // client" reasoning as Non-Guest Sales.
   const rowAmount = (row) => {
     const item = itemFor(row);
-    if (!item || isCompOrManager(row)) return 0;
+    if (!item || isComp(row)) return 0;
     return Number(item.price) * (Number(row.quantity) || 0);
   };
   const rowServiceCharge = (row) => {
     const item = itemFor(row);
-    if (!item || isCompOrManager(row)) return 0;
+    if (!item || isComp(row)) return 0;
     return Number(item.service_charge || 0) * (Number(row.quantity) || 0);
   };
 
@@ -172,7 +172,7 @@ export default function AdminGuestSalesPage() {
               <label className={field.label}>Kind</label>
               <select
                 value={row.item_kind}
-                onChange={(e) => updateRow(index, { item_kind: e.target.value, reference_id: "", is_complementary: false, is_manager: false })}
+                onChange={(e) => updateRow(index, { item_kind: e.target.value, reference_id: "", is_complementary: false })}
                 className={field.select}
               >
                 <option value="food">Food</option>
@@ -198,8 +198,7 @@ export default function AdminGuestSalesPage() {
               <label className="flex items-center gap-2 text-xl cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={row.is_complementary || row.is_manager}
-                  disabled={row.is_manager}
+                  checked={row.is_complementary}
                   onChange={(e) => updateRow(index, { is_complementary: e.target.checked })}
                   className="w-5 h-5 cursor-pointer"
                 />

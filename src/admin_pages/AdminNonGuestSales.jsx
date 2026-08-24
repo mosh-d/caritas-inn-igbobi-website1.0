@@ -230,12 +230,24 @@ export default function AdminNonGuestSalesPage() {
     }
   };
 
+  // Always called right after a mutation (add item, record payment, apply
+  // credit, update guest info) has already succeeded — a network blip on
+  // this GET must never surface as that action failing, so it swallows its
+  // own errors rather than letting the caller's try/catch mistake a stale-
+  // data refresh failure for the mutation itself failing (which would show
+  // "Failed to add charge" etc. after the charge was actually posted, and
+  // risk a staff member retrying and double-charging).
   const refreshSelectedFolio = async () => {
     if (!selectedFolio) return;
-    const full = await fetchNonGuestFolioById(selectedFolio.id);
-    setSelectedFolio(full);
-    setGuestInfoForm({ guest_name: full.guest_name || "", guest_phone: full.guest_phone || "" });
-    await loadFolioCredits(full.guest_name);
+    try {
+      const full = await fetchNonGuestFolioById(selectedFolio.id);
+      setSelectedFolio(full);
+      setGuestInfoForm({ guest_name: full.guest_name || "", guest_phone: full.guest_phone || "" });
+      await loadFolioCredits(full.guest_name);
+    } catch {
+      // Stale data until the next successful refresh — not worth surfacing
+      // as an error for an action that already succeeded.
+    }
   };
 
   const closeFolioDetail = () => {
@@ -700,7 +712,7 @@ export default function AdminNonGuestSalesPage() {
                         <label className={field.label}>Kind</label>
                         <select
                           value={itemForm.item_kind}
-                          onChange={(e) => setItemForm({ ...itemForm, item_kind: e.target.value, reference_id: "", bill_no: "", is_complementary: false, is_manager: false })}
+                          onChange={(e) => setItemForm({ ...itemForm, item_kind: e.target.value, reference_id: "", is_complementary: false, is_manager: false })}
                           className={field.select}
                         >
                           <option value="food">Food</option>

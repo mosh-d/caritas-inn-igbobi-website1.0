@@ -12,10 +12,10 @@ const money = (v) =>
 
 const formatDate = (d) =>
   d
-    ? new Date(d).toLocaleDateString("en-GB", {
+    ? new Date(d).toLocaleDateString("en-US", {
         timeZone: "Africa/Lagos",
-        day: "numeric",
         month: "short",
+        day: "numeric",
         year: "numeric",
       })
     : "—";
