@@ -223,7 +223,7 @@ export default function AdminAuditTrail() {
           >
             <option value="">All staff</option>
             {staffOptions.map((s) => (
-              <option key={s.staff_account_id} value={s.staff_account_id}>{s.display_name}</option>
+              <option key={s.staff_account_id} value={s.staff_account_id}>{s.username}</option>
             ))}
           </select>
         </div>
@@ -311,7 +311,7 @@ export default function AdminAuditTrail() {
                       return (
                         <tr key={entry.id} className={table.row}>
                           <td className="px-8 py-4 text-xl text-[color:var(--text-color)]/84">{formatWhen(entry.created_at)}</td>
-                          <td className="px-8 py-4 font-semibold">{entry.display_name}</td>
+                          <td className="px-8 py-4 font-semibold">{entry.username}</td>
                           <td className="px-8 py-4 hidden md:table-cell">
                             <StatusBadge status={entry.role} />
                           </td>

@@ -3,7 +3,7 @@ import Logo from '../../assets/caritas-logo-2.png';
 import {
   logout,
   getStoredBranch,
-  getStoredDisplayName,
+  getStoredStaffUsername,
   getDefaultAdminRoute,
   getRealStoredStaffRole,
   getDevRoleOverride,
@@ -37,7 +37,7 @@ export default function AdminTopBar() {
   // where the simulated role belongs.
   const staffRole = getRealStoredStaffRole();
   const branch = getStoredBranch();
-  const displayName = getStoredDisplayName();
+  const displayName = getStoredStaffUsername();
   const isRealDeveloper = staffRole === 'developer';
   const roleOverride = getDevRoleOverride();
 

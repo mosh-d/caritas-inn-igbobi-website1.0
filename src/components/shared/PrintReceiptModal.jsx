@@ -1,6 +1,6 @@
 import Modal from "./Modal";
 import { btn } from "./ui";
-import { getStoredBranch, getStoredDisplayName } from "../../utils/auth";
+import { getStoredBranch, getStoredStaffUsername } from "../../utils/auth";
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDateTime = (d) =>
@@ -18,7 +18,7 @@ const formatDateTime = (d) =>
 // of the print, not swapped out into a separate window/tab.
 export default function PrintReceiptModal({ billNo, who, items, serviceCharge, total, onClose }) {
   const branch = getStoredBranch();
-  const staffName = getStoredDisplayName();
+  const staffName = getStoredStaffUsername();
   const now = new Date();
 
   return (

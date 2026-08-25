@@ -300,8 +300,11 @@ export const getStoredStaffAccountId = () =>
 
 // Only set for an individual staff_accounts login — null for the shared
 // branch/role login, since there's no per-person name to show there.
-export const getStoredDisplayName = () =>
-  getStoredAdminUser()?.display_name || null;
+// Named around username, not "display name" — this is an operational
+// tool, not a social platform, and there's no separate friendly-name
+// concept for a staff account to have.
+export const getStoredStaffUsername = () =>
+  getStoredAdminUser()?.username || null;
 
 export const getStoredBranch = () => {
   if (typeof window === "undefined") {

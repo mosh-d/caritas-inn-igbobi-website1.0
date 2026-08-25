@@ -176,7 +176,7 @@ export default function AdminReportsPage() {
           >
             <option value="">-- Select --</option>
             {staff.map((s) => (
-              <option key={s.id} value={s.display_name}>{s.display_name} ({s.role})</option>
+              <option key={s.id} value={s.username}>{s.username} ({s.role})</option>
             ))}
           </select>
         </div>
