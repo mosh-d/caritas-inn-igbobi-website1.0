@@ -1084,13 +1084,18 @@ function AccommodationReportTab({ shift }) {
                         {r.is_complementary ? <s className="text-[color:var(--text-color)]/50">{money(r.breakfast_price)}</s> : money(r.breakfast_price)}
                       </td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.payment_mode}</td>
-                      <td className="px-6 py-4"><StatusBadge status={r.payment_status} /></td>
+                      {/* A complementary stay isn't actually owing anyone money — showing
+                          "Owing" there just because nothing's been paid reads as a real
+                          debt. Complementary replaces the payment status instead of
+                          tagging along in Remarks a second time. */}
+                      <td className="px-6 py-4">
+                        <StatusBadge status={r.is_complementary ? "Complementary" : r.payment_status} />
+                      </td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount_paid)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{shift || "—"}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 flex-wrap">
                           <StatusBadge status={r.remarks} />
-                          {r.is_complementary && <StatusBadge status="Complementary" />}
                         </div>
                       </td>
                     </tr>
