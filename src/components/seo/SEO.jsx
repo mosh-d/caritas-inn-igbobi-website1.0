@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 
 const SEO = ({
   title = "Caritas Inn Igbobi | Luxury Accommodation in Yaba, Lagos",
-  description = "Experience luxury and comfort at Caritas Inn Igbobi. Book your stay at our premium hotel in Yaba, Lagos.",
+  description = "Caritas Inn Igbobi offers refined comfort just minutes from the University of Lagos - well-appointed rooms, attentive service, and easy access to Igbobi College Road and WAEC Bus-stop.",
   keywords = "hotel, lagos, accommodation, caritas inn, igbobi, yaba, waec, luxury hotel, nigeria, business hotel, vacation",
   image = 'https://igbobi.caritasinn.com/caritas-logo-2.webp',
   url = typeof window !== "undefined"

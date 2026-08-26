@@ -232,7 +232,7 @@ export default function RootLayout() {
     const defaultMetadata = {
       title: "Caritas Inn Igbobi | Luxury Accommodation in Yaba, Lagos",
       description:
-        "Experience luxury and comfort at Caritas Inn Igbobi. Book your stay at our premium hotel in Yaba, Lagos.",
+        "Caritas Inn Igbobi offers refined comfort just minutes from the University of Lagos - well-appointed rooms, attentive service, and easy access to Igbobi College Road and WAEC Bus-stop.",
       url: `${baseUrl}${location.pathname}`,
       type: "website",
       image: "/ring-ruby-logo.webp",
@@ -243,7 +243,7 @@ export default function RootLayout() {
       "/": {
         title: "Caritas Inn Igbobi | Luxury Accommodation in Yaba, Lagos",
         description:
-          "Experience luxury and comfort at Caritas Inn Igbobi. Book your stay at our premium hotel in Yaba, Lagos.",
+          "Caritas Inn Igbobi offers refined comfort just minutes from the University of Lagos - well-appointed rooms, attentive service, and easy access to Igbobi College Road and WAEC Bus-stop.",
       },
       "/about": {
         title: "About Us | Caritas Inn Igbobi",
@@ -261,6 +261,17 @@ export default function RootLayout() {
           "Your booking confirmation at Caritas Inn Igbobi.",
         robots: "noindex, follow",
       },
+      "/privacy-policy": {
+        title: "Privacy Policy | Caritas Inn Igbobi",
+        description:
+          "Read Caritas Inn Igbobi's privacy policy to learn how we collect, use, and protect your personal information.",
+      },
+      "/terms-of-service": {
+        title: "Terms and Conditions | Caritas Inn Igbobi",
+        description:
+          "Read the terms and conditions that apply to bookings and website use at Caritas Inn Igbobi.",
+      },
+
     };
 
     return { ...defaultMetadata, ...(pageMetadata[location.pathname] || {}) };

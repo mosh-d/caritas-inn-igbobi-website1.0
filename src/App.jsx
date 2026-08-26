@@ -7,6 +7,8 @@ import ContactPage from "./pages/Contact";
 import BookingConfirmationPage from "./pages/BookingConfirmation";
 import RootLayout from "./pages/Root";
 import AdminRootLayout from "./admin_pages/AdminRoot";
+import PrivacyPolicyPage from "./pages/PrivacyPolicy";
+import TermsOfServicePage from "./pages/TermsOfService";
 import ErrorPage from "./pages/Error";
 import AdminOverview from "./admin_pages/AdminOverview";
 // Bookings tab retired in favor of Reservations (which now also has Confirm/Early-Checkout/Export).
@@ -43,6 +45,8 @@ const router = createBrowserRouter([
       { path: "about", element: <AboutPage /> },
       { path: "contact", element: <ContactPage /> },
       { path: "booking-confirmation", element: <BookingConfirmationPage /> },
+      { path: "privacy-policy", element: <PrivacyPolicyPage /> },
+      { path: "terms-of-service", element: <TermsOfServicePage /> },
       { path: "*", element: <NotFound /> },
     ],
   },

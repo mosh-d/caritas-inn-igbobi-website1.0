@@ -18,9 +18,7 @@ export default function ContactMainSection() {
       >
         <h1 className="text-6xl font-bold">Get In Touch</h1>
         <p className="text-3xl font-semibold">
-          Have any questions or need assistance? The team at Caritas Inn, Igbobi
-          is always ready to ensure your stay is flawless. Don't hesitate to
-          reach out—we're here to help with anything you need.
+          Got a question before you book, or need help during your stay? The Caritas Inn Igbobi team is on hand and glad to help - reach out any time.
         </p>
       </div>
       <div
@@ -32,9 +30,9 @@ export default function ContactMainSection() {
           className="w-[50%] max-md:w-[100%] max-md:max-w-[100%] gap-[1.2rem] flex flex-col"
         >
           <div className="flex flex-col gap-[1.8rem] mb-[.6rem]">
-            <h1 className="text-6xl font-bold font-secondary">
+            <h2 className="text-6xl font-bold font-secondary">
               Contact Information
-            </h1>
+            </h2>
             <p className="text-2xl font-secondary font-semibold">
               Get in touch with us through our contact details below and follow
               our social media pages

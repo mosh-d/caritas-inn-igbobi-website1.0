@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useOutletContext } from "react-router-dom";
 import { FiMenu, FiX } from "react-icons/fi";
 import MobileMenu from "../shared/MobileMenu";
@@ -6,7 +6,6 @@ import Button from "../shared/Button";
 import ButtonInput from "../shared/ButtonInput";
 import hero from "../../assets/HERO.jpg";
 import mobileHero from "../../assets/MOBILE-HERO.jpg";
-// import heroVideo from "../../assets/HERO-VIDEO.mp4";
 import logo from "../../assets/caritas-logo-2.png";
 
 // Define the context type (optional, for TypeScript; can omit if not using TS)
@@ -23,10 +22,6 @@ const useSharedContext = () => {
 export default function HeroSection() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 640 : false);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-
-  const videoRef = useRef(null);
-
   // Update mobile state on window resize
   useEffect(() => {
     const handleResize = () => {
@@ -35,26 +30,6 @@ export default function HeroSection() {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Check if video is already loaded (cached) and force play for Safari
-  useEffect(() => {
-    if (videoRef.current) {
-      // Safari requires the muted property to be set on the DOM element
-      videoRef.current.muted = true;
-
-      // Attempt to play programmatically
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.log("Auto-play was prevented:", error);
-        });
-      }
-    }
-
-    if (videoRef.current && videoRef.current.readyState >= 3) {
-      setVideoLoaded(true);
-    }
   }, []);
 
   const toggleMenu = () => {
@@ -82,39 +57,11 @@ export default function HeroSection() {
         data-component="HeroSection"
         className="relative bg-no-repeat bg-cover bg-center h-screen min-h-[80rem]"
         style={{
-          backgroundImage: !videoLoaded
-            ? `linear-gradient(to bottom, hsla(359, 30%, 60%, .9), hsla(359, 30%, 60%, .9)), url(${isMobile ? mobileHero : hero})`
-            : "none",
+          backgroundImage: `linear-gradient(to bottom, hsla(359, 30%, 60%, .9), hsla(359, 30%, 60%, .9)), url(${isMobile ? mobileHero : hero})`,
           backgroundBlendMode: "multiply",
         }}
       >
-        {/* Background Video */}
-        <video
-          ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-            videoLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          autoPlay
-          muted
-          loop
-          playsInline
-          onLoadedData={() => setVideoLoaded(true)}
-        >
-          {/* commented out because video was not ready */}
-          {/* <source src={heroVideo} type="video/mp4" /> */}
-        </video>
-
-        {/* Dark overlay for video */}
-        <div
-          className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${
-            videoLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          style={{
-            background:
-              "linear-gradient(to bottom, hsla(359, 30%, 20%, .9), hsla(359, 30%, 20%, .9))",
-            mixBlendMode: "multiply",
-          }}
-        />
+        
         <div
           data-component="Navbar"
           className="relative z-10 border-b border-[var(--emphasis)]/30 py-4 px-4 md:px-8"
