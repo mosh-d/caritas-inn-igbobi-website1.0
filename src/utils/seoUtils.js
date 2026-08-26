@@ -5,8 +5,8 @@ export const generateHotelSchema = (hotelData = {}) => {
     name: "Caritas Inn Igbobi",
     description:
       "Luxury hotel accommodation at Yaba, Lagos. Experience comfort and excellent service at Caritas Inn Igbobi.",
-    url: "https://caritasinnigbobi.fivecloverhotels.com",
-    logo: "https://caritasinnigbobi.fivecloverhotels.com/caritas%20logo.webp",
+    url: "https://igbobi.caritasinn.com",
+    logo: "https://igbobi.caritasinn.com/caritas%20logo.webp",
     priceRange: "$$",
     starRating: {
       "@type": "Rating",
@@ -61,13 +61,13 @@ export const generateBreadcrumbSchema = (items = []) => {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://caritasinnigbobi.fivecloverhotels.com",
+      item: "https://igbobi.caritasinn.com",
     },
     {
       "@type": "ListItem",
       position: 2,
       name: "Rooms",
-      item: "https://caritasinnigbobi.fivecloverhotels.com/rooms",
+      item: "https://igbobi.caritasinn.com/rooms",
     },
   ];
 

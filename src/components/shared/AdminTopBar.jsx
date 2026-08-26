@@ -112,7 +112,7 @@ export default function AdminTopBar() {
         >
           <img
             src={Logo}
-            alt='Five Clover Hotel Logo'
+            alt='Caritas Inn Logo'
             className='w-full h-auto'
           />
         </NavLink>

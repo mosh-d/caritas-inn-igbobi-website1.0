@@ -228,7 +228,7 @@ export default function RootLayout() {
 
   // Get current page metadata
   const getPageMetadata = () => {
-    const baseUrl = "https://caritasinnigbobi.fivecloverhotels.com";
+    const baseUrl = "https://igbobi.caritasinn.com";
     const defaultMetadata = {
       title: "Caritas Inn Igbobi | Luxury Accommodation in Yaba, Lagos",
       description:
@@ -236,6 +236,7 @@ export default function RootLayout() {
       url: `${baseUrl}${location.pathname}`,
       type: "website",
       image: "/ring-ruby-logo.webp",
+      robots: "index, follow",
     };
 
     const pageMetadata = {
@@ -249,25 +250,16 @@ export default function RootLayout() {
         description:
           "Discover the story behind Caritas Inn Igbobi and our commitment to providing exceptional hospitality in Yaba, Lagos.",
       },
-      "/rooms": {
-        title: "Our Rooms | Caritas Inn Igbobi",
-        description:
-          "Explore our luxurious rooms at Caritas Inn Igbobi, designed for your comfort and relaxation.",
-      },
-      "/gallery": {
-        title: "Photo Gallery | Caritas Inn Igbobi",
-        description:
-          "View our photo gallery showcasing the luxurious facilities and comfortable accommodations at Caritas Inn Igbobi.",
-      },
       "/contact": {
         title: "Contact Us | Caritas Inn Igbobi",
         description:
           "Get in touch with Caritas Inn Igbobi. Our friendly staff is ready to assist with your booking and inquiries.",
       },
-      "/booking": {
-        title: "Book Your Stay | Caritas Inn Igbobi",
+      "/booking-confirmation": {
+        title: "Booking Confirmation | Caritas Inn Igbobi",
         description:
-          "Book your luxurious stay at Caritas Inn Igbobi. Best rates guaranteed for our premium accommodations in Yaba.",
+          "Your booking confirmation at Caritas Inn Igbobi.",
+        robots: "noindex, follow",
       },
     };
 
@@ -287,6 +279,8 @@ export default function RootLayout() {
         <meta property="og:url" content={metadata.url} />
         <meta property="og:type" content={metadata.type} />
         <meta property="og:image" content={metadata.image} />
+        <meta name="robots" content={metadata.robots} />
+        <link rel="canonical" href={metadata.url} />
       </SafeHelmet>
       <SchemaMarkup branchId={branchId} />
       <header>{!isHome && <MainNavBar />}</header>

@@ -8,6 +8,7 @@ export default function NotFound() {
         title="Page Not Found | Caritas Inn Igbobi"
         description="The page you're looking for doesn't exist or has been moved."
         type="website"
+        noindex={true}
       />
 
       <div className="text-center">
