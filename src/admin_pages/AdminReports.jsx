@@ -62,9 +62,10 @@ const ALL_TABS = [
 // front-desk reason to see them, unlike every other tab here. Mirrors the
 // backend's own gating (FOOD_DRINK_SALES_ROLES in ReportsController), which
 // is the real enforcement; this just keeps a receptionist from seeing tabs
-// that would 403 anyway.
-const RECEPTIONIST_HIDDEN_TABS = ["food-sales", "drink-sales", "bar-stock"];
-const visibleTabs = () => isReceptionist() ? ALL_TABS.filter((t) => !RECEPTIONIST_HIDDEN_TABS.includes(t.key)) : ALL_TABS;
+// that would 403 anyway. Same set the page-level Shift picker below uses to
+// decide receptionist vs waitron roster/label.
+const FNB_TABS = ["food-sales", "drink-sales", "bar-stock"];
+const visibleTabs = () => isReceptionist() ? ALL_TABS.filter((t) => !FNB_TABS.includes(t.key)) : ALL_TABS;
 
 // Snapshots a tab's already-loaded `data` and sends it to the accountant —
 // shared across every tab below rather than duplicated 5 times. `shift`
@@ -116,16 +117,33 @@ export default function AdminReportsPage() {
 
   // Report-page-level, not per-tab — one shift selection covers whichever
   // report is currently active, including when it's sent to the accountant
-  // (see SendToAccountantButton). Populated from the same receptionist
-  // roster the Accommodation Report's shift dropdown used to fetch locally.
-  const [staff, setStaff] = useState([]);
+  // (see SendToAccountantButton). Food Sales/Drink Sales/Bar Stock are
+  // waitron territory (FNB_TABS above), so this picker swaps roster + label
+  // for those three rather than always showing "receptionist on duty" on a
+  // report a receptionist can't even open.
+  const isFnbTab = FNB_TABS.includes(activeTab);
+  const [receptionistStaff, setReceptionistStaff] = useState([]);
+  const [waitronStaff, setWaitronStaff] = useState([]);
   const [shift, setShift] = useState("");
 
   useEffect(() => {
     fetchStaffAccounts()
-      .then((list) => setStaff(list || []))
-      .catch(() => setStaff([]));
+      .then((list) => setReceptionistStaff(list || []))
+      .catch(() => setReceptionistStaff([]));
+    fetchStaffAccounts("waitron")
+      .then((list) => setWaitronStaff(list || []))
+      .catch(() => setWaitronStaff([]));
   }, []);
+
+  // A receptionist's name has no business riding along into a waitron-
+  // attributed report, or vice versa, when switching between the two tab
+  // groups.
+  useEffect(() => {
+    setShift("");
+  }, [isFnbTab]);
+
+  const shiftRoster = isFnbTab ? waitronStaff : receptionistStaff;
+  const shiftLabel = isFnbTab ? "Shift (waitron on duty)" : "Shift (receptionist on duty)";
 
   return (
     <div data-component="AdminReports" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
@@ -168,14 +186,14 @@ export default function AdminReportsPage() {
           since they're not sending anything to themselves. */}
       {!isAccountant() && (
         <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-col gap-2 w-full max-w-sm">
-          <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Shift (receptionist on duty)</label>
+          <label className="text-xl font-semibold text-[color:var(--text-color)]/76">{shiftLabel}</label>
           <select
             value={shift}
             onChange={(e) => setShift(e.target.value)}
             className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
           >
             <option value="">-- Select --</option>
-            {staff.map((s) => (
+            {shiftRoster.map((s) => (
               <option key={s.id} value={s.username}>{s.username} ({s.role})</option>
             ))}
           </select>
@@ -1530,6 +1548,24 @@ function BarStockReportTab({ shift }) {
               </table>
             )}
           </ReportSection>
+
+          {data.summary && (
+            <ReportSection title="Daily Totals" subtitle="Combined Food + Drink figures for this business day">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+                <SummaryCard label="Food" value={money(data.summary.food)} />
+                <SummaryCard label="Drink" value={money(data.summary.drink)} />
+                <SummaryCard label="Service Charge" value={money(data.summary.service_charge)} />
+                <SummaryCard label="Debt Recovered" value={money(data.summary.debt_recovered)} />
+                <SummaryCard label="Cash" value={money(data.summary.cash)} />
+                <SummaryCard label="POS" value={money(data.summary.pos)} />
+                <SummaryCard label="Transfer" value={money(data.summary.transfer)} />
+                <SummaryCard label="Reservation" value={money(data.summary.reservation)} />
+                <SummaryCard label="Debt" value={money(data.summary.debt)} warn={data.summary.debt > 0} />
+                <SummaryCard label="Paid Before" value={money(data.summary.paid_before)} />
+                <SummaryCard label="Total" value={money(data.summary.total)} accent />
+              </div>
+            </ReportSection>
+          )}
         </div>
       )}
 

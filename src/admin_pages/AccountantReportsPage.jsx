@@ -665,6 +665,26 @@ function BarStockSnapshot({ data }) {
           </table>
         )}
       </ReportSection>
+
+      {/* data.summary is missing on a snapshot sent before this section
+          existed — guarded rather than rendering "Total: ₦NaN". */}
+      {data?.summary && (
+        <ReportSection title="Daily Totals" subtitle="Combined Food + Drink figures for this business day">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+            <SummaryCard label="Food" value={money(data.summary.food)} />
+            <SummaryCard label="Drink" value={money(data.summary.drink)} />
+            <SummaryCard label="Service Charge" value={money(data.summary.service_charge)} />
+            <SummaryCard label="Debt Recovered" value={money(data.summary.debt_recovered)} />
+            <SummaryCard label="Cash" value={money(data.summary.cash)} />
+            <SummaryCard label="POS" value={money(data.summary.pos)} />
+            <SummaryCard label="Transfer" value={money(data.summary.transfer)} />
+            <SummaryCard label="Reservation" value={money(data.summary.reservation)} />
+            <SummaryCard label="Debt" value={money(data.summary.debt)} warn={data.summary.debt > 0} />
+            <SummaryCard label="Paid Before" value={money(data.summary.paid_before)} />
+            <SummaryCard label="Total" value={money(data.summary.total)} accent />
+          </div>
+        </ReportSection>
+      )}
     </div>
   );
 }
