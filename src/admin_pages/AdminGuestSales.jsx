@@ -227,10 +227,7 @@ export default function AdminGuestSalesPage() {
             ) : (
               <select
                 value={order.reservation_id}
-                onChange={(e) => {
-                  setOrder({ ...order, reservation_id: e.target.value });
-                  setSelectedReservationId(e.target.value); // also show this guest's folio below
-                }}
+                onChange={(e) => setOrder({ ...order, reservation_id: e.target.value })}
                 className={field.select}
               >
                 <option value="">Select an in-house guest</option>
