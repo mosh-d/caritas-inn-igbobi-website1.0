@@ -4,7 +4,7 @@ import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
-import { isManager } from "../utils/auth";
+import { isManager, isWaitstaff } from "../utils/auth";
 import {
   fetchFoodItems,
   createFoodItem,
@@ -21,9 +21,14 @@ const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFra
 
 export default function AdminMenu() {
   const manager = isManager();
+  // A waitron can view both tabs and adjust drink stock (canEdit below
+  // stays manager-only) — the thing they're physically handling and what
+  // feeds the Bar Stock report they already use. Pricing/items/add/delete
+  // stay manager-only.
+  const canAccess = manager || isWaitstaff();
   const [tab, setTab] = useState("food");
 
-  if (!manager) {
+  if (!canAccess) {
     return (
       <div data-component="AdminMenu" className="px-[4rem] max-sm:px-[1rem] py-[4rem]">
         <p className="text-2xl text-[color:var(--text-color)]/68">
@@ -65,6 +70,7 @@ export default function AdminMenu() {
           createItem={createFoodItem}
           updateItem={updateFoodItem}
           deleteItem={deleteFoodItem}
+          canEdit={manager}
         />
       ) : (
         <MenuSection
@@ -75,13 +81,14 @@ export default function AdminMenu() {
           updateItem={updateDrinkItem}
           deleteItem={deleteDrinkItem}
           recordStock={recordDrinkStockMovement}
+          canEdit={manager}
         />
       )}
     </div>
   );
 }
 
-function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, recordStock }) {
+function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, recordStock, canEdit }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -313,9 +320,9 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                           </td>
                           <td className={table.td}>
                             <div className={table.actions}>
-                              <button onClick={() => startEdit(item)} className={btn.rowSecondary}>Edit</button>
+                              {canEdit && <button onClick={() => startEdit(item)} className={btn.rowSecondary}>Edit</button>}
                               {/* For drinks, going out of stock is now automatic (computed from the ledger) — this manual toggle only stays available to reactivate an item deactivated before that existed. */}
-                              {(!recordStock || !item.is_active) && (
+                              {canEdit && (!recordStock || !item.is_active) && (
                                 <button onClick={() => handleToggleActive(item)} disabled={savingId === item.id} className={item.is_active ? btn.rowDanger : btn.rowSuccess}>
                                   {savingId === item.id ? "..." : item.is_active ? "Set Out of Stock" : "Mark In Stock"}
                                 </button>
@@ -325,7 +332,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                                   {stockSuccessId === item.id ? "Recorded ✓" : "Adjust Stock"}
                                 </button>
                               )}
-                              {deleteItem && (
+                              {canEdit && deleteItem && (
                                 confirmDeleteId === item.id ? (
                                   <>
                                     <button onClick={() => handleDelete(item)} disabled={deletingId === item.id} className={btn.rowDanger}>
@@ -390,26 +397,28 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
         </div>
       </div>
 
-      <form onSubmit={handleAdd} className="flex flex-col gap-4 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 max-w-xl">
-        <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Add a {label}</p>
-        <div className="flex gap-4 flex-wrap items-end">
-          <div className="flex flex-col gap-2 flex-1 min-w-48">
-            <label className={field.label}>Name</label>
-            <input type="text" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} className={field.input} />
+      {canEdit && (
+        <form onSubmit={handleAdd} className="flex flex-col gap-4 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 max-w-xl">
+          <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Add a {label}</p>
+          <div className="flex gap-4 flex-wrap items-end">
+            <div className="flex flex-col gap-2 flex-1 min-w-48">
+              <label className={field.label}>Name</label>
+              <input type="text" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} className={field.input} />
+            </div>
+            <div className="flex flex-col gap-2 w-40">
+              <label className={field.label}>Price (₦)</label>
+              <input type="number" value={addForm.price} onChange={(e) => setAddForm({ ...addForm, price: e.target.value })} className={field.input} />
+            </div>
+            <div className="flex flex-col gap-2 w-40">
+              <label className={field.label}>Service Charge (₦)</label>
+              <input type="number" value={addForm.service_charge} onChange={(e) => setAddForm({ ...addForm, service_charge: e.target.value })} className={field.input} />
+            </div>
+            <button type="submit" disabled={adding || !addForm.name.trim() || !addForm.price} className={btn.primary}>
+              {adding ? "Adding..." : "Add Item"}
+            </button>
           </div>
-          <div className="flex flex-col gap-2 w-40">
-            <label className={field.label}>Price (₦)</label>
-            <input type="number" value={addForm.price} onChange={(e) => setAddForm({ ...addForm, price: e.target.value })} className={field.input} />
-          </div>
-          <div className="flex flex-col gap-2 w-40">
-            <label className={field.label}>Service Charge (₦)</label>
-            <input type="number" value={addForm.service_charge} onChange={(e) => setAddForm({ ...addForm, service_charge: e.target.value })} className={field.input} />
-          </div>
-          <button type="submit" disabled={adding || !addForm.name.trim() || !addForm.price} className={btn.primary}>
-            {adding ? "Adding..." : "Add Item"}
-          </button>
-        </div>
-      </form>
+        </form>
+      )}
     </div>
   );
 }

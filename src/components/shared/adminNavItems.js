@@ -80,10 +80,12 @@ export const ADMIN_NAV_ITEMS = [
   // managerOnly).
   { to: "/admin/audit-trail", label: "AUDIT TRAIL", icon: IoDocumentTextOutline, managerOnly: true, alwaysVisible: true },
   { to: "/admin/accountant-reports", label: "ACCOUNTANT REPORTS", icon: IoBarChartOutline, accountantOnly: true },
-  // Manager-only, same reasoning as room prices — menu prices are pricing
-  // config, not a front-desk/waitstaff editing concern (waitstaff browse the
-  // menu through the charge-posting picker itself, not this page).
-  { to: "/admin/menu", label: "MENU", icon: IoRestaurantOutline, managerOnly: true },
+  // managerOnly still keeps pricing/items add-edit-delete out of a
+  // receptionist's reach; waitstaffVisible (2026-08-31) lets a waitron view
+  // the menu and adjust drink stock here too, now that this page can render
+  // for them — see AdminMenu.jsx's own canEdit split for what stays
+  // manager-only within the page itself.
+  { to: "/admin/menu", label: "MENU", icon: IoRestaurantOutline, managerOnly: true, waitstaffVisible: true },
   { to: "/admin/account", label: "ACCOUNT", icon: IoKeyOutline, alwaysVisible: true },
   { to: "/admin/help", label: "HELP", icon: IoHelpCircleOutline, alwaysVisible: true },
 ];
@@ -106,3 +108,10 @@ export function visibleAdminNavItems() {
     return true;
   });
 }
+
+// Whether the current role can reach a given nav destination at all — same
+// filter visibleAdminNavItems() already applies, just queryable for one
+// path instead of returning the whole list. Used to gate things that act
+// like a shortcut INTO a page (e.g. AdminRoot's new-reservation popup)
+// without duplicating the role logic a third time.
+export const canAccessNavItem = (to) => visibleAdminNavItems().some((item) => item.to === to);

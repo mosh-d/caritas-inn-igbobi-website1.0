@@ -3,14 +3,22 @@ import { IoFastFoodOutline } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import PrintReceiptModal from "../components/shared/PrintReceiptModal";
+import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
+import PaymentSplitRows from "../components/shared/PaymentSplitRows";
+import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import { fetchInHouse } from "../utils/front-office-api";
-import { addFolioItemsBatch } from "../utils/folios-api";
+import { addFolioItemsBatch, fetchFolioById, recordPayment } from "../utils/folios-api";
 
 const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", is_complementary: false };
 const emptyOrder = { reservation_id: "", bill_no: "", rows: [{ ...emptyRow }] };
+// Deliberately no tax_mode/tax/discount_mode/discount fields, unlike
+// AdminFolios.jsx's own payment form — this panel is scoped to "record what
+// the guest paid," not the fuller adjustment/refund/closing workflow that
+// stays Folios-page-only.
+const emptyPaymentForm = { splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "" };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -77,6 +85,41 @@ export default function AdminGuestSalesPage() {
   const addRow = () => setOrder({ ...order, rows: [...order.rows, { ...emptyRow }] });
   const removeRow = (index) => setOrder({ ...order, rows: order.rows.filter((_, i) => i !== index) });
 
+  // The guest's folio balance/recent-charges/payment form at the bottom of
+  // this page — inHouse's own `folio` field is only { id, folio_number },
+  // no balance, so a real fetch is needed once a guest is picked.
+  const [folioDetail, setFolioDetail] = useState(null);
+  const [loadingFolio, setLoadingFolio] = useState(false);
+  const [folioError, setFolioError] = useState(null);
+  const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
+  const [recordingPayment, setRecordingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
+  const [transactionReceipt, setTransactionReceipt] = useState(null);
+
+  const folioId = selectedGuest?.folio?.id ?? null;
+
+  const loadFolioDetail = async (id) => {
+    if (!id) {
+      setFolioDetail(null);
+      return;
+    }
+    try {
+      setLoadingFolio(true);
+      setFolioError(null);
+      setFolioDetail(await fetchFolioById(id));
+    } catch (err) {
+      setFolioError(err.response?.data?.message || "Failed to load folio balance.");
+    } finally {
+      setLoadingFolio(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFolioDetail(folioId);
+    setPaymentForm(emptyPaymentForm);
+    setPaymentError(null);
+  }, [folioId]);
+
   const handleSubmit = async () => {
     if (!orderValid || !selectedGuest) return;
     try {
@@ -102,10 +145,40 @@ export default function AdminGuestSalesPage() {
         serviceCharge: result.items.reduce((s, i) => s + Number(i.service_charge || 0), 0),
         total: result.total,
       });
+      // The guest stays selected above (same reservation_id kept), so the
+      // folioId-keyed effect won't refire on its own — refresh explicitly
+      // so the balance/recent-charges reflect what was just posted.
+      await loadFolioDetail(selectedGuest.folio.id);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to post the order.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const hasValidPaymentSplits = paymentForm.splits.length > 0 && paymentForm.splits.every((s) => Number(s.amount) > 0);
+
+  const handleRecordPayment = async () => {
+    if (!folioDetail || !hasValidPaymentSplits) return;
+    try {
+      setRecordingPayment(true);
+      setPaymentError(null);
+      const result = await recordPayment({
+        folio_id: folioDetail.id,
+        payments: paymentForm.splits.map((s) => ({ amount: Number(s.amount), payment_method: s.payment_method })),
+        receipt_number: paymentForm.receipt_number.trim() || undefined,
+        notes: paymentForm.notes.trim() || undefined,
+      });
+      setPaymentForm(emptyPaymentForm);
+      await loadFolioDetail(folioDetail.id);
+      setTransactionReceipt({
+        title: "Payment Recorded",
+        items: result.payments.map((p) => ({ reference: p.payment_reference, amount: money(p.amount), method: p.payment_method })),
+      });
+    } catch (err) {
+      setPaymentError(err.response?.data?.message || "Failed to record payment.");
+    } finally {
+      setRecordingPayment(false);
     }
   };
 
@@ -232,6 +305,21 @@ export default function AdminGuestSalesPage() {
         </button>
       </div>
 
+      {selectedGuest && (
+        <FolioBalanceCard
+          guest={selectedGuest}
+          folioDetail={folioDetail}
+          loading={loadingFolio}
+          error={folioError}
+          paymentForm={paymentForm}
+          setPaymentForm={setPaymentForm}
+          hasValidPaymentSplits={hasValidPaymentSplits}
+          recordingPayment={recordingPayment}
+          paymentError={paymentError}
+          onRecordPayment={handleRecordPayment}
+        />
+      )}
+
       {printReceipt && (
         <PrintReceiptModal
           billNo={printReceipt.billNo}
@@ -242,6 +330,98 @@ export default function AdminGuestSalesPage() {
           onClose={() => setPrintReceipt(null)}
         />
       )}
+
+      {transactionReceipt && (
+        <TransactionReceiptModal
+          title={transactionReceipt.title}
+          items={transactionReceipt.items}
+          onClose={() => setTransactionReceipt(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Compact — a balance summary + payment form, not the full Folio Detail
+// experience (no tax/discount, refunds, or closing here; that stays
+// Folios-page-only). Page-local rather than under components/shared/: it's
+// driven entirely by this page's own state/refetch timing, with exactly one
+// consumer, same as MenuSection (AdminMenu.jsx) and SummaryStat
+// (AdminFolios.jsx) are already page-local in this codebase.
+function FolioBalanceCard({ guest, folioDetail, loading, error, paymentForm, setPaymentForm, hasValidPaymentSplits, recordingPayment, paymentError, onRecordPayment }) {
+  const roomNumber = guest.room_assignments?.[0]?.room_number;
+  const balance = folioDetail ? Number(folioDetail.balance) : 0;
+  const isOutstanding = folioDetail && balance > 0;
+  const isCredit = folioDetail && balance < 0;
+
+  return (
+    <div className="w-full flex flex-col gap-4 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6">
+      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">
+        Folio — Room {roomNumber || "—"} — {guest.guest_name}
+      </p>
+
+      {error && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{error}</p>}
+      {loading && <LoadingSpinner />}
+
+      {!loading && folioDetail && (
+        <>
+          <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1">
+            <FolioStat label="Balance" value={isOutstanding ? money(folioDetail.balance) : isCredit ? `Credit: ${money(Math.abs(balance))}` : "Settled"} tone={isOutstanding ? "danger" : isCredit ? "success" : "default"} />
+            <FolioStat label="Total Charged" value={money(folioDetail.total_amount)} />
+            <FolioStat label="Total Paid" value={money(folioDetail.total_received ?? folioDetail.amount_paid)} />
+          </div>
+
+          {folioDetail.items?.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <p className={field.label}>Recent Charges</p>
+              {folioDetail.items.slice(0, 3).map((item) => (
+                <p key={item.id} className="text-lg text-[color:var(--text-color)]/76">
+                  {item.description} — {money(Number(item.amount) + Number(item.service_charge))}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-4 pt-4 border-t border-[color:var(--text-color)]/10">
+            <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Record Payment</p>
+            {paymentError && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{paymentError}</p>}
+            <PaymentSplitRows splits={paymentForm.splits} setSplits={(splits) => setPaymentForm({ ...paymentForm, splits })} />
+            <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+              <div className="flex flex-col gap-2">
+                <label className={field.label}>Receipt Number (optional)</label>
+                <input
+                  type="text"
+                  placeholder="Leave blank to have the system generate one"
+                  value={paymentForm.receipt_number}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, receipt_number: e.target.value })}
+                  className={field.input}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className={field.label}>Notes (optional)</label>
+                <AutoGrowTextarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} className={field.textarea} />
+              </div>
+            </div>
+            <button
+              onClick={onRecordPayment}
+              disabled={recordingPayment || !hasValidPaymentSplits}
+              className={`${btn.primary} self-start`}
+            >
+              {recordingPayment ? "Recording..." : "Record Payment"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FolioStat({ label, value, tone }) {
+  const valueColor = tone === "danger" ? "text-red-600" : tone === "success" ? "text-green-700" : "text-[color:var(--black)]";
+  return (
+    <div className="bg-[color:var(--text-color)]/5 border-1 border-gray-200 rounded-lg px-5 py-4">
+      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-1">{label}</p>
+      <p className={`text-2xl font-bold ${valueColor} truncate`}>{value}</p>
     </div>
   );
 }

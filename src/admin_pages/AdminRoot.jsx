@@ -3,6 +3,7 @@ import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { IoClose } from 'react-icons/io5';
 import { verifyToken, getDefaultAdminRoute } from "../utils/auth";
+import { canAccessNavItem } from "../components/shared/adminNavItems";
 import AdminNavBar from "../components/shared/AdminNavBar";
 import AdminTopBar from "../components/shared/AdminTopBar";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
@@ -23,10 +24,18 @@ export default function AdminRootLayout() {
     navigate("/admin/reservations");
   };
 
+  // A role with no nav access to Reservations (accountant, waitron) has
+  // nowhere for this popup to usefully send them — clicking it used to
+  // dead-end them on a page they can't really use. Never subscribing means
+  // hasNewReservation can't become true for them, so the popup itself never
+  // appears.
+  const canSeeReservations = canAccessNavItem("/admin/reservations");
+
   useEffect(() => {
+    if (!canSeeReservations) return;
     const unsubscribe = subscribe(handleNewReservation, 'reservations');
     return unsubscribe;
-  }, [subscribe, handleNewReservation]);
+  }, [subscribe, handleNewReservation, canSeeReservations]);
 
   // Anchor every admin-facing date helper to the server's clock, once per
   // session. A front-desk PC with a wrong clock or timezone otherwise shows

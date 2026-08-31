@@ -26,7 +26,7 @@ import {
 import { fetchStaffAccounts } from "../utils/staff-accounts-api";
 import { sendReportToAccountant } from "../utils/sent-reports-api";
 import { adminTodayISO } from "../utils/date-utils";
-import { isAccountant, isReceptionist } from "../utils/auth";
+import { isAccountant, isReceptionist, isWaitron } from "../utils/auth";
 
 // money/pct/formatDate/formatDateTime plus the shared render bits below
 // (ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge) moved
@@ -65,7 +65,13 @@ const ALL_TABS = [
 // that would 403 anyway. Same set the page-level Shift picker below uses to
 // decide receptionist vs waitron roster/label.
 const FNB_TABS = ["food-sales", "drink-sales", "bar-stock"];
-const visibleTabs = () => isReceptionist() ? ALL_TABS.filter((t) => !FNB_TABS.includes(t.key)) : ALL_TABS;
+// A waitron's whole job here is the F&B trio — everything else (occupancy,
+// payments analysis, front-desk manifest) belongs to a role that runs the
+// front desk, which a waitron doesn't.
+const visibleTabs = () =>
+  isWaitron() ? ALL_TABS.filter((t) => FNB_TABS.includes(t.key))
+  : isReceptionist() ? ALL_TABS.filter((t) => !FNB_TABS.includes(t.key))
+  : ALL_TABS;
 
 // Snapshots a tab's already-loaded `data` and sends it to the accountant —
 // shared across every tab below rather than duplicated 5 times. `shift`

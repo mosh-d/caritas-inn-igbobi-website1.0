@@ -1,6 +1,16 @@
 export default function Button({ className, variant, children, ...props }) {
+  // disabled:* applies purely from the native `disabled` attribute (the
+  // `disabled` prop, spread via ...props below) — independent of `variant`,
+  // so every disabled button gets a visible dimmed/not-allowed state even
+  // though nothing ever actually passes variant="disabled" in practice
+  // (every caller hardcodes its own visual variant like "secondary" and
+  // controls enabled/disabled purely via the `disabled` prop). Without
+  // this, a disabled button was 100% visually identical to an enabled one
+  // — genuinely inert (clicks correctly did nothing), but with no cue why,
+  // which read as "the button doesn't work" (see the Reports export
+  // buttons that require a Shift selection first).
   const base =
-    "tracking-widest outline p-[1rem_2rem_.6rem_2rem] hover:cursor-pointer";
+    "tracking-widest outline p-[1rem_2rem_.6rem_2rem] hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:cursor-not-allowed disabled:pointer-events-none";
 
   let variantClasses;
 

@@ -357,6 +357,12 @@ export const isWaitstaff = () => {
 // bypass.
 export const isReceptionist = () => getStoredStaffRole() === "receptionist";
 
+// No developer bypass here, unlike isManager()/isAccountant()/isWaitstaff()
+// above — this gates a role DOWN to a narrower tab set (Reports), so a
+// developer session correctly stays unrestricted, matching isReceptionist()'s
+// same reasoning above.
+export const isWaitron = () => getStoredStaffRole() === "waitron";
+
 // Where a session should land right after login, or when visiting the bare
 // /admin URL while already authenticated. An accountant's nav (see
 // visibleAdminNavItems()) has no link back to Overview at all, so landing

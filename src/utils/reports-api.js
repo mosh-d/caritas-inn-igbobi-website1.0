@@ -18,19 +18,36 @@ export const fetchReportsDashboard = async (from, to) => {
 // navigation — these endpoints are JWT-protected (financial data), so they
 // need the auth header, which a bare <a href> navigation can't send.
 const downloadXlsx = async (path, params, filename) => {
-  const response = await axios.get(`${baseUrl}${path}`, {
-    headers: getAuthHeaders(),
-    params,
-    responseType: "blob",
-  });
-  const url = window.URL.createObjectURL(new Blob([response.data]));
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", filename);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+  try {
+    const response = await axios.get(`${baseUrl}${path}`, {
+      headers: getAuthHeaders(),
+      params,
+      responseType: "blob",
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    // A blob-typed error response's .data is a Blob, not parsed JSON, so
+    // err.response.data.message is always undefined without this — a real
+    // server-side failure (expired session, permission error, 500) always
+    // fell through to each report tab's generic fallback message instead
+    // of the actual reason.
+    if (err.response?.data instanceof Blob && err.response.data.type?.includes("json")) {
+      const text = await err.response.data.text();
+      try {
+        err.response.data = JSON.parse(text);
+      } catch {
+        // wasn't actually JSON — leave err.response.data as the raw Blob
+      }
+    }
+    throw err;
+  }
 };
 
 export const downloadReportsExport = (from, to) =>
