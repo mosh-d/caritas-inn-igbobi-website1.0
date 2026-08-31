@@ -238,6 +238,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
       setStockAdjustId(null);
       setStockSuccessId(id);
       setTimeout(() => setStockSuccessId(null), 4000);
+      await load(); // reflect the new current_stock/status without a reload
     } catch (err) {
       setError(err.response?.data?.message || "Failed to record stock movement.");
     } finally {
