@@ -219,9 +219,14 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
 
   const handleSaveStockAdjust = async (id) => {
     const qty = Number(stockForm.quantity);
-    // Added/damaged are always a positive count; a correction can be
-    // negative too (to fix a mistaken over-entry) — just never zero.
-    if (!qty || (stockForm.movement_type !== "correction" && qty < 1)) return;
+    // Added/damaged are always a positive count. Correction is the odd one
+    // out: the field holds the real, physically-counted stock total (never
+    // negative, and 0 is a genuine valid count — fully out of stock) — the
+    // server works out the ledger delta against the live current stock.
+    const valid = stockForm.movement_type === "correction"
+      ? stockForm.quantity !== "" && qty >= 0
+      : qty >= 1;
+    if (!valid) return;
     try {
       setSavingStockId(id);
       setError(null);
@@ -243,6 +248,10 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
   // Stock is a drinks-only column — Name, Price, Service Charge, Status,
   // Actions is 5 for food; drinks get a 6th for it.
   const columnCount = recordStock ? 6 : 5;
+
+  const stockQtyValid = stockForm.movement_type === "correction"
+    ? stockForm.quantity !== "" && Number(stockForm.quantity) >= 0
+    : Number(stockForm.quantity) >= 1;
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -357,20 +366,20 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                               <select value={stockForm.movement_type} onChange={(e) => setStockForm({ ...stockForm, movement_type: e.target.value })} className={`${field.select} text-xl!`}>
                                 <option value="added">Added (restock)</option>
                                 <option value="damaged">Damaged (breakage/spillage/expiry)</option>
-                                <option value="correction">Correction (fix a mistaken entry)</option>
+                                <option value="correction">Correction (set the real, counted total)</option>
                               </select>
                             </div>
                             <div className="flex flex-col gap-2">
-                              <label className={field.label}>Quantity</label>
+                              <label className={field.label}>{stockForm.movement_type === "correction" ? "Actual Count" : "Quantity"}</label>
                               <input
                                 type="number"
-                                min={stockForm.movement_type === "correction" ? undefined : "1"}
+                                min="0"
                                 value={stockForm.quantity}
                                 onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })}
                                 className={`${field.input} text-xl! w-32`}
                               />
                               {stockForm.movement_type === "correction" && (
-                                <span className="text-base text-[color:var(--text-color)]/60">Positive to add, negative to reduce (e.g. -10)</span>
+                                <span className="text-base text-[color:var(--text-color)]/60">The real total counted on the shelf right now, not a +/- adjustment</span>
                               )}
                             </div>
                             <div className="flex flex-col gap-2 flex-1 min-w-48">
@@ -378,7 +387,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                               <AutoGrowTextarea value={stockForm.notes} onChange={(e) => setStockForm({ ...stockForm, notes: e.target.value })} className={`${field.textarea} text-xl!`} />
                             </div>
                             <div className={table.actions}>
-                              <button onClick={() => handleSaveStockAdjust(item.id)} disabled={savingStockId === item.id || !Number(stockForm.quantity)} className={btn.rowPrimary}>
+                              <button onClick={() => handleSaveStockAdjust(item.id)} disabled={savingStockId === item.id || !stockQtyValid} className={btn.rowPrimary}>
                                 {savingStockId === item.id ? "Saving..." : "Save"}
                               </button>
                               <button onClick={() => setStockAdjustId(null)} className={btn.rowSecondary}>Cancel</button>
