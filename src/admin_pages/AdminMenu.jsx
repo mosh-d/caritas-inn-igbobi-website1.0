@@ -21,10 +21,8 @@ const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFra
 
 export default function AdminMenu() {
   const manager = isManager();
-  // A waitron can view both tabs and adjust drink stock (canEdit below
-  // stays manager-only) — the thing they're physically handling and what
-  // feeds the Bar Stock report they already use. Pricing/items/add/delete
-  // stay manager-only.
+  // A waitron gets full Menu access — same as manager, including
+  // pricing/add/delete — not just view+stock-adjust.
   const canAccess = manager || isWaitstaff();
   const [tab, setTab] = useState("food");
 
@@ -70,7 +68,7 @@ export default function AdminMenu() {
           createItem={createFoodItem}
           updateItem={updateFoodItem}
           deleteItem={deleteFoodItem}
-          canEdit={manager}
+          canEdit={canAccess}
         />
       ) : (
         <MenuSection
@@ -81,7 +79,7 @@ export default function AdminMenu() {
           updateItem={updateDrinkItem}
           deleteItem={deleteDrinkItem}
           recordStock={recordDrinkStockMovement}
-          canEdit={manager}
+          canEdit={canAccess}
         />
       )}
     </div>
