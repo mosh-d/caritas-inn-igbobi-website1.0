@@ -6,7 +6,7 @@ import PrintReceiptModal from "../components/shared/PrintReceiptModal";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
-import { btn, field } from "../components/shared/ui";
+import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import { fetchInHouse } from "../utils/front-office-api";
@@ -88,6 +88,14 @@ export default function AdminGuestSalesPage() {
   // The guest's folio balance/recent-charges/payment form at the bottom of
   // this page — inHouse's own `folio` field is only { id, folio_number },
   // no balance, so a real fetch is needed once a guest is picked.
+  //
+  // Deliberately its own state, separate from order.reservation_id: the
+  // guest-folio list below lets staff jump straight to any in-house guest's
+  // folio to record a payment without that guest needing to be the one
+  // selected in the order form above (they might not be placing an order at
+  // all). handleSubmit/orderValid/etc. below stay entirely driven by
+  // order.reservation_id — this only ever affects which folio is shown.
+  const [selectedReservationId, setSelectedReservationId] = useState("");
   const [folioDetail, setFolioDetail] = useState(null);
   const [loadingFolio, setLoadingFolio] = useState(false);
   const [folioError, setFolioError] = useState(null);
@@ -96,7 +104,8 @@ export default function AdminGuestSalesPage() {
   const [paymentError, setPaymentError] = useState(null);
   const [transactionReceipt, setTransactionReceipt] = useState(null);
 
-  const folioId = selectedGuest?.folio?.id ?? null;
+  const folioGuest = inHouse.find((r) => String(r.id) === String(selectedReservationId));
+  const folioId = folioGuest?.folio?.id ?? null;
 
   const loadFolioDetail = async (id) => {
     if (!id) {
@@ -145,10 +154,14 @@ export default function AdminGuestSalesPage() {
         serviceCharge: result.items.reduce((s, i) => s + Number(i.service_charge || 0), 0),
         total: result.total,
       });
-      // The guest stays selected above (same reservation_id kept), so the
-      // folioId-keyed effect won't refire on its own — refresh explicitly
-      // so the balance/recent-charges reflect what was just posted.
-      await loadFolioDetail(selectedGuest.folio.id);
+      // Only refresh the balance here if this same guest's folio is the one
+      // currently shown below (selectedReservationId can point at a
+      // different guest, picked from the list, than the one this order was
+      // just posted to) — otherwise the folioId-keyed effect below already
+      // owns loading whichever folio actually is selected.
+      if (String(selectedReservationId) === String(order.reservation_id)) {
+        await loadFolioDetail(selectedGuest.folio.id);
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Failed to post the order.");
     } finally {
@@ -212,7 +225,10 @@ export default function AdminGuestSalesPage() {
             ) : (
               <select
                 value={order.reservation_id}
-                onChange={(e) => setOrder({ ...order, reservation_id: e.target.value })}
+                onChange={(e) => {
+                  setOrder({ ...order, reservation_id: e.target.value });
+                  setSelectedReservationId(e.target.value); // also show this guest's folio below
+                }}
                 className={field.select}
               >
                 <option value="">Select an in-house guest</option>
@@ -305,9 +321,50 @@ export default function AdminGuestSalesPage() {
         </button>
       </div>
 
-      {selectedGuest && (
+      <div className={table.card}>
+        <div className="px-8 py-4 border-b border-[color:var(--text-color)]/10">
+          <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">In-House Guest Folios</p>
+        </div>
+        <div className={table.scroll}>
+          <table className={table.el}>
+            <thead>
+              <tr className={table.headRow}>
+                <th className={table.th}>Room</th>
+                <th className={table.th}>Guest</th>
+                <th className={table.th}>Folio #</th>
+                <th className={table.th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingGuests ? (
+                <tr><td colSpan={4} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
+              ) : inHouse.length === 0 ? (
+                <tr><td colSpan={4} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest folios right now.</td></tr>
+              ) : (
+                inHouse.map((r) => {
+                  const isSelected = String(r.id) === String(selectedReservationId);
+                  return (
+                    <tr key={r.id} className={`${table.row} ${isSelected ? "bg-[color:var(--emphasis)]/5" : ""}`}>
+                      <td className={table.td}>{r.room_assignments?.[0]?.room_number || "—"}</td>
+                      <td className={table.td}>{r.guest_name}</td>
+                      <td className={table.td}>{r.folio.folio_number}</td>
+                      <td className={table.td}>
+                        <button onClick={() => setSelectedReservationId(r.id)} className={btn.rowPrimary}>
+                          {isSelected ? "Viewing" : "View / Pay"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {folioGuest && (
         <FolioBalanceCard
-          guest={selectedGuest}
+          guest={folioGuest}
           folioDetail={folioDetail}
           loading={loadingFolio}
           error={folioError}
