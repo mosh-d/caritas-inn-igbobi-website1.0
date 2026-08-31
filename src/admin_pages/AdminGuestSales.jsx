@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { IoFastFoodOutline } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
+import Modal from "../components/shared/Modal";
+import StatusBadge from "../components/shared/StatusBadge";
 import PrintReceiptModal from "../components/shared/PrintReceiptModal";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
@@ -332,30 +334,40 @@ export default function AdminGuestSalesPage() {
                 <th className={table.th}>Room</th>
                 <th className={table.th}>Guest</th>
                 <th className={table.th}>Folio #</th>
+                <th className={table.th}>Status</th>
                 <th className={table.th}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loadingGuests ? (
-                <tr><td colSpan={4} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
+                <tr><td colSpan={5} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
               ) : inHouse.length === 0 ? (
-                <tr><td colSpan={4} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest folios right now.</td></tr>
+                <tr><td colSpan={5} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest folios right now.</td></tr>
               ) : (
-                inHouse.map((r) => {
-                  const isSelected = String(r.id) === String(selectedReservationId);
-                  return (
-                    <tr key={r.id} className={`${table.row} ${isSelected ? "bg-[color:var(--emphasis)]/5" : ""}`}>
-                      <td className={table.td}>{r.room_assignments?.[0]?.room_number || "—"}</td>
-                      <td className={table.td}>{r.guest_name}</td>
-                      <td className={table.td}>{r.folio.folio_number}</td>
-                      <td className={table.td}>
-                        <button onClick={() => setSelectedReservationId(r.id)} className={btn.rowPrimary}>
-                          {isSelected ? "Viewing" : "View / Pay"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                // Owing folios first (highest balance first) — that's who
+                // staff actually need to chase down and take a payment
+                // from; a settled or credit folio can sit further down.
+                [...inHouse]
+                  .sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0))
+                  .map((r) => {
+                    const isSelected = String(r.id) === String(selectedReservationId);
+                    const balance = Number(r.folio?.balance || 0);
+                    return (
+                      <tr key={r.id} className={`${table.row} ${isSelected ? "bg-[color:var(--emphasis)]/5" : ""}`}>
+                        <td className={table.td}>{r.room_assignments?.[0]?.room_number || "—"}</td>
+                        <td className={table.td}>{r.guest_name}</td>
+                        <td className={table.td}>{r.folio.folio_number}</td>
+                        <td className={table.td}>
+                          <StatusBadge status={balance > 0 ? "owing" : "paid"} />
+                        </td>
+                        <td className={table.td}>
+                          <button onClick={() => setSelectedReservationId(r.id)} className={btn.rowPrimary}>
+                            {isSelected ? "Viewing" : "View / Pay"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
               )}
             </tbody>
           </table>
@@ -363,7 +375,7 @@ export default function AdminGuestSalesPage() {
       </div>
 
       {folioGuest && (
-        <FolioBalanceCard
+        <FolioBalanceModal
           guest={folioGuest}
           folioDetail={folioDetail}
           loading={loadingFolio}
@@ -374,6 +386,7 @@ export default function AdminGuestSalesPage() {
           recordingPayment={recordingPayment}
           paymentError={paymentError}
           onRecordPayment={handleRecordPayment}
+          onClose={() => setSelectedReservationId("")}
         />
       )}
 
@@ -401,26 +414,34 @@ export default function AdminGuestSalesPage() {
 
 // Compact — a balance summary + payment form, not the full Folio Detail
 // experience (no tax/discount, refunds, or closing here; that stays
-// Folios-page-only). Page-local rather than under components/shared/: it's
-// driven entirely by this page's own state/refetch timing, with exactly one
-// consumer, same as MenuSection (AdminMenu.jsx) and SummaryStat
-// (AdminFolios.jsx) are already page-local in this codebase.
-function FolioBalanceCard({ guest, folioDetail, loading, error, paymentForm, setPaymentForm, hasValidPaymentSplits, recordingPayment, paymentError, onRecordPayment }) {
+// Folios-page-only). A modal rather than an inline card: it used to render
+// below the guest-folio list, which meant clicking "View / Pay" produced no
+// visible feedback above the fold — easy to mistake for the button not
+// working at all. Every other "View" action on a folio list in this app
+// (Non-Guest Sales, Folios) already opens a modal — this now matches that.
+// Page-local rather than under components/shared/: it's driven entirely by
+// this page's own state/refetch timing, with exactly one consumer, same as
+// MenuSection (AdminMenu.jsx) and SummaryStat (AdminFolios.jsx) are already
+// page-local in this codebase.
+function FolioBalanceModal({ guest, folioDetail, loading, error, paymentForm, setPaymentForm, hasValidPaymentSplits, recordingPayment, paymentError, onRecordPayment, onClose }) {
   const roomNumber = guest.room_assignments?.[0]?.room_number;
   const balance = folioDetail ? Number(folioDetail.balance) : 0;
   const isOutstanding = folioDetail && balance > 0;
   const isCredit = folioDetail && balance < 0;
 
   return (
-    <div className="w-full flex flex-col gap-4 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6">
-      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">
-        Folio — Room {roomNumber || "—"} — {guest.guest_name}
-      </p>
-
-      {error && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{error}</p>}
-      {loading && <LoadingSpinner />}
-
-      {!loading && folioDetail && (
+    <Modal
+      onClose={onClose}
+      title={guest.folio?.folio_number || "Folio"}
+      subtitle={`Room ${roomNumber || "—"} — ${guest.guest_name}`}
+      size="md"
+      loading={loading}
+    >
+      {loading ? (
+        <LoadingSpinner size="lg" />
+      ) : error ? (
+        <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{error}</p>
+      ) : folioDetail && (
         <>
           <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1">
             <FolioStat label="Balance" value={isOutstanding ? money(folioDetail.balance) : isCredit ? `Credit: ${money(Math.abs(balance))}` : "Settled"} tone={isOutstanding ? "danger" : isCredit ? "success" : "default"} />
@@ -469,7 +490,7 @@ function FolioBalanceCard({ guest, folioDetail, loading, error, paymentForm, set
           </div>
         </>
       )}
-    </div>
+    </Modal>
   );
 }
 
