@@ -63,9 +63,13 @@ export default function AdminRootLayout() {
   const isLoginPage = location.pathname === "/admin";
 
   useEffect(() => {
+    let cancelled = false;
+    let firstCheck = true;
+
     const checkAuth = async () => {
       try {
         const userData = await verifyToken();
+        if (cancelled) return;
         setIsAuthenticated(!!userData);
 
         // Redirect to login if not authenticated and not on login page
@@ -73,17 +77,44 @@ export default function AdminRootLayout() {
           window.location.href = "/admin";
         }
       } catch (error) {
+        if (cancelled) return;
         console.error("Authentication check failed:", error);
         setIsAuthenticated(false);
         if (!isLoginPage) {
           window.location.href = "/admin";
         }
       } finally {
-        setIsLoading(false);
+        // Only the very first check should gate the loading spinner — a
+        // later, visibility-triggered recheck (below) must stay silent
+        // unless it actually finds the session dead, or every tab refocus
+        // would flash the full-page spinner over whatever the user's doing.
+        if (!cancelled && firstCheck) {
+          firstCheck = false;
+          setIsLoading(false);
+        }
       }
     };
 
     checkAuth();
+
+    // This layout is a persistent nested-route layout (see the <Outlet/>
+    // below) — it does NOT remount when navigating between /admin/* pages,
+    // so without this, the single checkAuth() call above is the ONLY
+    // verification this session ever gets for as long as the tab stays
+    // open, regardless of how many real days pass (a laptop sleep/wake, or
+    // just leaving the tab open, never triggers a remount either). Re-
+    // running on visibility regain closes that gap: reopening the laptop or
+    // switching back to this tab after a long absence re-validates the
+    // token for real instead of trusting React state that's days stale.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") checkAuth();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [isLoginPage]);
 
   if (isLoading) {
