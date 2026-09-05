@@ -16,7 +16,7 @@ import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import PhoneInput from "../components/shared/PhoneInput";
-import { parsePhone } from "../utils/phone-format";
+import { formatPhone, parsePhone } from "../utils/phone-format";
 import {
   checkInReservation,
   assignRoom,
@@ -229,7 +229,7 @@ export default function AdminCheckInsPage() {
           className="w-full text-left px-4 py-3 hover:bg-black/5 flex items-center justify-between gap-4 text-lg border-b border-[color:var(--text-color)]/8 last:border-b-0 cursor-pointer"
         >
           <span className="font-medium text-[color:var(--black)]">{g.first_name} {g.last_name}</span>
-          <span className="text-[color:var(--text-color)]/60 whitespace-nowrap">{g.phone}</span>
+          <span className="text-[color:var(--text-color)]/60 whitespace-nowrap">{formatPhone(g.phone)}</span>
         </button>
       ))}
     </div>

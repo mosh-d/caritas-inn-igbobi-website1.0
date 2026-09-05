@@ -1,5 +1,6 @@
 import { IoMailOutline, IoCallOutline } from "react-icons/io5";
 import CopyIconButton from "./CopyIconButton";
+import { dialablePhone, formatPhone } from "../../utils/phone-format";
 
 // The clickable call/email portion is a real <a href="mailto:...">/<a
 // href="tel:...">, not a JS-triggered navigation — some browsers won't
@@ -12,14 +13,21 @@ export default function ContactRow({ type, value }) {
   const label = isEmail ? "Email" : "Phone";
   const Icon = isEmail ? IoMailOutline : IoCallOutline;
   const hasValue = Boolean(value);
-  const href = hasValue ? (isEmail ? `mailto:${value}` : `tel:${value}`) : null;
+  // Stored phone strings are still in whatever format staff typed —
+  // "8148216795", "0814 379 9227", "+234 814 379 9227" all sit in the
+  // database side by side, since canonicalizing the search hash deliberately
+  // did not rewrite anyone's record. Normalize at render instead: shown with
+  // a space, dialled and copied without one.
+  const shown = hasValue && !isEmail ? formatPhone(value) : value;
+  const machine = hasValue && !isEmail ? dialablePhone(value) : value;
+  const href = hasValue ? (isEmail ? `mailto:${machine}` : `tel:${machine}`) : null;
 
   const content = (
     <>
       <Icon size={22} className="shrink-0 text-[color:var(--text-color)]/60" />
       <div className="min-w-0">
         <span className="block font-semibold text-[color:var(--text-color)]/68 uppercase tracking-wide text-lg">{label}</span>
-        <span className="block font-medium break-all">{value || "N/A"}</span>
+        <span className="block font-medium break-all">{shown || "N/A"}</span>
       </div>
     </>
   );
@@ -38,7 +46,7 @@ export default function ContactRow({ type, value }) {
       )}
       {hasValue && (
         <div className="shrink-0 mr-3">
-          <CopyIconButton value={value} size={20} />
+          <CopyIconButton value={machine} size={20} />
         </div>
       )}
     </div>

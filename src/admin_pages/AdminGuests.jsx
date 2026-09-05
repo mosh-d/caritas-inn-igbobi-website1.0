@@ -8,6 +8,7 @@ import StatusBadge from '../components/shared/StatusBadge';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
 import AutoGrowTextarea from '../components/shared/AutoGrowTextarea';
 import PhoneInput from '../components/shared/PhoneInput';
+import { formatPhone } from '../utils/phone-format';
 import { btn, field, table } from '../components/shared/ui';
 import {
   fetchGuests,
@@ -406,7 +407,7 @@ export default function AdminGuestsPage() {
                         {g.email || 'N/A'}
                       </td>
                       <td className={`${table.td} hidden md:table-cell`}>
-                        {g.phone || 'N/A'}
+                        {g.phone ? formatPhone(g.phone) : 'N/A'}
                       </td>
                       <td
                         className={`${table.td} hidden md:table-cell capitalize`}

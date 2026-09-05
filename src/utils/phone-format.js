@@ -100,32 +100,37 @@ const matchDial = (digits) => DIALS_BY_LENGTH.find((dial) => digits.startsWith(d
  */
 export function parsePhone(value) {
   const raw = String(value ?? "").trim();
-  if (!raw) return { dial: DEFAULT_DIAL, national: "" };
+  if (!raw) return { dial: DEFAULT_DIAL, national: "", matched: false };
 
   const explicit = raw.startsWith("+") || raw.startsWith("00");
   let digits = raw.replace(/\D/g, "");
   if (raw.startsWith("00")) digits = digits.slice(2);
-  if (!digits) return { dial: DEFAULT_DIAL, national: "" };
+  if (!digits) return { dial: DEFAULT_DIAL, national: "", matched: false };
 
   if (explicit) {
     const dial = matchDial(digits);
-    if (dial) return { dial, national: digits.slice(dial.length) };
-    return { dial: DEFAULT_DIAL, national: digits };
+    if (dial) return { dial, national: digits.slice(dial.length), matched: true };
+    return { dial: DEFAULT_DIAL, national: digits, matched: false };
   }
 
   // No "+" to go on, so fall back to the same shape rules the backend
   // applies: a leading trunk 0, or a bare 10-digit number, is Nigerian.
   if (digits.startsWith("0") && digits.length === NG_NSN_LENGTH + 1) {
-    return { dial: NG_DIAL, national: digits.slice(1) };
+    return { dial: NG_DIAL, national: digits.slice(1), matched: true };
   }
   if (digits.startsWith(NG_DIAL) && digits.length === NG_DIAL.length + NG_NSN_LENGTH) {
-    return { dial: NG_DIAL, national: digits.slice(NG_DIAL.length) };
+    return { dial: NG_DIAL, national: digits.slice(NG_DIAL.length), matched: true };
   }
-  if (digits.length === NG_NSN_LENGTH) return { dial: NG_DIAL, national: digits };
+  if (digits.length === NG_NSN_LENGTH) return { dial: NG_DIAL, national: digits, matched: true };
 
-  const dial = matchDial(digits);
-  if (dial) return { dial, national: digits.slice(dial.length) };
-  return { dial: DEFAULT_DIAL, national: digits };
+  // Anything else is genuinely unidentified — production carries a few 2/3/9/
+  // 12-digit entries. Deliberately NOT dial-code-matched: "12" would become
+  // "+1 2", presenting junk as a confident US number, and an unprefixed
+  // 447700900123 is only a guess. `matched: false` lets the display helpers
+  // show it verbatim, which is also exactly what the backend does with it
+  // (see phone.util.ts). The dial/national split is still filled in, so
+  // PhoneInput can put it in a field for staff to correct.
+  return { dial: DEFAULT_DIAL, national: digits, matched: false };
 }
 
 /**
@@ -139,8 +144,26 @@ export function composePhone(dial, national) {
   return `+${dial}${digits}`;
 }
 
-/** Display helper for read-only spots — normalizes whatever is stored. */
+/**
+ * Display form for read-only spots: "+234 8148216795".
+ *
+ * The duplicate merge only recomputed the search hashes — it deliberately
+ * left the stored phone strings exactly as staff typed them, so the database
+ * still holds "8148216795", "0814 379 9227" and "+234 814 379 9227" side by
+ * side. Normalizing at render is what makes those look like one format
+ * without rewriting anyone's record.
+ *
+ * Falls back to the raw value rather than blanking it: a stored value that
+ * doesn't parse is still the only contact detail on that record, and showing
+ * nothing would be worse than showing it unformatted.
+ */
 export function formatPhone(value) {
-  const { dial, national } = parsePhone(value);
-  return national ? `+${dial} ${national}` : "";
+  const { dial, national, matched } = parsePhone(value);
+  return matched ? `+${dial} ${national}` : String(value ?? "");
+}
+
+/** Same number with no spaces, for `tel:` links and copy-to-clipboard. */
+export function dialablePhone(value) {
+  const { dial, national, matched } = parsePhone(value);
+  return matched ? composePhone(dial, national) : String(value ?? "");
 }
