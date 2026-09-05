@@ -1111,21 +1111,6 @@ function SalesTotals({ data }) {
           />
         ))}
       </div>
-      <ReportSection title="By Staff">
-        {data.staff_breakdown.length === 0 ? <EmptyRow /> : (
-          <table className="w-full text-xl">
-            <TableHead cells={["Staff", "Total"]} />
-            <tbody>
-              {data.staff_breakdown.map((s, i) => (
-                <tr key={i} className="border-b border-[color:var(--text-color)]/10">
-                  <td className="px-6 py-4 font-medium text-[color:var(--black)]">{s.staff_name}</td>
-                  <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(s.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </ReportSection>
     </>
   );
 }
@@ -1136,6 +1121,30 @@ function SalesTotals({ data }) {
 // Owing/Total Sold/Total Service Charge aren't shown anywhere else on this
 // report. lineTotal matches buildSalesTotals' own definition on the backend
 // (amount + service_charge is the real, chargeable/paid total per row).
+// Split out of SalesTotals so it can render at the BOTTOM of the report,
+// where every other report puts its By Staff section (see
+// StaffActivitySection in reportUi.jsx). It used to sit directly under the
+// summary cards, which made Food/Drink the odd ones out.
+function SalesByStaff({ data }) {
+  return (
+    <ReportSection title="By Staff" subtitle="Who posted each charge">
+      {data.staff_breakdown.length === 0 ? <EmptyRow /> : (
+        <table className="w-full text-xl">
+          <TableHead cells={["Staff", "Total"]} rightAlign={["Total"]} />
+          <tbody>
+            {data.staff_breakdown.map((s, i) => (
+              <tr key={i} className="border-b border-[color:var(--text-color)]/10 last:border-b-0">
+                <td className="px-6 py-4 font-medium text-[color:var(--black)]">{s.staff_name}</td>
+                <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(s.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </ReportSection>
+  );
+}
+
 function SalesNotes({ data }) {
   const rows = data.rows || [];
   const lineTotal = (r) => Number(r.amount) + Number(r.service_charge);
@@ -1275,6 +1284,8 @@ function FoodSalesReportTab({ shift }) {
             )}
           </ReportSection>
           <SalesNotes data={data} />
+
+          <SalesByStaff data={data} />
         </div>
       )}
 
@@ -1390,6 +1401,8 @@ function DrinkSalesReportTab({ shift }) {
             )}
           </ReportSection>
           <SalesNotes data={data} />
+
+          <SalesByStaff data={data} />
         </div>
       )}
 
