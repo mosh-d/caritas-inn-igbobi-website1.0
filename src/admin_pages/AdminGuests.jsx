@@ -7,6 +7,7 @@ import PageHeading from '../components/shared/PageHeading';
 import StatusBadge from '../components/shared/StatusBadge';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
 import AutoGrowTextarea from '../components/shared/AutoGrowTextarea';
+import PhoneInput from '../components/shared/PhoneInput';
 import { btn, field, table } from '../components/shared/ui';
 import {
   fetchGuests,
@@ -536,7 +537,7 @@ export default function AdminGuestsPage() {
               value={editForm.email || ''}
               onChange={(v) => setEditForm({ ...editForm, email: v })}
             />
-            <LabeledInput
+            <LabeledPhoneInput
               label='Phone'
               value={editForm.phone || ''}
               onChange={(v) => setEditForm({ ...editForm, phone: v })}
@@ -783,7 +784,7 @@ export default function AdminGuestsPage() {
               value={createForm.email}
               onChange={(v) => setCreateForm({ ...createForm, email: v })}
             />
-            <LabeledInput
+            <LabeledPhoneInput
               label='Phone *'
               value={createForm.phone}
               onChange={(v) => setCreateForm({ ...createForm, phone: v })}
@@ -819,6 +820,24 @@ export default function AdminGuestsPage() {
         </Modal>
       )}
     </>
+  );
+}
+
+// Same shape as LabeledInput, but the phone number is entered as an explicit
+// country code plus a national number — phone is what identifies a guest
+// here, so the format it is captured in decides whether a returning guest
+// matches their existing profile or spawns a duplicate.
+function LabeledPhoneInput({ label, value, onChange }) {
+  return (
+    <div className='flex flex-col gap-2'>
+      <label className={field.label}>{label}</label>
+      <PhoneInput
+        value={value}
+        onChange={onChange}
+        selectClassName={field.select}
+        inputClassName={field.input}
+      />
+    </div>
   );
 }
 

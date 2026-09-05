@@ -9,6 +9,7 @@ import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import PrintReceiptModal from "../components/shared/PrintReceiptModal";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
+import PhoneInput from "../components/shared/PhoneInput";
 import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
@@ -417,11 +418,11 @@ export default function AdminNonGuestSalesPage() {
           </div>
           <div className="flex flex-col gap-2">
             <label className={field.label}>Guest Phone (optional)</label>
-            <input
-              type="text"
+            <PhoneInput
               value={newFolio.guest_phone}
-              onChange={(e) => setNewFolio({ ...newFolio, guest_phone: e.target.value })}
-              className={field.input}
+              onChange={(v) => setNewFolio({ ...newFolio, guest_phone: v })}
+              selectClassName={field.select}
+              inputClassName={field.input}
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -663,11 +664,11 @@ export default function AdminNonGuestSalesPage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className={field.label}>Guest Phone</label>
-                    <input
-                      type="text"
+                    <PhoneInput
                       value={guestInfoForm.guest_phone}
-                      onChange={(e) => setGuestInfoForm({ ...guestInfoForm, guest_phone: e.target.value })}
-                      className={field.input}
+                      onChange={(v) => setGuestInfoForm({ ...guestInfoForm, guest_phone: v })}
+                      selectClassName={field.select}
+                      inputClassName={field.input}
                     />
                   </div>
                 </div>

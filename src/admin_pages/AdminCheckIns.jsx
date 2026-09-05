@@ -15,6 +15,8 @@ import RoomStatusTag from "../components/shared/RoomStatusTag";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
+import PhoneInput from "../components/shared/PhoneInput";
+import { parsePhone } from "../utils/phone-format";
 import {
   checkInReservation,
   assignRoom,
@@ -148,7 +150,10 @@ export default function AdminCheckInsPage() {
   // response payload AdminGuests.jsx's edit-modal dropdown reads.
   useEffect(() => {
     const phone = walkIn.phone.trim();
-    if (phone.length < 7) {
+    // Gate on the national digits, not the whole string: the field now
+    // always carries a "+234" prefix, so a raw length check would fire the
+    // lookup after three typed digits.
+    if (parsePhone(phone).national.length < 7) {
       setWalkInBlacklisted(false);
       setWalkInKnownNames([]);
       return;
@@ -854,14 +859,13 @@ export default function AdminCheckInsPage() {
                             <span className="ml-3 text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
                           )}
                         </label>
-                        <input
-                          type="tel"
-                          placeholder="+234..."
+                        <PhoneInput
                           value={walkIn.phone}
-                          onChange={(e) => setWalkIn((p) => ({ ...p, phone: e.target.value }))}
+                          onChange={(v) => setWalkIn((p) => ({ ...p, phone: v }))}
                           onFocus={() => setWalkInActiveGuestField("phone")}
                           onBlur={() => setWalkInActiveGuestField(null)}
-                          className={field.input}
+                          selectClassName={field.select}
+                          inputClassName={field.input}
                         />
                       </div>
                       <div className="flex flex-col gap-2 flex-1 min-w-48">

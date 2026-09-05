@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
+import PhoneInput from "../components/shared/PhoneInput";
 import DatePicker from "../components/shared/DatePicker";
 import Footer from "../components/shared/Footer";
 import { createReservation, fetchBlockedDates } from "../utils/booking-api";
@@ -139,6 +140,16 @@ export default function BookingConfirmationPage() {
       [name]: value,
     }));
     // Clear validation error when user starts typing
+    if (validationError.show) {
+      clearFormError();
+    }
+  };
+
+  // PhoneInput hands back the composed value rather than an event, but the
+  // rest of the behaviour (clearing a showing validation error as the guest
+  // types) has to stay identical to every other field on this form.
+  const handlePhoneChange = (value) => {
+    setFormData((prev) => ({ ...prev, phone: value }));
     if (validationError.show) {
       clearFormError();
     }
@@ -394,17 +405,22 @@ export default function BookingConfirmationPage() {
                       Enter your email address
                     </CustomInput>
 
-                    <CustomInput
-                      variant="default"
-                      type="tel"
-                      id="phone"
-                      label="Phone Number"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                    >
-                      Enter your phone number
-                    </CustomInput>
+                    {/* Not a CustomInput: the country code has to be picked,
+                        not typed. Styled to match one so the row still reads
+                        as a single form. */}
+                    <div className="flex w-full flex-col gap-[1rem]">
+                      <label htmlFor="phone" className="block text-xl font-bold">
+                        Phone Number
+                      </label>
+                      <PhoneInput
+                        id="phone"
+                        value={formData.phone}
+                        onChange={handlePhoneChange}
+                        placeholder="Enter your phone number"
+                        selectClassName="text-lg focus:outline-none focus:ring-0 border-b border-b-[color:var(--text-color)]/50 bg-transparent"
+                        inputClassName="text-lg focus:outline-none focus:ring-0 border-b border-b-[color:var(--text-color)]/50"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex flex-row gap-[2.4rem]">
