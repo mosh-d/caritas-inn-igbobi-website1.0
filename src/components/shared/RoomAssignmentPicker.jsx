@@ -18,11 +18,19 @@ import { fetchAvailableRoomsForReservation } from "../../utils/reservations-pms-
 //   live as the user edits, so a parent with its OWN single action button
 //   (e.g. Check-In's "Confirm Check In") can assign rooms and check in
 //   together in one click, without a second, redundant save step.
-export default function RoomAssignmentPicker({ reservationId, roomsBooked, initialRoomNumbers, onSave, saving, hideSaveButton = false, onSlotsChange }) {
+export default function RoomAssignmentPicker({ reservationId, roomTypeId, roomsBooked, initialRoomNumbers, onSave, saving, hideSaveButton = false, onSlotsChange }) {
   const [availableRooms, setAvailableRooms] = useState(null);
   const [loading, setLoading] = useState(true);
   const [slots, setSlots] = useState(initialRoomNumbers.length > 0 ? initialRoomNumbers : [""]);
 
+  // roomTypeId is in the dependency list, not just reservationId, because the
+  // rooms this endpoint returns are the ones belonging to the reservation's
+  // CURRENT room type — and a room-type change keeps the same reservation id.
+  // Keyed on the id alone, changing a reservation's type left this picker
+  // showing the OLD type's room numbers (and the old assignment still
+  // selected), because nothing it depended on had changed. The parent
+  // refetches the reservation after that change, so this fires on the new
+  // type and re-seeds the slots from the assignments the backend just wrote.
   useEffect(() => {
     setSlots(initialRoomNumbers.length > 0 ? initialRoomNumbers : [""]);
     let cancelled = false;
@@ -33,7 +41,7 @@ export default function RoomAssignmentPicker({ reservationId, roomsBooked, initi
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reservationId]);
+  }, [reservationId, roomTypeId]);
 
   useEffect(() => {
     onSlotsChange?.(slots.map((s) => s.trim()).filter(Boolean));

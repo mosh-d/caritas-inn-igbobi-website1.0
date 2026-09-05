@@ -1083,6 +1083,7 @@ export default function AdminCheckInsPage() {
             <label className={field.label}>Room{selected.rooms_booked > 1 ? "s" : ""}</label>
             <RoomAssignmentPicker
               reservationId={selected.id}
+              roomTypeId={selected.room_type_id}
               roomsBooked={selected.rooms_booked}
               initialRoomNumbers={roomNumbers}
               onSlotsChange={setRoomNumbers}

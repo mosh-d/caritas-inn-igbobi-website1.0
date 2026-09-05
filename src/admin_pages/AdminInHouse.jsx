@@ -564,6 +564,7 @@ export default function AdminInHousePage() {
                 <h3 className="text-2xl font-bold text-[color:var(--black)]">Room Assignments</h3>
                 <RoomAssignmentPicker
                   reservationId={selected.id}
+                  roomTypeId={selected.room_type_id}
                   roomsBooked={selected.rooms_booked}
                   initialRoomNumbers={(selected.room_assignments || []).map((ra) => ra.room_number)}
                   onSave={handleAssignRoom}

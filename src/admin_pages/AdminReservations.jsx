@@ -1207,6 +1207,7 @@ export default function AdminReservationsPage() {
                   <h3 className="text-2xl font-bold text-[color:var(--black)]">Room Assignments</h3>
                   <RoomAssignmentPicker
                     reservationId={res.id}
+                    roomTypeId={res.room_type_id}
                     roomsBooked={res.rooms_booked}
                     initialRoomNumbers={(res.room_assignments || []).map((ra) => ra.room_number)}
                     onSave={handleAssignRoom}
