@@ -1,9 +1,7 @@
 import { pct } from "../../utils/report-format";
 
-// Small render pieces shared by AdminReports.jsx (the live report tabs) and
-// AccountantReportsPage.jsx (rendering a sent report's frozen snapshot_data)
-// — kept in one place so a snapshot always renders identically to how it
-// looked when it was sent.
+// Small render pieces shared by every report tab in AdminReports.jsx —
+// kept in one place so each report looks and behaves identically.
 
 export function ReportSection({ title, subtitle, children }) {
   return (
@@ -66,5 +64,68 @@ export function OccupancyBadge({ value }) {
     <span className={`inline-block px-3 py-1 rounded-full text-xl font-bold ${color}`}>
       {pct(v)}
     </span>
+  );
+}
+
+// "By Staff" — who actually did the work behind a report, shown on every
+// report now that reports are generated directly by whoever needs them
+// rather than snapshotted and handed to the accountant.
+//
+// Check-ins, check-outs and payments are three SEPARATE tables rather than
+// one merged figure: they are different units (a count of guests vs. an
+// amount of money), and a receptionist who checked ten guests in has done
+// something different from one who took ten payments. A staff member appears
+// in whichever tables they acted in.
+//
+// On a report covering a date range the backend buckets each row by business
+// day and sends a `date`; single-day reports send null and the column is
+// dropped. "Unattributed" covers activity recorded before individual staff
+// logins existed — those rows have no staff account to resolve to.
+export function StaffActivitySection({ activity, money }) {
+  if (!activity) return null;
+  const groups = [
+    { key: "check_ins", label: "Check-Ins", unit: "Guests", amount: false },
+    { key: "check_outs", label: "Check-Outs", unit: "Guests", amount: false },
+    { key: "payments", label: "Payments Taken", unit: "Count", amount: true },
+  ].filter((g) => (activity[g.key] || []).length > 0);
+
+  if (groups.length === 0) {
+    return (
+      <ReportSection title="By Staff" subtitle="Who handled this day's activity">
+        <EmptyRow />
+      </ReportSection>
+    );
+  }
+
+  return (
+    <ReportSection title="By Staff" subtitle="Who handled this activity — check-ins, check-outs and payments counted separately">
+      <div className="flex flex-col gap-8 p-6">
+        {groups.map((g) => {
+          const rows = activity[g.key];
+          const dated = rows.some((r) => r.date);
+          const cells = [...(dated ? ["Date"] : []), "Staff", g.unit, ...(g.amount ? ["Amount"] : [])];
+          return (
+            <div key={g.key} className="flex flex-col gap-2">
+              <h3 className="text-2xl font-bold text-[color:var(--black)]">{g.label}</h3>
+              <table className="w-full text-xl">
+                <TableHead cells={cells} rightAlign={g.amount ? ["Amount"] : []} />
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={i} className="border-b border-[color:var(--text-color)]/10 last:border-b-0">
+                      {dated && <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.date}</td>}
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.staff_name}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.count}</td>
+                      {g.amount && (
+                        <td className="px-6 py-4 text-right text-[color:var(--black)]">{money(r.total)}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+    </ReportSection>
   );
 }

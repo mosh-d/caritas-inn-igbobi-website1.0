@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { IoBarChartOutline, IoDownloadOutline, IoMailOutline, IoSendOutline } from "react-icons/io5";
+import { IoBarChartOutline, IoDownloadOutline, IoMailOutline } from "react-icons/io5";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
@@ -24,20 +24,18 @@ import {
   downloadAccommodationReportExport,
 } from "../utils/reports-api";
 import { fetchStaffAccounts } from "../utils/staff-accounts-api";
-import { sendReportToAccountant } from "../utils/sent-reports-api";
 import { adminTodayISO } from "../utils/date-utils";
 import { isAccountant, isReceptionist, isWaitron } from "../utils/auth";
 
 // money/pct/formatDate/formatDateTime plus the shared render bits below
 // (ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge) moved
 // out to utils/report-format.js and components/shared/reportUi.jsx so
-// AccountantReportsPage can render a sent report's snapshot_data with the
-// exact same look as the live tab it came from, without duplicating any of
-// it — a plain component file can't co-export helper functions/consts
+// every report tab renders from one set of pieces rather than duplicating
+// them — a plain component file can't co-export helper functions/consts
 // alongside its default export (breaks Fast Refresh), so this couldn't just
 // live here.
 import { money, pct, formatDate, formatDateTime } from "../utils/report-format";
-import { ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge } from "../components/shared/reportUi";
+import { ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge, StaffActivitySection } from "../components/shared/reportUi";
 
 function currentMonthRange() {
   const now = new Date();
@@ -73,57 +71,13 @@ const visibleTabs = () =>
   : isReceptionist() ? ALL_TABS.filter((t) => !FNB_TABS.includes(t.key))
   : ALL_TABS;
 
-// Snapshots a tab's already-loaded `data` and sends it to the accountant —
-// shared across every tab below rather than duplicated 5 times. `shift`
-// comes from the report-page-level selector (see AdminReportsPage), not a
-// per-tab one — disabled with an explanatory title until one's picked.
-function SendToAccountantButton({ reportType, label, shift, data }) {
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState(null);
-
-  // An accountant runs these reports for their own audits, not to send them
-  // to themselves — this button (and the shift it depends on) is a
-  // front-office-only action.
-  if (isAccountant()) return null;
-
-  const handleSend = async () => {
-    if (!data || !shift) return;
-    try {
-      setSending(true);
-      setError(null);
-      await sendReportToAccountant({ report_type: reportType, label, shift, snapshot_data: data });
-      setSent(true);
-      setTimeout(() => setSent(false), 4000);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to send report to accountant.");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-1">
-      <Button
-        onClick={handleSend}
-        disabled={!data || !shift || sending}
-        variant="secondary"
-        className="text-xl! flex items-center gap-2 rounded-xl"
-        title={!shift ? "Select a shift at the top of the page first" : undefined}
-      >
-        <IoSendOutline size={20} /> {sending ? "Sending..." : sent ? "Sent!" : "Send to Accountant"}
-      </Button>
-      {error && <p className="text-red-600 text-lg">{error}</p>}
-    </div>
-  );
-}
 
 export default function AdminReportsPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   // Report-page-level, not per-tab — one shift selection covers whichever
-  // report is currently active, including when it's sent to the accountant
-  // (see SendToAccountantButton). Food Sales/Drink Sales/Bar Stock are
+  // report is currently active, and labels its Excel export with the shift
+  // that produced it. Food Sales/Drink Sales/Bar Stock are
   // waitron territory (FNB_TABS above), so this picker swaps roster + label
   // for those three rather than always showing "receptionist on duty" on a
   // report a receptionist can't even open.
@@ -206,10 +160,10 @@ export default function AdminReportsPage() {
         </div>
       )}
 
-      {activeTab === "dashboard" && <DashboardTab shift={shift} />}
-      {activeTab === "manifest" && <ManifestTab shift={shift} />}
-      {activeTab === "analysis" && <AnalysisTab shift={shift} />}
-      {activeTab === "pms" && <PmsReportTab shift={shift} />}
+      {activeTab === "dashboard" && <DashboardTab />}
+      {activeTab === "manifest" && <ManifestTab />}
+      {activeTab === "analysis" && <AnalysisTab />}
+      {activeTab === "pms" && <PmsReportTab />}
       {activeTab === "accommodation" && <AccommodationReportTab shift={shift} />}
       {activeTab === "food-sales" && <FoodSalesReportTab shift={shift} />}
       {activeTab === "drink-sales" && <DrinkSalesReportTab shift={shift} />}
@@ -220,7 +174,7 @@ export default function AdminReportsPage() {
 
 // ─── Dashboard (existing report, unchanged) ──────────────────────────────────
 
-function DashboardTab({ shift }) {
+function DashboardTab() {
   const defaultRange = currentMonthRange();
   const [from, setFrom] = useState(defaultRange.from);
   const [to, setTo] = useState(defaultRange.to);
@@ -340,12 +294,6 @@ function DashboardTab({ shift }) {
         >
           <IoMailOutline size={20} /> Email Report
         </Button>
-        <SendToAccountantButton
-          reportType="dashboard"
-          label={period ? `${period.from} to ${period.to}` : `${from} to ${to}`}
-          shift={shift}
-          data={data}
-        />
       </div>
 
       {showEmailForm && (
@@ -527,6 +475,8 @@ function DashboardTab({ shift }) {
               </div>
             )}
           </div>
+
+          <StaffActivitySection activity={data.staff_activity} money={money} />
         </div>
       )}
 
@@ -541,7 +491,7 @@ function DashboardTab({ shift }) {
 
 // ─── Manifest ─────────────────────────────────────────────────────────────────
 
-function ManifestTab({ shift }) {
+function ManifestTab() {
   const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -622,7 +572,6 @@ function ManifestTab({ shift }) {
               <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
                 <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
               </Button>
-              <SendToAccountantButton reportType="manifest" label={data.report_date} shift={shift} data={data} />
             </div>
           </div>
 
@@ -707,6 +656,8 @@ function ManifestTab({ shift }) {
               </div>
             )}
           </ReportSection>
+
+          <StaffActivitySection activity={data.staff_activity} money={money} />
         </div>
       )}
 
@@ -721,7 +672,7 @@ function ManifestTab({ shift }) {
 
 // ─── Analysis ─────────────────────────────────────────────────────────────────
 
-function AnalysisTab({ shift }) {
+function AnalysisTab() {
   const defaultRange = currentMonthRange();
   const [from, setFrom] = useState(defaultRange.from);
   const [to, setTo] = useState(defaultRange.to);
@@ -771,7 +722,6 @@ function AnalysisTab({ shift }) {
             <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex rounded-xl items-center gap-2">
               <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
             </Button>
-            <SendToAccountantButton reportType="analysis" label={`${from} to ${to}`} shift={shift} data={data} />
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 w-full">
@@ -810,6 +760,8 @@ function AnalysisTab({ shift }) {
               </table>
             )}
           </ReportSection>
+
+          <StaffActivitySection activity={data.staff_activity} money={money} />
         </div>
       )}
 
@@ -824,7 +776,7 @@ function AnalysisTab({ shift }) {
 
 // ─── PMS Report (Evening / Morning) ─────────────────────────────────────────────
 
-function PmsReportTab({ shift }) {
+function PmsReportTab() {
   const [date, setDate] = useState(adminTodayISO());
   const [variant, setVariant] = useState("evening");
   const [data, setData] = useState(null);
@@ -904,7 +856,6 @@ function PmsReportTab({ shift }) {
               <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
                 <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
               </Button>
-              <SendToAccountantButton reportType="pms" label={`${data.report_date} (${data.variant})`} shift={shift} data={data} />
             </div>
           </div>
 
@@ -993,6 +944,8 @@ function PmsReportTab({ shift }) {
               <RoomStatusLine label="Complementary" count={data.room_status.complementary.length} rooms={roomNumberList(data.room_status.complementary)} />
             </div>
           </ReportSection>
+
+          <StaffActivitySection activity={data.staff_activity} money={money} />
         </div>
       )}
 
@@ -1084,7 +1037,6 @@ function AccommodationReportTab({ shift }) {
               >
                 <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
               </Button>
-              <SendToAccountantButton reportType="accommodation" label={data.report_date} shift={shift} data={data} />
             </div>
           </div>
 
@@ -1128,6 +1080,8 @@ function AccommodationReportTab({ shift }) {
               </table>
             )}
           </ReportSection>
+
+          <StaffActivitySection activity={data.staff_activity} money={money} />
         </div>
       )}
 
@@ -1206,6 +1160,13 @@ function SalesNotes({ data }) {
         <li>Debt (Owing): <strong className="text-[color:var(--black)]">{money(owingTotal)}</strong></li>
         <li>Total Sold: <strong className="text-[color:var(--black)]">{money(totalSold)}</strong></li>
         <li>Total Service Charge: <strong className="text-[color:var(--black)]">{money(totalServiceCharge)}</strong></li>
+        {/* Advance credit is spendable at reception OR the restaurant, so it
+            shows here — but it is money taken for LATER use, so it is never
+            part of the sales figures above. */}
+        <li>
+          Reservation (Credit) taken today: <strong className="text-[color:var(--black)]">{money(data.reservation_credit || 0)}</strong>
+          <span className="text-[color:var(--text-color)]/60"> — not part of today's sales; counts when spent</span>
+        </li>
       </ul>
     </div>
   );
@@ -1284,7 +1245,6 @@ function FoodSalesReportTab({ shift }) {
               >
                 <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
               </Button>
-              <SendToAccountantButton reportType="food-sales" label={data.report_date} shift={shift} data={data} />
             </div>
           </div>
 
@@ -1400,7 +1360,6 @@ function DrinkSalesReportTab({ shift }) {
               >
                 <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
               </Button>
-              <SendToAccountantButton reportType="drink-sales" label={data.report_date} shift={shift} data={data} />
             </div>
           </div>
 
@@ -1519,7 +1478,6 @@ function BarStockReportTab({ shift }) {
               >
                 <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
               </Button>
-              <SendToAccountantButton reportType="bar-stock" label={data.report_date} shift={shift} data={data} />
             </div>
           </div>
 
@@ -1565,10 +1523,11 @@ function BarStockReportTab({ shift }) {
                 <SummaryCard label="Cash" value={money(data.summary.cash)} />
                 <SummaryCard label="POS" value={money(data.summary.pos)} />
                 <SummaryCard label="Transfer" value={money(data.summary.transfer)} />
-                <SummaryCard label="Reservation" value={money(data.summary.reservation)} />
+                <SummaryCard label="Charged to Room" value={money(data.summary.charged_to_room)} sub="billed to a guest folio" />
+                <SummaryCard label="Reservation (Credit)" value={money(data.summary.reservation_credit)} sub="taken today, for future use" />
                 <SummaryCard label="Debt" value={money(data.summary.debt)} warn={data.summary.debt > 0} />
                 <SummaryCard label="Paid Before" value={money(data.summary.paid_before)} />
-                <SummaryCard label="Total" value={money(data.summary.total)} accent />
+                <SummaryCard label="Total" value={money(data.summary.total)} sub="actually collected today" accent />
               </div>
             </ReportSection>
           )}
@@ -1628,7 +1587,6 @@ function RangePicker({ from, to, setFrom, setTo, onGenerate, loading }) {
   );
 }
 
-// ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge now live
-// in components/shared/reportUi.jsx (imported at the top of this file) so
-// AccountantReportsPage can reuse them for rendering a sent report's
-// snapshot_data.
+// ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge and
+// StaffActivitySection live in components/shared/reportUi.jsx (imported at
+// the top of this file), shared by every report tab.

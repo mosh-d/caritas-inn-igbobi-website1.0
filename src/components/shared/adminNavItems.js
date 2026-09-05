@@ -22,15 +22,15 @@ import { getStoredStaffRole } from "../../utils/auth";
 
 // Single source of truth for the admin sidebar + mobile menu.
 // `showAlertBadge` marks the item that renders the live alert count.
-// `managerOnly` items are hidden from a receptionist session; `accountantOnly`
-// items are shown ONLY to an accountant session; `waitstaffOnly` items are
-// shown ONLY to a waitron session; `alwaysVisible` items stay
-// visible even in an accountant session, which otherwise sees only
-// accountantOnly items — an accountant reviews front-office-sent reports
-// (ACCOUNTANT REPORTS, accountantOnly), but can also run their own reports
-// and browse the audit trail for their own audits (REPORTS, AUDIT TRAIL,
-// both alwaysVisible) — they just never run the front desk itself, so
-// nothing else on this list applies to them. `waitstaffVisible` is the same
+// `managerOnly` items are hidden from a receptionist session; `alwaysVisible`
+// items stay visible even in an accountant session, which otherwise sees
+// nothing at all. An accountant runs reports and browses the audit trail for
+// their own audits (REPORTS, AUDIT TRAIL, both alwaysVisible) — they never
+// run the front desk itself, so nothing else on this list applies to them.
+// (There used to be an ACCOUNTANT REPORTS page fed by a "Send to Accountant"
+// hand-off; reports now carry their own per-staff attribution, so an
+// accountant generates them directly and the hand-off is gone.)
+// `waitstaffVisible` is the same
 // idea for waitstaff, who otherwise see nothing but alwaysVisible items —
 // their whole job here is posting food/drink charges (GUEST SALES,
 // NON-GUEST SALES), not running the front desk either. `receptionistHidden`
@@ -79,7 +79,6 @@ export const ADMIN_NAV_ITEMS = [
   // visibleAdminNavItems()'s accountant branch, which never even reaches
   // managerOnly).
   { to: "/admin/audit-trail", label: "AUDIT TRAIL", icon: IoDocumentTextOutline, managerOnly: true, alwaysVisible: true },
-  { to: "/admin/accountant-reports", label: "ACCOUNTANT REPORTS", icon: IoBarChartOutline, accountantOnly: true },
   // managerOnly still keeps pricing/items add-edit-delete out of a
   // receptionist's reach; waitstaffVisible (2026-08-31) lets a waitron view
   // the menu and adjust drink stock here too, now that this page can render
@@ -94,11 +93,9 @@ export function visibleAdminNavItems() {
   const role = getStoredStaffRole();
   const isDeveloper = role === "developer";
   const isManagerRole = role === "manager" || isDeveloper;
-  const isAccountantRole = role === "accountant" || isDeveloper;
   const isWaitstaffRole = role === "waitron";
 
   return ADMIN_NAV_ITEMS.filter((item) => {
-    if (item.accountantOnly) return isAccountantRole;
     if (role === "accountant") return item.alwaysVisible === true;
     if (isWaitstaffRole) return item.alwaysVisible === true || item.waitstaffVisible === true;
     if (item.managerOnly) return isManagerRole;

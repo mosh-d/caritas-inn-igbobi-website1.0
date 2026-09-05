@@ -1,7 +1,5 @@
-// Shared formatting helpers used by both AdminReports.jsx (the live report
-// tabs) and AccountantReportsPage.jsx (rendering a sent report's frozen
-// snapshot_data) — kept in one place so a snapshot always formats
-// identically to how it looked when it was sent.
+// Shared formatting helpers used across the report tabs in
+// AdminReports.jsx — kept in one place so every report formats identically.
 
 export const money = (v) =>
   `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

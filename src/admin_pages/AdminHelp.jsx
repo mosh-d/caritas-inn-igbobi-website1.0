@@ -172,7 +172,8 @@ const SECTIONS = [
       "Drink Sales — same shape as Food Sales (one row per order, with Customer/Bill No/Status/Payment Method), just filtered to drinks instead of food. No longer aggregated by item.",
       "Food Sales and Drink Sales both show a Total, a payment-method breakdown (grouped by how each non-guest/non-guest-folio charge was actually paid — a charge still owing isn't in it, since nothing's been paid yet; every folio-billed charge is grouped into one \"Charged to Room\" figure instead, since there's no way to know which later payment actually covered which specific charge), and a By Staff breakdown of who posted each charge.",
       "Remarks (whatever was typed into the Notes field when the charge was posted — see Guest Folios) shows up here too. A Non-Guest Sales charge never has one of its own (there's no per-charge notes field there) — legacy and Guest Folios charges are the only sources for this column.",
-      "An accountant session doesn't see the Shift selector or the Send to Accountant button on any tab here — those are front-office-only, for handing a report off to the accountant. An accountant runs these same reports for their own audits, not to send them to themselves.",
+      "Every report also shows a By Staff section: who checked guests in, who checked them out, and who took payments, listed separately. On a report covering a date range these are broken down per day. Activity recorded before individual staff logins shows as \"Unattributed\".",
+      "An accountant session doesn't see the Shift selector — that's front-office-only, for labelling an exported report with the shift that produced it.",
     ],
   },
   {
@@ -217,19 +218,6 @@ const SECTIONS = [
       "Reservation confirmed / cancelled / extended — the reservation lifecycle actions taken from the Reservations or Bookings pages.",
       "Check-in / Check-out — a guest was checked into or out of their room.",
       "Folio closed — a folio was closed out once fully settled.",
-    ],
-  },
-  {
-    id: "accountant-reports",
-    icon: IoBarChartOutline,
-    label: "Accountant Reports",
-    accountantOnly: true,
-    summary: "Every report the front office has sent, grouped by the day it was sent — click one to see exactly what was sent.",
-    workflow: [
-      "What you see is a frozen snapshot from the moment it was sent — if the underlying reservation or folio changes afterward, this view doesn't change with it.",
-      "Grouped by the calendar day a report was actually sent, not by whatever date or date-range the report itself covers.",
-      "Click a report to expand it in place, with its own Export to Excel button.",
-      "\"Shift\" shows which receptionist was on duty when the report was generated — not necessarily whoever actually clicked Send.",
     ],
   },
   {
