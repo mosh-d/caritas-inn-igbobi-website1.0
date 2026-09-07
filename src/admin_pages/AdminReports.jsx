@@ -73,7 +73,12 @@ const visibleTabs = () =>
 
 
 export default function AdminReportsPage() {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  // Whichever tab this role actually sees first, not a hardcoded "dashboard"
+  // — a waitron has no Dashboard tab, so that default rendered the Dashboard
+  // report under a tab strip where nothing was selected. Lazy initializer
+  // because visibleTabs() reads the stored role, and the roster is fixed for
+  // the life of a session.
+  const [activeTab, setActiveTab] = useState(() => visibleTabs()[0]?.key ?? "dashboard");
 
   // Report-page-level, not per-tab — one shift selection covers whichever
   // report is currently active, and labels its Excel export with the shift
