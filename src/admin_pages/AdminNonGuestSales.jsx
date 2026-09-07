@@ -580,7 +580,15 @@ export default function AdminNonGuestSalesPage() {
                 folios.map((f) => (
                   <tr key={f.id} className={table.row}>
                     <td className={`${table.td} font-medium`}>{f.folio_number}</td>
-                    <td className={table.td}>{f.guest_name || <span className="text-[color:var(--text-color)]/40">—</span>}</td>
+                    {/* Most of these folios are opened without a name, so
+                        fall back to the bill number the order was written on
+                        — that is what staff actually track a nameless order
+                        by, and what the folio search already matches. */}
+                    <td className={table.td}>
+                      {f.guest_name
+                        || (f.bill_no && <span className="text-[color:var(--text-color)]/68">Bill No {f.bill_no}</span>)
+                        || <span className="text-[color:var(--text-color)]/40">—</span>}
+                    </td>
                     <td className={table.td}>{money(f.total_amount)}</td>
                     <td className={table.td}>{money(f.amount_paid)}</td>
                     <td className={`${table.td} font-bold ${Number(f.balance) > 0 ? "text-red-500" : ""}`}>{money(f.balance)}</td>
