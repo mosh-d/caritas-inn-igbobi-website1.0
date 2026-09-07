@@ -518,7 +518,7 @@ function FolioBalanceModal({ meta, folioDetail, loading, error, paymentForm, set
       onClose={onClose}
       title={folioDetail?.folio_number || "Folio"}
       subtitle={meta.roomNumber ? `Room ${meta.roomNumber} — ${meta.guestName}` : meta.guestName}
-      size="md"
+      size="lg"
       loading={loading}
     >
       {loading ? (
@@ -533,16 +533,37 @@ function FolioBalanceModal({ meta, folioDetail, loading, error, paymentForm, set
             <FolioStat label="Total Paid" value={money(folioDetail.total_received ?? folioDetail.amount_paid)} />
           </div>
 
-          {folioDetail.items?.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <p className={field.label}>Recent Charges</p>
-              {folioDetail.items.slice(0, 3).map((item) => (
-                <p key={item.id} className="text-lg text-[color:var(--text-color)]/76">
-                  {item.description} — {money(Number(item.amount) + Number(item.service_charge))}
-                </p>
-              ))}
-            </div>
-          )}
+          {/* The full charge list, same treatment as AdminNonGuestSales'
+              Charges section. It was previously the three most recent lines
+              only, which hid most of a stay's food and drink and left the
+              visible rows unable to account for the Total Charged above. */}
+          <div className="flex flex-col gap-3 pt-4 border-t border-[color:var(--text-color)]/10">
+            <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Charges</p>
+            {!folioDetail.items?.length ? (
+              <p className="text-xl text-[color:var(--text-color)]/76">No charges yet.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {folioDetail.items.map((item) => (
+                  <div key={item.id} className="flex justify-between items-start gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl">
+                    <span className="capitalize min-w-0 break-words">
+                      {/* Unlike a non-guest folio line, an F&B charge here
+                          stores its quantity separately and prices the row at
+                          price x quantity — so "Jollof Rice - N4,000" reads
+                          as a single N4,000 portion unless the count is shown. */}
+                      {Number(item.quantity) > 1 && <span className="font-semibold">{item.quantity} &times; </span>}
+                      {item.description}
+                      {item.bill_no && <span className="text-[color:var(--text-color)]/68 ml-2">&middot; Bill No {item.bill_no}</span>}
+                      {Number(item.service_charge) > 0 && <span className="text-[color:var(--text-color)]/68 ml-2">&middot; Service Charge {money(item.service_charge)}</span>}
+                      {(item.is_manager || item.is_complementary) && (
+                        <span className="ml-2"><StatusBadge status={item.is_manager ? "manager" : "complementary"} /></span>
+                      )}
+                    </span>
+                    <span className="font-bold whitespace-nowrap shrink-0">{money(Number(item.amount) + Number(item.service_charge))}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col gap-4 pt-4 border-t border-[color:var(--text-color)]/10">
             <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Record Payment</p>
