@@ -4,7 +4,7 @@ import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
-import { isManager, isWaitstaff } from "../utils/auth";
+import { canEditMenu, isWaitstaff } from "../utils/auth";
 import {
   fetchFoodItems,
   createFoodItem,
@@ -20,10 +20,13 @@ import {
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 export default function AdminMenu() {
-  const manager = isManager();
-  // A waitron gets full Menu access — same as manager, including
-  // pricing/add/delete — not just view+stock-adjust.
-  const canAccess = manager || isWaitstaff();
+  // Pricing/add/delete belongs to manager, accountant and storekeeper
+  // (2026-09-07); a waitron reaches this page for exactly one thing —
+  // adjusting drink stock — so they get in, but read-only on the items
+  // themselves. The Adjust Stock control below is gated on `recordStock`
+  // rather than canEdit, which is what keeps it available to them.
+  const canEdit = canEditMenu();
+  const canAccess = canEdit || isWaitstaff();
   const [tab, setTab] = useState("food");
 
   if (!canAccess) {
@@ -68,7 +71,7 @@ export default function AdminMenu() {
           createItem={createFoodItem}
           updateItem={updateFoodItem}
           deleteItem={deleteFoodItem}
-          canEdit={canAccess}
+          canEdit={canEdit}
         />
       ) : (
         <MenuSection
@@ -79,7 +82,7 @@ export default function AdminMenu() {
           updateItem={updateDrinkItem}
           deleteItem={deleteDrinkItem}
           recordStock={recordDrinkStockMovement}
-          canEdit={canAccess}
+          canEdit={canEdit}
         />
       )}
     </div>

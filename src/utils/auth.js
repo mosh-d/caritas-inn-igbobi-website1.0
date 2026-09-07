@@ -350,6 +350,22 @@ export const isWaitstaff = () => {
   return role === "waitron" || role === "developer";
 };
 
+// The store keeper: owns menu pricing and drink stock levels for a branch.
+// NO developer bypass, unlike isManager()/isAccountant()/isWaitstaff() — a
+// developer already passes canEditMenu() below through isManager(), so
+// adding one here would buy nothing, and it would wrongly narrow a
+// developer's Reports tabs down to the store keeper's F&B set (see
+// AdminReports.jsx's visibleTabs). Same reasoning as isReceptionist()/
+// isWaitron() below, which gate a role DOWN rather than up.
+export const isStorekeeper = () => getStoredStaffRole() === "storekeeper";
+
+// Who may change menu ITEMS — prices, adding, deleting (2026-09-07).
+// A waitron is deliberately not here: they reach the Menu page for stock
+// adjustment only. They count what is on the shelf; they do not set what it
+// sells for. Mirrors menu.controller.ts's @Roles on every mutating item
+// route, and follows canManageRoomPrices()'s shape above.
+export const canEditMenu = () => isManager() || isAccountant() || isStorekeeper();
+
 // No developer bypass here, unlike isManager()/isAccountant()/isWaitstaff()
 // above — this gates OUT a role (hiding Food/Drink Sales reports, which are
 // F&B-only), so a developer session correctly stays included rather than

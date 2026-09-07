@@ -91,7 +91,7 @@ export const ADMIN_NAV_ITEMS = [
   // the menu and adjust drink stock here too, now that this page can render
   // for them — see AdminMenu.jsx's own canEdit split for what stays
   // manager-only within the page itself.
-  { to: "/admin/menu", label: "MENU", icon: IoRestaurantOutline, managerOnly: true, waitstaffVisible: true },
+  { to: "/admin/menu", label: "MENU", icon: IoRestaurantOutline, managerOnly: true, waitstaffVisible: true, accountantVisible: true, storekeeperVisible: true },
   { to: "/admin/account", label: "ACCOUNT", icon: IoKeyOutline, alwaysVisible: true },
   { to: "/admin/help", label: "HELP", icon: IoHelpCircleOutline, alwaysVisible: true },
 ];
@@ -101,10 +101,15 @@ export function visibleAdminNavItems() {
   const isDeveloper = role === "developer";
   const isManagerRole = role === "manager" || isDeveloper;
   const isWaitstaffRole = role === "waitron";
+  // The store keeper's whole remit is the store: menu pricing and drink
+  // stock. Like accountant and waitron, they see nothing else on this list
+  // beyond the alwaysVisible items every role gets.
+  const isStorekeeperRole = role === "storekeeper";
 
   return ADMIN_NAV_ITEMS.filter((item) => {
     if (role === "accountant") return item.alwaysVisible === true || item.accountantVisible === true;
     if (isWaitstaffRole) return item.alwaysVisible === true || item.waitstaffVisible === true;
+    if (isStorekeeperRole) return item.alwaysVisible === true || item.storekeeperVisible === true;
     if (item.managerOnly) return isManagerRole;
     // Developer still sees everything, same as it overrides every other
     // role restriction on this list.

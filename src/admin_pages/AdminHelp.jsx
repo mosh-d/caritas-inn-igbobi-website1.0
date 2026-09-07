@@ -228,9 +228,14 @@ const SECTIONS = [
     icon: IoRestaurantOutline,
     label: "Menu",
     managerOnly: true,
+    // Everyone who can reach the page: pricing roles plus a waitron, who
+    // gets in for stock adjustment only.
+    accountantVisible: true,
+    storekeeperVisible: true,
+    waitstaffVisible: true,
     summary: "The food and drink item list — name and price — that Guest Sales and Non-Guest Sales both pull from.",
     workflow: [
-      "Manager-only, same tier as room pricing.",
+      "Adding, editing and deleting items — including prices — is manager, accountant and store keeper only, same tier as room pricing. A waitron can open this page, but only to adjust drink stock.",
       "Setting an item Out of Stock (instead of deleting it) keeps it out of future pickers while preserving any past folio charge or non-guest sale that already referenced it.",
       "A price change here only affects new charges/sales going forward — a historical charge or sale keeps whatever price was in effect when it was made.",
     ],
@@ -251,6 +256,7 @@ export default function AdminHelpPage() {
   const manager = isManager();
   const role = getStoredStaffRole();
   const isWaitstaffRole = role === "waitron";
+  const isStorekeeperRole = role === "storekeeper";
   // Same shape as visibleAdminNavItems() (adminNavItems.js) — an accountant
   // session sees only accountantOnly + alwaysVisible sections, and a
   // waitron session sees only alwaysVisible + waitstaffVisible ones,
@@ -259,6 +265,7 @@ export default function AdminHelpPage() {
     if (s.accountantOnly) return isAccountant();
     if (role === "accountant") return s.alwaysVisible === true || s.accountantVisible === true;
     if (isWaitstaffRole) return s.alwaysVisible === true || s.waitstaffVisible === true;
+    if (isStorekeeperRole) return s.alwaysVisible === true || s.storekeeperVisible === true;
     if (s.managerOnly) return manager;
     return true;
   });

@@ -25,6 +25,10 @@ const STYLES = {
   // first been visible. Found while adding waitron below.
   accountant: "bg-teal-100 text-teal-700",
   waitron: "bg-amber-100 text-amber-700",
+  // Store keeper actions reach the Audit Trail the same way a waitron's do
+  // (menu item create/update/delete), so this needs a colour for the same
+  // reason accountant did — otherwise it falls back to plain gray.
+  storekeeper: "bg-orange-100 text-orange-700",
   // Payment status (Accommodation Report)
   paid: "bg-green-100 text-green-700",
   owing: "bg-red-100 text-red-700",

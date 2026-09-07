@@ -56,7 +56,19 @@ const ACTION_LABELS = {
   "reservation.extend": "Stay extended",
 };
 
-const ROLE_LABELS = { manager: "Manager", receptionist: "Receptionist", developer: "Developer" };
+// Every role whose actions can appear in a BRANCH audit trail. accountant
+// and waitron were missing, so their entries could never be filtered for
+// even though both have been generating them for a while; storekeeper joins
+// them now. head_hr/hr are deliberately absent — they are Head Office
+// accounts with no branch, so nothing they do lands in a branch's log.
+const ROLE_LABELS = {
+  manager: "Manager",
+  receptionist: "Receptionist",
+  accountant: "Accountant",
+  waitron: "Waitron",
+  storekeeper: "Store Keeper",
+  developer: "Developer",
+};
 
 // Explicit timeZone so this always shows the hotel's own local time
 // (Africa/Lagos) — without it, toLocaleString renders in whatever timezone
