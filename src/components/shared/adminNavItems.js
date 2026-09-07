@@ -24,7 +24,10 @@ import { getStoredStaffRole } from "../../utils/auth";
 // `showAlertBadge` marks the item that renders the live alert count.
 // `managerOnly` items are hidden from a receptionist session; `alwaysVisible`
 // items stay visible even in an accountant session, which otherwise sees
-// nothing at all. An accountant runs reports and browses the audit trail for
+// nothing at all — and, because the waitstaff branch honours it too, to a
+// waitron. `accountantVisible` is the narrower version for something an
+// accountant needs but a waitron must not have (AUDIT TRAIL): use it, not
+// alwaysVisible, whenever only one of those two roles should get the item. An accountant runs reports and browses the audit trail for
 // their own audits (REPORTS, AUDIT TRAIL, both alwaysVisible) — they never
 // run the front desk itself, so nothing else on this list applies to them.
 // (There used to be an ACCOUNTANT REPORTS page fed by a "Send to Accountant"
@@ -74,11 +77,15 @@ export const ADMIN_NAV_ITEMS = [
   { to: "/admin/reports", label: "REPORTS", icon: IoBarChartOutline, alwaysVisible: true },
   { to: "/admin/night-audit", label: "NIGHT AUDIT", icon: IoMoonOutline },
   { to: "/admin/alerts", label: "ALERTS", icon: IoNotificationsOutline, showAlertBadge: true },
-  // managerOnly still hides this from receptionist; alwaysVisible additionally
+  // managerOnly hides this from receptionist; accountantVisible additionally
   // shows it to an accountant (the two flags don't conflict — see
   // visibleAdminNavItems()'s accountant branch, which never even reaches
-  // managerOnly).
-  { to: "/admin/audit-trail", label: "AUDIT TRAIL", icon: IoDocumentTextOutline, managerOnly: true, alwaysVisible: true },
+  // managerOnly). Deliberately NOT alwaysVisible: that flag also lets the
+  // waitstaff branch through, which put a link to the whole branch's staff
+  // activity log in a waitron's sidebar. The API itself has always been
+  // @Roles('manager', 'accountant'), so the link only ever led to a 403 —
+  // but a waitron has no business being offered it in the first place.
+  { to: "/admin/audit-trail", label: "AUDIT TRAIL", icon: IoDocumentTextOutline, managerOnly: true, accountantVisible: true },
   // managerOnly still keeps pricing/items add-edit-delete out of a
   // receptionist's reach; waitstaffVisible (2026-08-31) lets a waitron view
   // the menu and adjust drink stock here too, now that this page can render
@@ -96,7 +103,7 @@ export function visibleAdminNavItems() {
   const isWaitstaffRole = role === "waitron";
 
   return ADMIN_NAV_ITEMS.filter((item) => {
-    if (role === "accountant") return item.alwaysVisible === true;
+    if (role === "accountant") return item.alwaysVisible === true || item.accountantVisible === true;
     if (isWaitstaffRole) return item.alwaysVisible === true || item.waitstaffVisible === true;
     if (item.managerOnly) return isManagerRole;
     // Developer still sees everything, same as it overrides every other

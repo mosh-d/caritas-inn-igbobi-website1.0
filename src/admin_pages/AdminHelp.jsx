@@ -203,7 +203,10 @@ const SECTIONS = [
     icon: IoDocumentTextOutline,
     label: "Audit Trail",
     managerOnly: true,
-    alwaysVisible: true,
+    // accountantVisible, not alwaysVisible — the latter would also reach the
+    // waitstaff branch below, and a waitron cannot open the page this
+    // section documents. Mirrors the same flag on the nav item.
+    accountantVisible: true,
     summary: "A record of every action taken by staff on this branch's account — who did what, and when. Manager, accountant, and developer visibility only — always read-only, no actions taken from here.",
     workflow: [
       "Filter by Staff, Role, or Action to narrow the list — all three can be combined at once.",
@@ -254,7 +257,7 @@ export default function AdminHelpPage() {
   // since none of the other front-desk pages apply to either.
   const visibleSections = SECTIONS.filter((s) => {
     if (s.accountantOnly) return isAccountant();
-    if (role === "accountant") return s.alwaysVisible === true;
+    if (role === "accountant") return s.alwaysVisible === true || s.accountantVisible === true;
     if (isWaitstaffRole) return s.alwaysVisible === true || s.waitstaffVisible === true;
     if (s.managerOnly) return manager;
     return true;
