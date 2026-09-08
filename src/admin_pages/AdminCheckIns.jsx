@@ -1142,9 +1142,65 @@ function FutureBookingForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [created, setCreated] = useState(null);
+  const [guestMatches, setGuestMatches] = useState([]);
+  const [activeGuestField, setActiveGuestField] = useState(null);
 
   const minCheckIn = minWalkInCheckOutISO(); // tomorrow — today's walk-ins use the tab above
   const bothDates = Boolean(form.checkIn && form.checkOut && form.checkOut > form.checkIn);
+
+  // Live guest-profile search as the name, phone or email is typed, so a
+  // returning guest can be picked instead of re-typed — same behaviour, and
+  // the same reasoning, as the Walk-In tab above: the search term comes from
+  // whichever field is focused, never all of them joined, because phone and
+  // email are matched by an exact-value hash and would never match a
+  // concatenated string.
+  useEffect(() => {
+    let term = "";
+    if (activeGuestField === "name") term = `${form.guestFirstName} ${form.guestLastName}`.trim();
+    else if (activeGuestField === "phone") term = form.phone.trim();
+    else if (activeGuestField === "email") term = form.email.trim();
+
+    if (term.length < 2) {
+      setGuestMatches([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      fetchGuests({ search: term, limit: 6 })
+        .then((data) => { if (!cancelled) setGuestMatches(data?.data || []); })
+        .catch(() => { if (!cancelled) setGuestMatches([]); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [activeGuestField, form.guestFirstName, form.guestLastName, form.phone, form.email]);
+
+  const selectGuestMatch = (guest) => {
+    setForm((p) => ({
+      ...p,
+      guestFirstName: guest.first_name || "",
+      guestLastName: guest.last_name || "",
+      phone: guest.phone || p.phone,
+      email: guest.email || p.email,
+    }));
+    setGuestMatches([]);
+    setActiveGuestField(null);
+  };
+
+  // Same dropdown under whichever row is active, matching the Walk-In tab.
+  const renderGuestMatches = () => (
+    <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white border border-[color:var(--text-color)]/15 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+      {guestMatches.map((g) => (
+        <button
+          key={g.id}
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); selectGuestMatch(g); }}
+          className="w-full text-left px-4 py-3 hover:bg-black/5 flex items-center justify-between gap-4 text-lg border-b border-[color:var(--text-color)]/8 last:border-b-0 cursor-pointer"
+        >
+          <span className="font-medium text-[color:var(--black)]">{g.first_name} {g.last_name}</span>
+          <span className="text-[color:var(--text-color)]/60 whitespace-nowrap">{formatPhone(g.phone)}</span>
+        </button>
+      ))}
+    </div>
+  );
 
   // Availability is for the BOOKING's own dates, not today's, so this cannot
   // reuse the Walk-In tab's room list.
@@ -1250,30 +1306,44 @@ function FutureBookingForm() {
       {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl">{error}</div>}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div className="flex gap-4 flex-wrap">
-          <div className="flex flex-col gap-2 flex-1 min-w-48">
-            <label className={field.label}>First Name <span className="text-red-500">*</span></label>
-            <input type="text" value={form.guestFirstName} className={field.input}
-              onChange={(e) => setForm((p) => ({ ...p, guestFirstName: e.target.value }))} />
+        <div className="relative">
+          <div className="flex gap-4 flex-wrap">
+            <div className="flex flex-col gap-2 flex-1 min-w-48">
+              <label className={field.label}>First Name <span className="text-red-500">*</span></label>
+              <input type="text" value={form.guestFirstName} className={field.input}
+                onFocus={() => setActiveGuestField("name")}
+                onBlur={() => setActiveGuestField(null)}
+                onChange={(e) => setForm((p) => ({ ...p, guestFirstName: e.target.value }))} />
+            </div>
+            <div className="flex flex-col gap-2 flex-1 min-w-48">
+              <label className={field.label}>Last Name</label>
+              <input type="text" value={form.guestLastName} className={field.input}
+                onFocus={() => setActiveGuestField("name")}
+                onBlur={() => setActiveGuestField(null)}
+                onChange={(e) => setForm((p) => ({ ...p, guestLastName: e.target.value }))} />
+            </div>
           </div>
-          <div className="flex flex-col gap-2 flex-1 min-w-48">
-            <label className={field.label}>Last Name</label>
-            <input type="text" value={form.guestLastName} className={field.input}
-              onChange={(e) => setForm((p) => ({ ...p, guestLastName: e.target.value }))} />
-          </div>
+          {activeGuestField === "name" && guestMatches.length > 0 && renderGuestMatches()}
         </div>
 
-        <div className="flex gap-4 flex-wrap">
-          <div className="flex flex-col gap-2 flex-1 min-w-48">
-            <label className={field.label}>Phone <span className="text-red-500">*</span></label>
-            <PhoneInput value={form.phone} onChange={(v) => setForm((p) => ({ ...p, phone: v }))}
-              selectClassName={field.select} inputClassName={field.input} />
+        <div className="relative">
+          <div className="flex gap-4 flex-wrap">
+            <div className="flex flex-col gap-2 flex-1 min-w-48">
+              <label className={field.label}>Phone <span className="text-red-500">*</span></label>
+              <PhoneInput value={form.phone} onChange={(v) => setForm((p) => ({ ...p, phone: v }))}
+                onFocus={() => setActiveGuestField("phone")}
+                onBlur={() => setActiveGuestField(null)}
+                selectClassName={field.select} inputClassName={field.input} />
+            </div>
+            <div className="flex flex-col gap-2 flex-1 min-w-48">
+              <label className={field.label}>Email</label>
+              <input type="email" value={form.email} className={field.input}
+                onFocus={() => setActiveGuestField("email")}
+                onBlur={() => setActiveGuestField(null)}
+                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+            </div>
           </div>
-          <div className="flex flex-col gap-2 flex-1 min-w-48">
-            <label className={field.label}>Email</label>
-            <input type="email" value={form.email} className={field.input}
-              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
-          </div>
+          {(activeGuestField === "phone" || activeGuestField === "email") && guestMatches.length > 0 && renderGuestMatches()}
         </div>
 
         <div className="flex gap-4 flex-wrap">
