@@ -515,7 +515,7 @@ export default function AdminInHousePage() {
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
                 <h3 className="text-2xl font-bold text-[color:var(--black)]">Notes</h3>
                 <p className="text-lg text-[color:var(--text-color)]/60 -mt-2">
-                  Notes for this stay (e.g. "Arriving late") — shows up in the Manifest report. Separate from Special Requests on the Reservations page.
+                  Notes for this stay (e.g. "Arriving late") — shows up in the Accommodation report. Separate from Special Requests on the Reservations page.
                 </p>
                 {notesError && (
                   <p className="text-lg text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{notesError}</p>

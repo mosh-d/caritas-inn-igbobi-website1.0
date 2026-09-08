@@ -47,10 +47,16 @@ function currentMonthRange() {
 
 const ALL_TABS = [
   { key: "dashboard", label: "Dashboard" },
-  { key: "manifest", label: "Manifest" },
+  // Labels are deliberately crossed against the keys (2026-09-07): the
+  // report keyed "manifest" is the arrivals/departures sheet, which the
+  // hotel calls the Accommodation report, and the one keyed "accommodation"
+  // is the per-room house register, which they call the Manifest. Renaming
+  // the keys would mean renaming the API routes and every activeTab branch
+  // below for a wording change, so only the display labels moved.
+  { key: "manifest", label: "Accommodation" },
   { key: "analysis", label: "Analysis" },
   { key: "pms", label: "PMS Report" },
-  { key: "accommodation", label: "Accommodation" },
+  { key: "accommodation", label: "Manifest" },
   { key: "food-sales", label: "Food Sales" },
   { key: "drink-sales", label: "Drink Sales" },
   { key: "bar-stock", label: "Bar Stock" },
@@ -136,7 +142,7 @@ export default function AdminReportsPage() {
         {activeTab === "dashboard"
           ? "Revenue, occupancy, and stay totals for a custom date range."
           : activeTab === "manifest"
-          ? "Arrivals and departures for a date range, with room price, receipt numbers, and deposits — the daily front-desk manifest, digitized."
+          ? "Arrivals and departures for a date range, with room price, receipt numbers, and deposits — the daily front-desk arrivals and departures sheet, digitized."
           : activeTab === "analysis"
           ? "Every payment received in a date range, broken down by room, receipt number, and method."
           : activeTab === "pms"
@@ -575,7 +581,7 @@ function ManifestTab() {
         <div className="w-full flex flex-col gap-[2.5rem]">
           <div className="w-full flex flex-wrap items-center justify-between gap-4">
             <p className="text-2xl text-[color:var(--text-color)]/76">
-              Manifest for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
+              Accommodation report for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
             </p>
             <div className="flex items-center gap-3">
               <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
@@ -1034,7 +1040,7 @@ function AccommodationReportTab({ shift }) {
         <div className="w-full flex flex-col gap-[2.5rem]">
           <div className="w-full flex flex-wrap items-center justify-between gap-4">
             <p className="text-2xl text-[color:var(--text-color)]/76">
-              Accommodation report for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
+              Manifest for <strong className="text-[color:var(--black)]">{data.report_date}</strong>
             </p>
             <div className="flex items-center gap-3">
               <Button

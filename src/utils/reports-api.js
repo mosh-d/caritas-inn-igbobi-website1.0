@@ -54,7 +54,9 @@ export const downloadReportsExport = (from, to) =>
   downloadXlsx("/api/reports/export", { from, to }, `report_${from}_to_${to}.xlsx`);
 
 export const downloadManifestExport = (date) =>
-  downloadXlsx("/api/reports/manifest/export", { date }, `manifest_${date}.xlsx`);
+  // Route key stays "manifest"; the file is named for what staff call this
+  // report — the arrivals/departures sheet is the Accommodation report.
+  downloadXlsx("/api/reports/manifest/export", { date }, `accommodation_report_${date}.xlsx`);
 
 export const downloadAnalysisExport = (from, to) =>
   downloadXlsx("/api/reports/analysis/export", { from, to }, `analysis_${from}_to_${to}.xlsx`);
@@ -63,7 +65,7 @@ export const downloadPmsReportExport = (date, variant) =>
   downloadXlsx("/api/reports/pms/export", { date, variant }, `pms_report_${variant}_${date}.xlsx`);
 
 export const downloadAccommodationReportExport = (date, shift) =>
-  downloadXlsx("/api/reports/accommodation/export", { date, shift }, `accommodation_report_${date}.xlsx`);
+  downloadXlsx("/api/reports/accommodation/export", { date, shift }, `manifest_${date}.xlsx`);
 
 export const emailReportsDashboard = async (from, to, email) => {
   const response = await axios.post(
