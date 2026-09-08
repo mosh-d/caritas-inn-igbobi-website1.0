@@ -623,7 +623,7 @@ export default function AdminGuestsPage() {
           <section className='flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6'>
             <label className={field.label}>Notes</label>
             <p className='text-lg text-[color:var(--text-color)]/60 -mt-1'>
-              Independent notes about this guest (e.g. "VIP", "Fish allergy") — separate from any single stay's request, which is recorded on the reservation itself and shows on the Accommodation report.
+              Independent notes about this guest (e.g. "VIP", "Fish allergy") — separate from any single stay's request, which is recorded on the reservation itself and shows in the Manifest report's Notes section.
             </p>
             {notesError && (
               <p className='text-lg text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3'>{notesError}</p>

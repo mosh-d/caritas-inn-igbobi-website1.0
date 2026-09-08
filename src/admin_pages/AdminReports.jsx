@@ -612,66 +612,6 @@ function ManifestTab() {
             )}
           </ReportSection>
 
-          <ReportSection title="Reservation (Credit)" subtitle="Advance payments recorded this business day">
-            {data.paid_before.length === 0 ? (
-              <EmptyRow />
-            ) : (
-              <table className="w-full text-xl">
-                <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} rightAlign={["Amount"]} />
-                <tbody>
-                  {data.paid_before.map((d) => (
-                    <tr key={d.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
-                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.amount)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
-                      <td className="px-6 py-4"><StatusBadge status={d.status} /></td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.receipt_number || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </ReportSection>
-
-          <ReportSection title="Debt Recovery" subtitle="Old debt cleared by a payment received this business day">
-            {data.debt_recovery.length === 0 ? (
-              <EmptyRow />
-            ) : (
-              <table className="w-full text-xl">
-                <TableHead cells={["Guest", "Room", "Date Owed", "Total Owed", "Total Paid", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
-                <tbody>
-                  {data.debt_recovery.map((d, i) => (
-                    <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(d.debt_date)}</td>
-                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_owed)}</td>
-                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_paid)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.payment_reference}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </ReportSection>
-
-          <ReportSection title="Notes">
-            {data.notes.length === 0 ? (
-              <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No guest notes recorded for this business day.</p>
-            ) : (
-              <div className="flex flex-col gap-2 p-6">
-                {data.notes.map((n, i) => (
-                  <p key={i} className="text-xl">
-                    <span className="font-bold">{n.guest_name}</span>{" "}
-                    <span className="text-[color:var(--text-color)]/60">({n.booking_reference})</span> — {n.note}
-                  </p>
-                ))}
-              </div>
-            )}
-          </ReportSection>
-
           <StaffActivitySection activity={data.staff_activity} money={money} />
         </div>
       )}
@@ -1093,6 +1033,66 @@ function AccommodationReportTab({ shift }) {
                   ))}
                 </tbody>
               </table>
+            )}
+          </ReportSection>
+
+          <ReportSection title="Reservation (Credit)" subtitle="Advance payments recorded this business day">
+            {data.paid_before.length === 0 ? (
+              <EmptyRow />
+            ) : (
+              <table className="w-full text-xl">
+                <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} rightAlign={["Amount"]} />
+                <tbody>
+                  {data.paid_before.map((d) => (
+                    <tr key={d.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
+                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.amount)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
+                      <td className="px-6 py-4"><StatusBadge status={d.status} /></td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.receipt_number || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </ReportSection>
+
+          <ReportSection title="Debt Recovery" subtitle="Old debt cleared by a payment received this business day">
+            {data.debt_recovery.length === 0 ? (
+              <EmptyRow />
+            ) : (
+              <table className="w-full text-xl">
+                <TableHead cells={["Guest", "Room", "Date Owed", "Total Owed", "Total Paid", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
+                <tbody>
+                  {data.debt_recovery.map((d, i) => (
+                    <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(d.debt_date)}</td>
+                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_owed)}</td>
+                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_paid)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.payment_reference}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </ReportSection>
+
+          <ReportSection title="Notes">
+            {data.notes.length === 0 ? (
+              <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No guest notes recorded for this business day.</p>
+            ) : (
+              <div className="flex flex-col gap-2 p-6">
+                {data.notes.map((n, i) => (
+                  <p key={i} className="text-xl">
+                    <span className="font-bold">{n.guest_name}</span>{" "}
+                    <span className="text-[color:var(--text-color)]/60">({n.booking_reference})</span> — {n.note}
+                  </p>
+                ))}
+              </div>
             )}
           </ReportSection>
 
