@@ -491,6 +491,9 @@ export default function AdminCheckInsPage() {
           {[
             { key: "arrivals", label: "Expected Arrivals" },
             { key: "walkin", label: "Walk-In" },
+            // A walk-in who wants a LATER date, not a room tonight — see
+            // FutureBookingForm for why this can't reuse the Walk-In form.
+            { key: "future", label: "Future Booking" },
           ].map(({ key, label }) => (
             <button
               key={key}
@@ -1039,6 +1042,8 @@ export default function AdminCheckInsPage() {
             )}
           </div>
         )}
+
+        {tab === "future" && <FutureBookingForm />}
       </div>
 
       {walkInReceipt && (
@@ -1102,5 +1107,256 @@ export default function AdminCheckInsPage() {
         </Modal>
       )}
     </>
+  );
+}
+
+const EMPTY_FUTURE_BOOKING = {
+  guestFirstName: "", guestLastName: "", phone: "", email: "",
+  checkIn: "", checkOut: "", roomTypeId: "", roomsBooked: 1, roomNumbers: [],
+};
+
+/**
+ * A walk-in guest booking a LATER date, rather than taking a room now.
+ *
+ * Deliberately not folded into the Walk-In form above: that one pins check-in
+ * to today's business date, requires a room number, and checks the guest in
+ * immediately — none of which apply here.
+ *
+ * A room number IS required, even though the guest is not arriving yet. It
+ * was briefly optional and that was wrong: a room_hold reserves a COUNT, so
+ * the room type cannot be oversold either way, but room_assignments is what
+ * the room chart, room status, the night audit's per-room charge posting and
+ * the per-room report all read — a confirmed reservation without one is
+ * invisible to every one of them. The room can be reassigned any time before
+ * arrival, so picking one now costs nothing.
+ *
+ * The booking is CONFIRMED rather than left on hold, because holds lapse
+ * after 2 hours (HOLD_EXPIRY_HOURS) — one taken today for next week would
+ * release itself the same afternoon.
+ */
+function FutureBookingForm() {
+  const [form, setForm] = useState(EMPTY_FUTURE_BOOKING);
+  const [availability, setAvailability] = useState(null);
+  const [rooms, setRooms] = useState(null);
+  const [checking, setChecking] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [created, setCreated] = useState(null);
+
+  const minCheckIn = minWalkInCheckOutISO(); // tomorrow — today's walk-ins use the tab above
+  const bothDates = Boolean(form.checkIn && form.checkOut && form.checkOut > form.checkIn);
+
+  // Availability is for the BOOKING's own dates, not today's, so this cannot
+  // reuse the Walk-In tab's room list.
+  useEffect(() => {
+    if (!bothDates) {
+      setAvailability(null);
+      return;
+    }
+    let cancelled = false;
+    setChecking(true);
+    checkAvailability(BRANCH_ID, form.checkIn, form.checkOut)
+      .then((data) => { if (!cancelled) setAvailability(data); })
+      .catch(() => { if (!cancelled) setAvailability(null); })
+      .finally(() => { if (!cancelled) setChecking(false); });
+    return () => { cancelled = true; };
+  }, [bothDates, form.checkIn, form.checkOut]);
+
+  const roomTypes = (availability?.room_types || []).filter(
+    (rt) => rt.available_rooms >= Number(form.roomsBooked || 1),
+  );
+  const selectedType = roomTypes.find((rt) => String(rt.room_type_id) === form.roomTypeId);
+
+  // Real, numbered rooms of the chosen type that are free across the booking's
+  // own dates — the same endpoint the check-in picker uses, which takes a
+  // date range precisely so it can answer for a future stay.
+  useEffect(() => {
+    if (!form.roomTypeId || !bothDates) {
+      setRooms(null);
+      return;
+    }
+    let cancelled = false;
+    fetchAvailableRoomNumbers({ roomTypeId: Number(form.roomTypeId), checkIn: form.checkIn, checkOut: form.checkOut })
+      .then((data) => { if (!cancelled) setRooms(data); })
+      .catch(() => { if (!cancelled) setRooms(null); });
+    return () => { cancelled = true; };
+  }, [form.roomTypeId, bothDates, form.checkIn, form.checkOut]);
+
+  const roomOptions = rooms?.available || [];
+  const slots = Array.from({ length: Number(form.roomsBooked || 1) }, (_, i) => form.roomNumbers[i] || "");
+  const chosenRooms = slots.map((v) => v.trim()).filter(Boolean);
+  const allRoomsChosen = chosenRooms.length === Number(form.roomsBooked || 1)
+    && new Set(chosenRooms).size === chosenRooms.length;
+
+  const setSlot = (index, value) => {
+    setForm((p) => {
+      const next = [...slots];
+      next[index] = value;
+      return { ...p, roomNumbers: next };
+    });
+  };
+
+  const canSubmit =
+    form.guestFirstName.trim() && form.phone.trim() && form.roomTypeId && bothDates && allRoomsChosen && !submitting;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const hold = await createAdminReservation({
+        branch_id: BRANCH_ID,
+        room_type_id: Number(form.roomTypeId),
+        guest_name: `${form.guestFirstName} ${form.guestLastName}`.trim(),
+        phone_number: form.phone.trim(),
+        guest_email: form.email.trim(),
+        check_in: form.checkIn,
+        check_out: form.checkOut,
+        rooms_booked: Number(form.roomsBooked),
+        source: "walk_in",
+        booking_channel: "direct",
+      });
+      // Rooms first: confirmReservation refuses until every booked room has
+      // a real number, future-dated or not.
+      await assignRoom(hold.internal_id, chosenRooms);
+      await confirmReservationById(hold.internal_id);
+      setCreated({ reference: hold.reservation_id, checkIn: form.checkIn });
+      setForm(EMPTY_FUTURE_BOOKING);
+      setAvailability(null);
+      setRooms(null);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to create the reservation.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="w-full bg-white rounded-xl border border-[color:var(--text-color)]/10 p-8 flex flex-col gap-6">
+      <div>
+        <h2 className="text-3xl font-bold text-[color:var(--black)]">Future Booking</h2>
+        <p className="text-xl text-[color:var(--text-color)]/76 mt-1">
+          For a guest booking a later date in person. No room number needed — it is assigned when they arrive.
+        </p>
+      </div>
+
+      {created && (
+        <div className="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-xl">
+          Reservation <strong>{created.reference}</strong> confirmed for <strong>{created.checkIn}</strong>. It will appear
+          under Expected Arrivals on that date, where a room can be assigned.
+        </div>
+      )}
+      {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl">{error}</div>}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex flex-col gap-2 flex-1 min-w-48">
+            <label className={field.label}>First Name <span className="text-red-500">*</span></label>
+            <input type="text" value={form.guestFirstName} className={field.input}
+              onChange={(e) => setForm((p) => ({ ...p, guestFirstName: e.target.value }))} />
+          </div>
+          <div className="flex flex-col gap-2 flex-1 min-w-48">
+            <label className={field.label}>Last Name</label>
+            <input type="text" value={form.guestLastName} className={field.input}
+              onChange={(e) => setForm((p) => ({ ...p, guestLastName: e.target.value }))} />
+          </div>
+        </div>
+
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex flex-col gap-2 flex-1 min-w-48">
+            <label className={field.label}>Phone <span className="text-red-500">*</span></label>
+            <PhoneInput value={form.phone} onChange={(v) => setForm((p) => ({ ...p, phone: v }))}
+              selectClassName={field.select} inputClassName={field.input} />
+          </div>
+          <div className="flex flex-col gap-2 flex-1 min-w-48">
+            <label className={field.label}>Email</label>
+            <input type="email" value={form.email} className={field.input}
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+          </div>
+        </div>
+
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex flex-col gap-2 flex-1 min-w-48">
+            <label className={field.label}>Check In <span className="text-red-500">*</span></label>
+            <input type="date" value={form.checkIn} min={minCheckIn} className={field.input}
+              onChange={(e) => setForm((p) => ({ ...p, checkIn: e.target.value, roomTypeId: "" }))} />
+          </div>
+          <div className="flex flex-col gap-2 flex-1 min-w-48">
+            <label className={field.label}>Check Out <span className="text-red-500">*</span></label>
+            <input type="date" value={form.checkOut} min={form.checkIn || minCheckIn} className={field.input}
+              onChange={(e) => setForm((p) => ({ ...p, checkOut: e.target.value, roomTypeId: "" }))} />
+          </div>
+          <div className="flex flex-col gap-2 flex-1 min-w-48">
+            <label className={field.label}>Rooms</label>
+            <input type="number" min={1} value={form.roomsBooked} className={field.input}
+              onChange={(e) => setForm((p) => ({ ...p, roomsBooked: e.target.value, roomTypeId: "" }))} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>Room Type <span className="text-red-500">*</span></label>
+          {!bothDates ? (
+            <p className="text-xl text-[color:var(--text-color)]/68">Pick the dates first to see what is free.</p>
+          ) : checking ? (
+            <p className="text-xl text-[color:var(--text-color)]/68">Checking availability...</p>
+          ) : roomTypes.length === 0 ? (
+            <p className="text-xl text-red-600">Nothing available for those dates and room count.</p>
+          ) : (
+            <select value={form.roomTypeId} className={field.select}
+              onChange={(e) => setForm((p) => ({ ...p, roomTypeId: e.target.value }))}>
+              <option value="">-- Select --</option>
+              {roomTypes.map((rt) => (
+                <option key={rt.room_type_id} value={String(rt.room_type_id)}>
+                  {rt.name} — {rt.available_rooms} free
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {form.roomTypeId && bothDates && (
+          <div className="flex flex-col gap-2">
+            <label className={field.label}>
+              Room Number{Number(form.roomsBooked) > 1 ? "s" : ""} <span className="text-red-500">*</span>
+            </label>
+            <p className="text-lg text-[color:var(--text-color)]/68">
+              Free across these dates. Reassign any time before the guest arrives.
+            </p>
+            {roomOptions.length === 0 ? (
+              <p className="text-xl text-red-600">No free rooms of this type across those dates.</p>
+            ) : (
+              <div className="flex gap-4 flex-wrap">
+                {slots.map((value, index) => (
+                  <select
+                    key={index}
+                    value={value}
+                    onChange={(e) => setSlot(index, e.target.value)}
+                    className={`${field.select} min-w-40`}
+                  >
+                    <option value="">-- Room {index + 1} --</option>
+                    {roomOptions
+                      .filter((r) => r.room_number === value || !chosenRooms.includes(r.room_number))
+                      .map((r) => (
+                        <option key={r.id} value={r.room_number}>{r.room_number}</option>
+                      ))}
+                  </select>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {selectedType && (
+          <p className="text-xl text-[color:var(--text-color)]/76">
+            {fmtCurrency(selectedType.base_rate)} per night · {form.roomsBooked} room(s)
+          </p>
+        )}
+
+        <button type="submit" disabled={!canSubmit} className={`${btn.primary} self-start px-12! py-4!`}>
+          {submitting ? "Creating..." : "Create Reservation"}
+        </button>
+      </form>
+    </div>
   );
 }

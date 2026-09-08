@@ -510,6 +510,22 @@ function DashboardTab() {
   );
 }
 
+// Room revenue only: breakfast is excluded because these reports are read
+// for room revenue and breakfast is accounted for separately, and
+// complementary rooms are excluded because their price was waived (which is
+// why both tables render it struck through). The figure is computed by the
+// backend's sumRoomRevenue so the screen and the Excel export can't drift.
+function RoomRevenueTotal({ amount }) {
+  return (
+    <div className="flex justify-end px-6 py-4 border-t border-[color:var(--text-color)]/10">
+      <p className="text-xl">
+        <span className="text-[color:var(--text-color)]/68 uppercase tracking-wide font-semibold">Total Room Revenue</span>{" "}
+        <span className="font-bold text-[color:var(--black)] ml-3">{money(amount)}</span>
+      </p>
+    </div>
+  );
+}
+
 // ─── Manifest ─────────────────────────────────────────────────────────────────
 
 function ManifestTab() {
@@ -605,6 +621,7 @@ function ManifestTab() {
                 <tbody>{data.check_ins.map(renderRow)}</tbody>
               </table>
             )}
+            <RoomRevenueTotal amount={data.check_ins_room_total} />
           </ReportSection>
 
           <ReportSection title="Check-Outs" subtitle="Everyone due to depart this business day">
@@ -616,6 +633,7 @@ function ManifestTab() {
                 <tbody>{data.check_outs.map(renderRow)}</tbody>
               </table>
             )}
+            <RoomRevenueTotal amount={data.check_outs_room_total} />
           </ReportSection>
 
           <StaffActivitySection activity={data.staff_activity} money={money} />
@@ -1040,7 +1058,42 @@ function AccommodationReportTab({ shift }) {
                 </tbody>
               </table>
             )}
+            <RoomRevenueTotal amount={data.room_revenue_total} />
           </ReportSection>
+
+          {/* One section per payment method — the front desk reconciles the
+              cash drawer separately from transfers and card takings, which a
+              single mixed list makes tedious. A refund stays listed under its
+              method and is netted out of that method's total. */}
+          {(data.payments_by_method || []).length === 0 ? (
+            <ReportSection title="Payments by Method" subtitle="Every payment taken this business day, grouped">
+              <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No payments recorded for this business day.</p>
+            </ReportSection>
+          ) : (
+            data.payments_by_method.map((group) => (
+              <ReportSection
+                key={group.payment_method}
+                title={`Payments — ${group.payment_method}`}
+                subtitle={`${group.count} transaction(s) · ${money(group.total)}`}
+              >
+                <table className="w-full text-xl">
+                  <TableHead cells={["Guest", "Room", "Amount", "Status", "Receipt No.", "Time"]} rightAlign={["Amount"]} />
+                  <tbody>
+                    {group.payments.map((pmt) => (
+                      <tr key={pmt.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                        <td className="px-6 py-4 font-medium text-[color:var(--black)]">{pmt.guest_name}</td>
+                        <td className="px-6 py-4 text-[color:var(--text-color)]/84">{pmt.room_numbers || "Unassigned"}</td>
+                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(pmt.amount)}</td>
+                        <td className="px-6 py-4"><StatusBadge status={pmt.status} /></td>
+                        <td className="px-6 py-4 text-[color:var(--text-color)]/84">{pmt.receipt_number || pmt.payment_reference || "—"}</td>
+                        <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(pmt.payment_date)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ReportSection>
+            ))
+          )}
 
           <ReportSection title="Reservation (Credit)" subtitle="Advance payments recorded this business day">
             {data.paid_before.length === 0 ? (
