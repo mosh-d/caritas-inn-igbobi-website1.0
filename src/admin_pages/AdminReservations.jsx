@@ -519,12 +519,15 @@ export default function AdminReservationsPage() {
     try {
       setActionLoading(true);
       setEarlyCheckoutError("");
-      await emergencyCheckout(selectedReservation.id);
-      setSuccessMessage("Early checkout processed. Room released back to availability.");
-      setTimeout(() => setSuccessMessage(""), 5000);
+      const reservationId = selectedReservation.id;
+      await emergencyCheckout(reservationId);
       setShowEarlyCheckoutConfirm(false);
       closeDetail();
-      loadReservations();
+      // Straight to the folio rather than back to the list: the stay was just
+      // re-priced to the nights actually slept and its final night billed, so
+      // this is the moment the balance is correct and the guest is still
+      // standing there to settle it.
+      navigate(`/admin/folios?reservation_id=${reservationId}`);
     } catch (err) {
       setEarlyCheckoutError(err.response?.data?.message || "Failed to process early checkout.");
     } finally {
@@ -971,8 +974,9 @@ export default function AdminReservationsPage() {
                   normal Check Out posts a safety-net charge for the
                   ORIGINALLY SCHEDULED last night regardless of when checkout
                   actually happens, which would overbill a guest leaving
-                  before reaching that night (see emergencyCheckout's own
-                  comment on the backend for the full reasoning). */}
+                  before reaching that night. Early Checkout corrects
+                  check_out to the night actually being left on first, then
+                  bills that night (see emergencyCheckout on the backend). */}
               {res.actual_check_in && !res.actual_check_out && (
                 hasPassedNoonCutoff(res.check_out) ? (
                   <button onClick={handleCheckOut} disabled={actionLoading} className={btn.success}>Check Out</button>
@@ -1388,7 +1392,7 @@ export default function AdminReservationsPage() {
         <Modal
           onClose={() => setShowEarlyCheckoutConfirm(false)}
           title={`Early Checkout — ${res.guest_name || "Reservation"}?`}
-          subtitle="Immediately releases the room back to availability."
+          subtitle="Ends the stay tonight and re-prices it to the nights actually slept."
           size="sm"
           zIndex={1200}
           footer={
@@ -1404,7 +1408,9 @@ export default function AdminReservationsPage() {
             <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{earlyCheckoutError}</p>
           )}
           <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
-            Are you sure you want to check this guest out early? This releases their room back to availability right away, even though their scheduled check-out date hasn't arrived yet — use this only for guests who are actually leaving now.
+            Their scheduled check-out date hasn&apos;t arrived yet. This ends the stay now: the booked check-out is pulled back to
+            the night they are actually leaving on, the stay is re-priced to only those nights, and the room is released
+            back to availability. Use this only for guests who are actually leaving now.
           </p>
         </Modal>
       )}

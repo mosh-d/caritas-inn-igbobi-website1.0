@@ -6,7 +6,7 @@ import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, table } from "../components/shared/ui";
 import { fetchCheckOutList } from "../utils/front-office-api";
-import { checkOutReservation, emergencyCheckout } from "../utils/reservations-pms-api";
+import { checkOutReservation, shortenStayToDeparture } from "../utils/reservations-pms-api";
 import { fetchFolios } from "../utils/folios-api";
 import { adminTodayISO, hasPassedNoonCutoff } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
@@ -16,10 +16,20 @@ const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { mi
 const todayISO = () => adminTodayISO();
 // Whether this reservation's scheduled checkout has actually become due
 // (noon Lagos on check_out) — the date picker above can be browsed to a
-// future date, so a listed reservation isn't necessarily due yet. Decides
-// Check Out vs Early Checkout below; using the wrong one has a real
-// consequence, see handleEarlyCheckout's comment.
+// future date, so a listed reservation isn't necessarily due yet. Labels the
+// row button only; what the modal actually offers is decided by
+// departsEarly below, which is the one that has billing consequences.
 const isCheckoutDue = (checkOut) => checkOut && hasPassedNoonCutoff(checkOut);
+// Whether the booked check_out is still ahead of today — i.e. the guest is
+// leaving early and the reservation still says otherwise.
+//
+// This matters for money, not tidiness: checkOut()'s safety-net charge
+// targets the BOOKED last night, so leaving it wrong either bills a night
+// the guest never reached or, before 6am, bills that phantom night while the
+// night they did sleep is skipped by the night audit's "still present at 6am"
+// rule and never billed at all. Correcting the date first makes an ordinary
+// checkout bill exactly what was slept.
+const departsEarly = (checkOut, today) => Boolean(checkOut) && String(checkOut).slice(0, 10) > today;
 
 export default function AdminCheckOutsPage() {
   const navigate = useNavigate();
@@ -33,6 +43,7 @@ export default function AdminCheckOutsPage() {
   const [folio, setFolio] = useState(null);
   const [folioLoading, setFolioLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [adjustingDate, setAdjustingDate] = useState(false);
 
   const loadList = useCallback(async () => {
     try {
@@ -90,28 +101,28 @@ export default function AdminCheckOutsPage() {
     }
   };
 
-  // Separate from handleCheckOut above, not just "check out early" —
-  // checkOutReservation posts a safety-net charge for the ORIGINALLY
-  // SCHEDULED last night regardless of when checkout actually happens,
-  // which would overbill a guest leaving before reaching that night.
-  const handleEarlyCheckout = async () => {
+  // Corrects check_out to the night the guest is actually leaving on, so the
+  // normal checkout below bills the right night. The date is computed
+  // server-side; nothing here does business-day arithmetic.
+  const handleAdjustDate = async () => {
     if (!selected) return;
     try {
-      setProcessing(true);
-      await emergencyCheckout(selected.id);
-      setSuccessMessage(`${selected.guest_name} checked out early. Room released back to availability.`);
+      setAdjustingDate(true);
+      const updated = await shortenStayToDeparture(selected.id);
+      setSelected((p) => ({ ...p, check_out: updated.check_out, total_rate: updated.total_rate }));
+      setSuccessMessage("Checkout date corrected to today — the stay now bills only the nights actually slept.");
       setTimeout(() => setSuccessMessage(""), 5000);
-      setSelected(null);
       loadList();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to process early checkout.");
+      setError(err.response?.data?.message || "Failed to adjust the checkout date.");
     } finally {
-      setProcessing(false);
+      setAdjustingDate(false);
     }
   };
 
   const balanceDue = folio && Number(folio.balance) > 0;
-  const selectedIsDue = selected && isCheckoutDue(selected.check_out);
+  // Blocks Check Out until the date is corrected — see departsEarly.
+  const selectedDepartsEarly = selected && departsEarly(selected.check_out, todayISO());
 
   return (
     <>
@@ -162,7 +173,7 @@ export default function AdminCheckOutsPage() {
                       <td className={table.td}>
                         <div className={table.actions}>
                           <button onClick={() => openCheckOut(r)} className={isCheckoutDue(r.check_out) ? btn.rowPrimary : btn.rowDanger}>
-                            {isCheckoutDue(r.check_out) ? "Check Out" : "Early Checkout"}
+                            {isCheckoutDue(r.check_out) ? "Check Out" : "Early Departure"}
                           </button>
                         </div>
                       </td>
@@ -179,28 +190,37 @@ export default function AdminCheckOutsPage() {
       {selected && (
         <Modal
           onClose={() => setSelected(null)}
-          title={selectedIsDue ? selected.guest_name : `Early Checkout — ${selected.guest_name}?`}
-          subtitle={selectedIsDue ? "Review the folio balance before completing check-out." : "Their scheduled check-out date hasn't arrived yet — this releases the room right away regardless."}
+          title={selectedDepartsEarly ? `Early Departure — ${selected.guest_name}` : selected.guest_name}
+          subtitle={selectedDepartsEarly
+            ? "Their booked check-out is still ahead — correct the date first so the bill matches the nights actually slept."
+            : "Review the folio balance before completing check-out."}
           size="sm"
           footer={
             <>
               <button onClick={() => setSelected(null)} className={btn.secondary}>Cancel</button>
-              {selectedIsDue ? (
-                <button onClick={handleCheckOut} disabled={processing} className={btn.success}>
-                  {processing ? "Checking Out..." : "Confirm Check Out"}
+              {selectedDepartsEarly ? (
+                <button onClick={handleAdjustDate} disabled={adjustingDate || processing} className={btn.primary}>
+                  {adjustingDate ? "Adjusting..." : "Set Checkout Date to Today"}
                 </button>
               ) : (
-                <button onClick={handleEarlyCheckout} disabled={processing} className={btn.dangerSolid}>
-                  {processing ? "Processing..." : "Yes, Check Out Early"}
+                <button onClick={handleCheckOut} disabled={processing} className={btn.success}>
+                  {processing ? "Checking Out..." : "Confirm Check Out"}
                 </button>
               )}
             </>
           }
         >
-          {!selectedIsDue && (
-            <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
-              Are you sure you want to check this guest out early? Use this only for guests who are actually leaving now.
-            </p>
+          {selectedDepartsEarly && (
+            <div className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex flex-col gap-2">
+              <p>
+                Booked to leave <strong>{formatDate(selected.check_out)}</strong>, but leaving now. Checking out
+                against the booked date would bill a night they never stayed — and before 6am it would also leave
+                last night unbilled.
+              </p>
+              <p>
+                Setting the date to today re-prices the stay to the nights actually slept, and unlocks Check Out.
+              </p>
+            </div>
           )}
           {folioLoading ? (
             <div className="flex justify-center py-6"><LoadingSpinner /></div>

@@ -74,7 +74,7 @@ const SECTIONS = [
       "Confirming a reservation creates its guest profile (or reuses one already matching that phone number) and its folio, ready for payment — no room charge is posted yet at this point. That happens night by night: the first night at check-in, then one more each night through Night Audit.",
       "Extending a stay checks real-time capacity for the extra nights before allowing it — it can be refused if another booking already has those rooms for that window.",
       "Room Assignments here supports multiple room numbers per reservation for multi-room bookings.",
-      "Early Checkout is for ending an active stay ahead of schedule — it releases the room immediately and asks for confirmation first since it can't be undone.",
+      "Early Checkout is for ending an active stay ahead of schedule. It pulls the booked check-out back to the night the guest is actually leaving on, re-prices the stay to only those nights, releases the room, and asks for confirmation first since it can't be undone. Use it rather than a normal Check Out for anyone leaving early — a normal Check Out bills the booked last night, which they never reached.",
       "\"Special Requests\" here is a single field for this one stay (e.g. a note the guest gave at booking) — it's different from the Notes list on In-House, which supports multiple independent notes.",
       "A \"Blacklisted\" tag shows next to the guest's name if their profile is flagged — for now this is informational only (see Guests below); it doesn't block or warn on booking yet.",
     ],

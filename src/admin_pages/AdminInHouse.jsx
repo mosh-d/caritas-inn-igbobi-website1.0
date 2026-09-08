@@ -186,23 +186,28 @@ export default function AdminInHousePage() {
     }
   };
 
-  // Deliberately a SEPARATE action from handleCheckOut above, not just
-  // "check out early" — checkOutReservation posts a safety-net charge for
-  // the ORIGINALLY SCHEDULED last night regardless of when checkout
-  // actually happens, which would overbill a guest leaving before reaching
-  // that night. Which one is offered is decided by isOverdue(check_out)
-  // (see the footer button below), never both at once.
+  // A SEPARATE action from handleCheckOut above, decided by
+  // isOverdue(check_out) (see the footer button below), never both at once.
+  // checkOutReservation's safety-net charge targets the BOOKED last night,
+  // which an early departure never reaches — so early departures go through
+  // emergencyCheckout, which corrects check_out to the night actually being
+  // left on, rescales the rate, and bills that night. It no longer skips
+  // billing: skipping was only safe after 6am, and left a pre-6am
+  // departure's last night billed by nothing at all.
   const handleEarlyCheckout = async () => {
     if (!selected) return;
     try {
       setProcessing(true);
       setEarlyCheckoutError("");
-      await emergencyCheckout(selected.id);
-      setSuccessMessage(`${selected.guest_name} checked out early. Room released back to availability.`);
-      setTimeout(() => setSuccessMessage(""), 5000);
+      const reservationId = selected.id;
+      await emergencyCheckout(reservationId);
       setShowEarlyCheckoutConfirm(false);
       closeDetail();
-      loadList();
+      // Straight to the folio rather than back to the list: the stay was just
+      // re-priced to the nights actually slept and its final night billed, so
+      // this is the moment the balance is correct and the guest is still
+      // standing there to settle it.
+      navigate(`/admin/folios?reservation_id=${reservationId}`);
     } catch (err) {
       setEarlyCheckoutError(err.response?.data?.message || "Failed to process early checkout.");
     } finally {
@@ -686,7 +691,7 @@ export default function AdminInHousePage() {
         <Modal
           onClose={() => setShowEarlyCheckoutConfirm(false)}
           title={`Early Checkout — ${selected.guest_name || "Reservation"}?`}
-          subtitle="Immediately releases the room back to availability."
+          subtitle="Ends the stay tonight and re-prices it to the nights actually slept."
           size="sm"
           zIndex={1200}
           footer={
@@ -702,7 +707,9 @@ export default function AdminInHousePage() {
             <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{earlyCheckoutError}</p>
           )}
           <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
-            Are you sure you want to check this guest out early? This releases their room back to availability right away, even though their scheduled check-out date hasn't arrived yet — use this only for guests who are actually leaving now.
+            Their scheduled check-out date hasn&apos;t arrived yet. This ends the stay now: the booked check-out is pulled back to
+            the night they are actually leaving on, the stay is re-priced to only those nights, and the room is released
+            back to availability. Use this only for guests who are actually leaving now.
           </p>
         </Modal>
       )}

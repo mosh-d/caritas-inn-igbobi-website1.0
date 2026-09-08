@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useWebSocketContext } from "../context/WebSocketContext";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { IoRefresh, IoClose, IoFilter } from "react-icons/io5";
 import Button from "../components/shared/Button";
@@ -33,6 +34,7 @@ export default function AdminBookingsPage() {
   const [exportStatusActive, setExportStatusActive] = useState(true);
   const [exportStatusConfirmed, setExportStatusConfirmed] = useState(true);
 
+  const navigate = useNavigate();
   const [isEarlyCheckoutOpen, setIsEarlyCheckoutOpen] = useState(false);
   const [processingEarlyCheckout, setProcessingEarlyCheckout] = useState(false);
 
@@ -156,11 +158,13 @@ export default function AdminBookingsPage() {
       await axios.post(`${baseUrl}/api/reservations/emergency-checkout`, { reservation_id: resId },
         { headers: getAuthHeaders() }
       );
-      setSuccessMessage("Early checkout processed. Room released back to availability.");
-      setTimeout(() => setSuccessMessage(""), 5000);
       setIsEarlyCheckoutOpen(false);
       setSelectedBooking(null);
-      fetchBookings();
+      // Straight to the folio rather than back to the list: the stay was just
+      // re-priced to the nights actually slept and its final night billed, so
+      // this is the moment the balance is correct and the guest is still
+      // standing there to settle it.
+      navigate(`/admin/folios?reservation_id=${resId}`);
     } catch (err) {
       setError(err.response?.data?.message || "Error");
       setIsEarlyCheckoutOpen(false);
@@ -324,7 +328,7 @@ export default function AdminBookingsPage() {
           <div className="bg-white rounded-lg w-full max-w-lg p-12 flex flex-col items-center text-center shadow-2xl relative">
             <div className="text-red-500 mb-6"><svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div>
             <h2 className="text-4xl font-secondary font-bold text-gray-800 mb-4 tracking-tight">Emergency Checkout?</h2>
-            <p className="text-xl text-gray-500 leading-relaxed mb-8">Are you sure you want to process an early checkout for this guest? This will finalize their reservation and instantly release their rooms back into the public market.</p>
+            <p className="text-xl text-gray-500 leading-relaxed mb-8">Are you sure you want to process an early checkout for this guest? The booked check-out is pulled back to the night they are actually leaving on, the stay is re-priced to only those nights, and their rooms are released back into the public market.</p>
             <div className="flex gap-4 w-full">
               <button onClick={() => setIsEarlyCheckoutOpen(false)} disabled={processingEarlyCheckout} className="flex-1 py-4 border border-gray-300 text-gray-600 font-bold rounded-md hover:bg-gray-50 text-xl transition-colors">Cancel</button>
               <button onClick={handleEarlyCheckout} disabled={processingEarlyCheckout} className={`flex-1 py-4 bg-red-600 text-white font-bold rounded-md hover:bg-red-700 shadow-lg text-xl transition-all ${processingEarlyCheckout ? 'opacity-50' : ''}`}>{processingEarlyCheckout ? 'Processing...' : 'Confirm Checkout'}</button>

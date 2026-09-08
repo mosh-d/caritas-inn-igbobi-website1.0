@@ -180,6 +180,15 @@ export const createAdminReservation = async (payload) => {
   return response.data;
 };
 
+// Pulls a checked-in stay's check_out back to the night the guest is
+// actually leaving on, for an early departure. No date is sent — the server
+// works it out, so the business-day arithmetic has exactly one home (see
+// ReservationsService.requiredCheckOutForDepartureNow).
+export const shortenStayToDeparture = async (id) => {
+  const response = await axios.post(`${baseUrl}/api/reservations/${id}/shorten-to-departure`, {}, { headers: getAuthHeaders() });
+  return response.data;
+};
+
 // Phase 2: check-in/check-out operations
 export const checkInReservation = async (id) => {
   const response = await axios.post(`${baseUrl}/api/reservations/${id}/check-in`, {}, { headers: getAuthHeaders() });
