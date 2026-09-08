@@ -1237,7 +1237,8 @@ function FutureBookingForm() {
       <div>
         <h2 className="text-3xl font-bold text-[color:var(--black)]">Future Booking</h2>
         <p className="text-xl text-[color:var(--text-color)]/76 mt-1">
-          For a guest booking a later date in person. No room number needed — it is assigned when they arrive.
+          For a guest booking a later date in person. A room number is required — it holds a real room for those
+          dates, and can be reassigned any time before the guest arrives.
         </p>
       </div>
 
