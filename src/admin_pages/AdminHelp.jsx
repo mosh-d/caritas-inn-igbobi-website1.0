@@ -164,6 +164,7 @@ const SECTIONS = [
     summary: "Seven report types, each on its own tab, all exportable to Excel.",
     workflow: [
       "Dashboard — revenue, occupancy, and stay totals for a custom date range (the original report; also emailable).",
+      "Its Outstanding figure covers only stays that started inside the selected range, so it moves as you change the dates. The Overview page's Outstanding card is a different number on purpose — that one is everything still owed at this branch, matching the Folios page it links to.",
       "Accommodation — every arrival/departure in a date range with room price and receipt numbers. Uses each reservation's *scheduled* check_in/check_out — the operational \"who's due in/out\" view, not the actual-occupancy one below.",
       "Analysis — every payment received in a date range, broken down by room, receipt number, and method, with a grand total.",
       "PMS Report — a shift-handoff snapshot. Evening = tonight's house (arrivals/departures so far vs. still expected, plus current room status) for wrapping up before Night Audit. Morning = the previous night's audit result plus today's expected activity, for the incoming shift.",

@@ -367,7 +367,13 @@ function DashboardTab() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard label="Total Billed" value={money(summary.total_billed)} sub="charged to folios" />
             <SummaryCard label="Payments Received" value={money(totalPaymentsCollected)} sub="collected this period" accent />
-            <SummaryCard label="Outstanding" value={money(summary.total_outstanding)} sub="balance still owed" warn={Number(summary.total_outstanding) > 0} />
+            {/* outstanding_in_period, not total_outstanding: this card is
+                part of a report ABOUT the selected range, and the branch-wide
+                figure ignored the dates entirely — it read the same whatever
+                range was picked, and the same as the Overview page's own
+                Outstanding card. The Overview keeps the branch-wide one,
+                since its card links to the full Folios pending list. */}
+            <SummaryCard label="Outstanding" value={money(summary.outstanding_in_period)} sub="still owed from this period" warn={Number(summary.outstanding_in_period) > 0} />
             <SummaryCard label="Completed Stays" value={summary.completed_stays ?? "—"} sub={`of ${summary.total_stays ?? 0} total`} />
           </div>
 
