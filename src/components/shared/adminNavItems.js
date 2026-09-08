@@ -17,6 +17,7 @@ import {
   IoRestaurantOutline,
   IoCartOutline,
   IoFastFoodOutline,
+  IoShirtOutline,
 } from "react-icons/io5";
 import { getStoredStaffRole } from "../../utils/auth";
 
@@ -69,6 +70,10 @@ export const ADMIN_NAV_ITEMS = [
   // a non-guest order, e.g. covering the bar when no waitstaff is on duty) —
   // accountant is the only role that never sees it, same as GUEST FOLIOS.
   { to: "/admin/non-guest-sales", label: "NON-GUEST SALES", icon: IoCartOutline, waitstaffVisible: true },
+  // Laundry for a walk-in customer. Same audience as NON-GUEST SALES above —
+  // it is the same folio/payment workflow against a different catalogue — so
+  // it carries the same visibility.
+  { to: "/admin/laundry-sales", label: "LAUNDRY SALES", icon: IoShirtOutline, waitstaffVisible: true },
   { to: "/admin/check-ins", label: "CHECK-INS", icon: IoLogInOutline },
   { to: "/admin/check-outs", label: "CHECK-OUTS", icon: IoLogOutOutline },
   { to: "/admin/in-house", label: "IN-HOUSE", icon: IoHomeOutline },

@@ -15,7 +15,14 @@ import {
   updateDrinkItem,
   deleteDrinkItem,
   recordDrinkStockMovement,
+  fetchLaundryItems,
+  createLaundryItem,
+  updateLaundryItem,
+  deleteLaundryItem,
 } from "../utils/menu-api";
+import StatusBadge from "../components/shared/StatusBadge";
+
+const EMPTY_LAUNDRY_FORM = { name: "", wash_and_iron_price: "", ironing_only_price: "" };
 
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -50,6 +57,7 @@ export default function AdminMenu() {
         {[
           { key: "food", label: "Food" },
           { key: "drinks", label: "Drinks" },
+          { key: "laundry", label: "Laundry" },
         ].map((t) => (
           <button
             key={t.key}
@@ -63,7 +71,9 @@ export default function AdminMenu() {
         ))}
       </div>
 
-      {tab === "food" ? (
+      {tab === "laundry" ? (
+        <LaundrySection canEdit={canEdit} />
+      ) : tab === "food" ? (
         <MenuSection
           key="food"
           label="food item"
@@ -429,6 +439,183 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
             </button>
           </div>
         </form>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The laundry catalogue: Clothes, Wash and Iron, Ironing Only.
+ *
+ * Deliberately not a MenuSection with extra props. MenuSection is built
+ * around a single `price` plus a stock ledger; a garment has two prices and
+ * no stock at all, so sharing would mean threading "which price column" and
+ * "no stock here" through every row of it. Two focused components read
+ * better than one that has to keep asking what it is rendering.
+ */
+function LaundrySection({ canEdit }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showInactive, setShowInactive] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(EMPTY_LAUNDRY_FORM);
+  const [addForm, setAddForm] = useState(EMPTY_LAUNDRY_FORM);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setItems(await fetchLaundryItems(showInactive));
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to load laundry items.");
+    } finally {
+      setLoading(false);
+    }
+  }, [showInactive]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setEditForm({
+      name: item.name,
+      wash_and_iron_price: String(item.wash_and_iron_price ?? ""),
+      ironing_only_price: String(item.ironing_only_price ?? ""),
+    });
+  };
+
+  const submit = async (action) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await action();
+      setEditingId(null);
+      setAddForm(EMPTY_LAUNDRY_FORM);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const payloadFrom = (form) => ({
+    name: form.name.trim(),
+    wash_and_iron_price: Number(form.wash_and_iron_price || 0),
+    ironing_only_price: Number(form.ironing_only_price || 0),
+  });
+
+  const addValid = addForm.name.trim() && (Number(addForm.wash_and_iron_price) > 0 || Number(addForm.ironing_only_price) > 0);
+
+  return (
+    <div className="w-full flex flex-col gap-6">
+      {error && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{error}</p>}
+
+      <label className="flex items-center gap-2 text-xl cursor-pointer">
+        <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="w-5 h-5 cursor-pointer" />
+        Show inactive items
+      </label>
+
+      {loading ? (
+        <LoadingSpinner size="lg" />
+      ) : (
+        <div className={table.card}>
+          <div className={table.scroll}>
+            <table className={table.el}>
+              <thead>
+                <tr className={table.headRow}>
+                  <th className={table.th}>Clothes</th>
+                  <th className={table.th}>Wash and Iron</th>
+                  <th className={table.th}>Ironing Only</th>
+                  <th className={table.th}>Status</th>
+                  {canEdit && <th className={table.th}>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
+                  <tr><td colSpan={canEdit ? 5 : 4} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No laundry items yet.</td></tr>
+                ) : (
+                  items.map((item) => (
+                    editingId === item.id ? (
+                      <tr key={item.id} className={table.row}>
+                        <td className={table.td}>
+                          <input type="text" value={editForm.name} className={field.input}
+                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                        </td>
+                        <td className={table.td}>
+                          <input type="number" min={0} value={editForm.wash_and_iron_price} className={field.input}
+                            onChange={(e) => setEditForm({ ...editForm, wash_and_iron_price: e.target.value })} />
+                        </td>
+                        <td className={table.td}>
+                          <input type="number" min={0} value={editForm.ironing_only_price} className={field.input}
+                            onChange={(e) => setEditForm({ ...editForm, ironing_only_price: e.target.value })} />
+                        </td>
+                        <td className={table.td}><StatusBadge status={item.is_active ? "active" : "inactive"} /></td>
+                        <td className={table.td}>
+                          <div className={table.actions}>
+                            <button disabled={saving} onClick={() => submit(() => updateLaundryItem(item.id, payloadFrom(editForm)))} className={btn.rowSuccess}>Save</button>
+                            <button disabled={saving} onClick={() => setEditingId(null)} className={btn.rowSecondary}>Cancel</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={item.id} className={table.row}>
+                        <td className={`${table.td} font-medium`}>{item.name}</td>
+                        <td className={table.td}>{money(item.wash_and_iron_price)}</td>
+                        <td className={table.td}>{money(item.ironing_only_price)}</td>
+                        <td className={table.td}><StatusBadge status={item.is_active ? "active" : "inactive"} /></td>
+                        {canEdit && (
+                          <td className={table.td}>
+                            <div className={table.actions}>
+                              <button onClick={() => startEdit(item)} className={btn.rowSecondary}>Edit</button>
+                              <button disabled={saving}
+                                onClick={() => submit(() => updateLaundryItem(item.id, { is_active: !item.is_active }))}
+                                className={btn.rowSecondary}>
+                                {item.is_active ? "Deactivate" : "Reactivate"}
+                              </button>
+                              {/* Deleting is blocked server-side once an item
+                                  has sale history — the button stays, the
+                                  backend explains why when it refuses. */}
+                              <button disabled={saving} onClick={() => submit(() => deleteLaundryItem(item.id))} className={btn.rowDanger}>Delete</button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="w-full bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-col gap-4">
+          <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Add a clothing item</p>
+          <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1">
+            <div className="flex flex-col gap-2">
+              <label className={field.label}>Clothes</label>
+              <input type="text" placeholder="Shirt" value={addForm.name} className={field.input}
+                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className={field.label}>Wash and Iron</label>
+              <input type="number" min={0} value={addForm.wash_and_iron_price} className={field.input}
+                onChange={(e) => setAddForm({ ...addForm, wash_and_iron_price: e.target.value })} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className={field.label}>Ironing Only</label>
+              <input type="number" min={0} value={addForm.ironing_only_price} className={field.input}
+                onChange={(e) => setAddForm({ ...addForm, ironing_only_price: e.target.value })} />
+            </div>
+          </div>
+          <button disabled={saving || !addValid} onClick={() => submit(() => createLaundryItem(payloadFrom(addForm)))} className={`${btn.primary} self-start`}>
+            {saving ? "Saving..." : "Add Item"}
+          </button>
+        </div>
       )}
     </div>
   );

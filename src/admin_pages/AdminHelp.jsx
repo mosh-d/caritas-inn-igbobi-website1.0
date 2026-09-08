@@ -16,6 +16,7 @@ import {
   IoKeyOutline,
   IoRestaurantOutline,
   IoCartOutline,
+  IoShirtOutline,
 } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
 import { isManager, isAccountant, getStoredStaffRole } from "../utils/auth";
@@ -106,6 +107,20 @@ const SECTIONS = [
       "Recording a payment, refund, or reservation credit shows a popup with the reference number large and in monospace — write it down or read it to the guest before dismissing it (it won't auto-hide).",
       "Receipt number is always optional — the system-generated payment/credit reference works as the record on its own if there's no physical receipt book entry.",
       "A folio only auto-closes once its balance reaches zero AND the guest has actually checked out — an open balance keeps it open as a receivable even after checkout.",
+    ],
+  },
+  {
+    id: "laundry-sales",
+    icon: IoShirtOutline,
+    label: "Laundry Sales",
+    waitstaffVisible: true,
+    summary: "Laundry for someone who isn't staying in the house — same folio and payment flow as Non-Guest Sales, against the laundry catalogue.",
+    workflow: [
+      "Pick the clothing item, choose Wash & Iron or Ironing Only, then enter how many items. The price comes from whichever of the two prices that item carries for the chosen service.",
+      "Customer name and phone are optional — for a bill that might go unpaid a while, they are worth recording. The folio list falls back to the bill number when there is no name.",
+      "Payment can be recorded now or later, in parts, and across more than one method. The folio closes out once the balance is settled.",
+      "An in-house guest's laundry does NOT belong here — charge it to their own folio on Guest Folios, so it settles with the rest of their bill at checkout.",
+      "The catalogue itself (Clothes / Wash and Iron / Ironing Only) is on the Menu page's Laundry tab, and is manager, accountant and store keeper only, same as food and drink pricing.",
     ],
   },
   {

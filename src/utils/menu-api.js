@@ -82,3 +82,36 @@ export const deleteDrinkItem = async (id) => {
   });
   return response.data;
 };
+
+// Laundry catalogue — same open-read/pricing-roles-write split as food and
+// drinks above, but each item carries TWO prices (wash_and_iron_price,
+// ironing_only_price) because the same garment is sold both ways and the
+// choice is made per charge.
+export const fetchLaundryItems = async (includeInactive = false) => {
+  const response = await axios.get(`${baseUrl}/api/menu/laundry`, {
+    headers: getAuthHeaders(),
+    params: includeInactive ? { include_inactive: "true" } : undefined,
+  });
+  return response.data;
+};
+
+export const createLaundryItem = async (payload) => {
+  const response = await axios.post(`${baseUrl}/api/menu/laundry`, payload, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+export const updateLaundryItem = async (id, payload) => {
+  const response = await axios.patch(`${baseUrl}/api/menu/laundry/${id}`, payload, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+export const deleteLaundryItem = async (id) => {
+  const response = await axios.delete(`${baseUrl}/api/menu/laundry/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
