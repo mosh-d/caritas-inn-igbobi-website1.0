@@ -1165,7 +1165,6 @@ function FutureBookingForm() {
   const roomTypes = (availability?.room_types || []).filter(
     (rt) => rt.available_rooms >= Number(form.roomsBooked || 1),
   );
-  const selectedType = roomTypes.find((rt) => String(rt.room_type_id) === form.roomTypeId);
 
   // Real, numbered rooms of the chosen type that are free across the booking's
   // own dates — the same endpoint the check-in picker uses, which takes a
@@ -1302,17 +1301,42 @@ function FutureBookingForm() {
           ) : checking ? (
             <p className="text-xl text-[color:var(--text-color)]/68">Checking availability...</p>
           ) : roomTypes.length === 0 ? (
-            <p className="text-xl text-red-600">Nothing available for those dates and room count.</p>
+            <p className="text-red-600 text-xl">
+              No rooms available for {form.roomsBooked} room(s) on those dates.
+            </p>
           ) : (
-            <select value={form.roomTypeId} className={field.select}
-              onChange={(e) => setForm((p) => ({ ...p, roomTypeId: e.target.value }))}>
-              <option value="">-- Select --</option>
+            <div className="flex flex-col gap-2">
               {roomTypes.map((rt) => (
-                <option key={rt.room_type_id} value={String(rt.room_type_id)}>
-                  {rt.name} — {rt.available_rooms} free
-                </option>
+                <label
+                  key={rt.room_type_id}
+                  className={`flex items-center justify-between border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
+                    form.roomTypeId === String(rt.room_type_id)
+                      ? "border-[color:var(--emphasis)] bg-[color:var(--emphasis)]/5 ring-1 ring-[color:var(--emphasis)]"
+                      : "border-[color:var(--text-color)]/20 hover:border-[color:var(--emphasis)]/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="radio"
+                      name="futureRoomType"
+                      value={rt.room_type_id}
+                      checked={form.roomTypeId === String(rt.room_type_id)}
+                      onChange={(e) => setForm((p) => ({ ...p, roomTypeId: e.target.value, roomNumbers: [] }))}
+                      className="accent-[color:var(--emphasis)] w-5 h-5"
+                    />
+                    <span className="text-xl font-medium">{rt.room_type_name}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xl font-bold text-[color:var(--emphasis)]">
+                      {fmtCurrency(rt.base_rate, rt.currency_symbol)} / night
+                    </span>
+                    <span className="block text-lg text-[color:var(--text-color)]/68">
+                      {rt.available_rooms} available
+                    </span>
+                  </div>
+                </label>
               ))}
-            </select>
+            </div>
           )}
         </div>
 
@@ -1346,12 +1370,6 @@ function FutureBookingForm() {
               </div>
             )}
           </div>
-        )}
-
-        {selectedType && (
-          <p className="text-xl text-[color:var(--text-color)]/76">
-            {fmtCurrency(selectedType.base_rate)} per night · {form.roomsBooked} room(s)
-          </p>
         )}
 
         <button type="submit" disabled={!canSubmit} className={`${btn.primary} self-start px-12! py-4!`}>
