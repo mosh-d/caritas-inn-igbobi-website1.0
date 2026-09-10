@@ -1,4 +1,6 @@
 import { pct } from "../../utils/report-format";
+import { Link } from "react-router-dom";
+import { canViewAuditTrail } from "./adminNavItems";
 
 // Small render pieces shared by every report tab in AdminReports.jsx —
 // kept in one place so each report looks and behaves identically.
@@ -81,8 +83,32 @@ export function OccupancyBadge({ value }) {
 // day and sends a `date`; single-day reports send null and the column is
 // dropped. "Unattributed" covers activity recorded before individual staff
 // logins existed — those rows have no staff account to resolve to.
+// A row's link into the audit trail, prefilled with who acted, which kind of
+// action, and the business day it happened (ReportsService.auditLink builds
+// the `audit` object on the backend). A row with nothing to trace shows a dash.
+export function AuditLink({ audit }) {
+  if (!audit) return <span className="text-[color:var(--text-color)]/40">—</span>;
+  const params = new URLSearchParams();
+  if (audit.staff_account_id) params.set("staff_id", String(audit.staff_account_id));
+  if (audit.action) params.set("action", audit.action);
+  if (audit.date) {
+    params.set("from", audit.date);
+    params.set("to", audit.date);
+  }
+  if (audit.search) params.set("search", audit.search);
+  return (
+    <Link
+      to={`/admin/audit-trail?${params.toString()}`}
+      className="text-lg font-semibold text-[color:var(--emphasis)] hover:underline whitespace-nowrap"
+    >
+      View log
+    </Link>
+  );
+}
+
 export function StaffActivitySection({ activity, money }) {
   if (!activity) return null;
+  const showAudit = canViewAuditTrail();
   const groups = [
     { key: "check_ins", label: "Check-Ins", unit: "Guests", amount: false },
     { key: "check_outs", label: "Check-Outs", unit: "Guests", amount: false },
@@ -103,7 +129,7 @@ export function StaffActivitySection({ activity, money }) {
         {groups.map((g) => {
           const rows = activity[g.key];
           const dated = rows.some((r) => r.date);
-          const cells = [...(dated ? ["Date"] : []), "Staff", g.unit, ...(g.amount ? ["Amount"] : [])];
+          const cells = [...(dated ? ["Date"] : []), "Staff", g.unit, ...(g.amount ? ["Amount"] : []), ...(showAudit ? ["Action"] : [])];
           return (
             <div key={g.key} className="flex flex-col gap-2">
               <h3 className="text-2xl font-bold text-[color:var(--black)]">{g.label}</h3>
@@ -118,6 +144,7 @@ export function StaffActivitySection({ activity, money }) {
                       {g.amount && (
                         <td className="px-6 py-4 text-right text-[color:var(--black)]">{money(r.total)}</td>
                       )}
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
                     </tr>
                   ))}
                 </tbody>

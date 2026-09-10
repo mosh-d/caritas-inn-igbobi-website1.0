@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import Button from "../components/shared/Button";
@@ -40,6 +40,8 @@ const LINK_LABELS = {
 // list here so the filter dropdown and the table's fallback label always
 // agree with what's actually being logged.
 const ACTION_LABELS = {
+  "reservation.early_checkout": "Early checkout",
+  "drink_item.stock_movement": "Stock movement recorded",
   "payment.record": "Payment recorded",
   "payment.refund": "Payment refunded",
   "folio.close": "Folio closed",
@@ -136,9 +138,27 @@ export default function AdminAuditTrail() {
     }
   }, []);
 
+  // Deep links from the reports' Action columns arrive with the filters in the
+  // URL (see AuditLink in reportUi.jsx): who acted, which action, and the
+  // business day. Applied once on arrival; the page's own controls take over
+  // from there, exactly as before.
+  const [searchParams] = useSearchParams();
   useEffect(() => {
     if (!canView) return;
-    load(1);
+    const fromUrl = {
+      staffId: searchParams.get("staff_id") || "",
+      role: "",
+      action: searchParams.get("action") || "",
+      from: searchParams.get("from") || "",
+      to: searchParams.get("to") || "",
+      search: searchParams.get("search") || "",
+    };
+    setFilterStaffId(fromUrl.staffId);
+    setFilterAction(fromUrl.action);
+    setFilterFrom(fromUrl.from);
+    setFilterTo(fromUrl.to);
+    setFilterSearch(fromUrl.search);
+    load(1, fromUrl);
     fetchAuditStaffOptions().then(setStaffOptions).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canView]);

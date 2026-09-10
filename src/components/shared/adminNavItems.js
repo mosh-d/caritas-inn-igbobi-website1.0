@@ -129,3 +129,8 @@ export function visibleAdminNavItems() {
 // like a shortcut INTO a page (e.g. AdminRoot's new-reservation popup)
 // without duplicating the role logic a third time.
 export const canAccessNavItem = (to) => visibleAdminNavItems().some((item) => item.to === to);
+
+// The report Action columns link into the audit trail, so they are shown only
+// to roles that can open it (manager, accountant, developer). For anyone else
+// every link would lead to a page that refuses them.
+export const canViewAuditTrail = () => canAccessNavItem("/admin/audit-trail");

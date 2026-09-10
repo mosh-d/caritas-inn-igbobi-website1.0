@@ -35,7 +35,8 @@ import { isAccountant, isReceptionist, isStorekeeper, isWaitron } from "../utils
 // alongside its default export (breaks Fast Refresh), so this couldn't just
 // live here.
 import { money, pct, formatDate, formatDateTime } from "../utils/report-format";
-import { ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge, StaffActivitySection } from "../components/shared/reportUi";
+import { canViewAuditTrail } from "../components/shared/adminNavItems";
+import { AuditLink, ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge, StaffActivitySection } from "../components/shared/reportUi";
 
 function currentMonthRange() {
   const now = new Date();
@@ -148,7 +149,7 @@ export default function AdminReportsPage() {
           : activeTab === "pms"
           ? "A shift-handoff snapshot: room status (vacant/occupied/out-of-order/reserved/complementary) plus arrivals and departures — pick Evening for end-of-day or Morning to see the previous night's audit."
           : activeTab === "accommodation"
-          ? "One row per room in use on a given date — guest, room, tariff, payment, and whether they checked in, checked out, or are still in-house."
+          ? "The day's room sales: one row per room occupied that night — guest, room, tariff, payment, and whether they checked in today or stayed over from yesterday. Guests who checked out during the day are left off."
           : activeTab === "food-sales"
           ? "Every food order for a given date — charged to a room's folio or a non-guest folio — with quantity, amount, payment status, and payment method."
           : activeTab === "drink-sales"
@@ -519,7 +520,7 @@ function RoomRevenueTotal({ amount }) {
   return (
     <div className="flex justify-end px-6 py-4 border-t border-[color:var(--text-color)]/10">
       <p className="text-xl">
-        <span className="text-[color:var(--text-color)]/68 uppercase tracking-wide font-semibold">Total Room Revenue</span>{" "}
+        <span className="text-[color:var(--text-color)]/68 uppercase tracking-wide font-semibold">Total Room Revenue (excluding breakfast)</span>{" "}
         <span className="font-bold text-[color:var(--black)] ml-3">{money(amount)}</span>
       </p>
     </div>
@@ -529,6 +530,7 @@ function RoomRevenueTotal({ amount }) {
 // ─── Manifest ─────────────────────────────────────────────────────────────────
 
 function ManifestTab() {
+  const showAudit = canViewAuditTrail();
   const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -573,10 +575,11 @@ function ManifestTab() {
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(r.actual_check_in || r.check_in)}</td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(r.actual_check_out || r.check_out)}</td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{r.source || "—"}</td>
+      {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
     </tr>
   );
 
-  const headers = ["Guest", "Room", "Room Price", "Breakfast Price", "Receipt No.", "Res. Credit", "Arrival", "Check-Out", "Source"];
+  const headers = ["Guest", "Room", "Room Price", "Breakfast Price", "Receipt No.", "Res. Credit", "Arrival", "Check-Out", "Source", ...(showAudit ? ["Action"] : [])];
 
   return (
     <div className="w-full flex flex-col items-start gap-[2.5rem]">
@@ -652,6 +655,7 @@ function ManifestTab() {
 // ─── Analysis ─────────────────────────────────────────────────────────────────
 
 function AnalysisTab() {
+  const showAudit = canViewAuditTrail();
   const defaultRange = currentMonthRange();
   const [from, setFrom] = useState(defaultRange.from);
   const [to, setTo] = useState(defaultRange.to);
@@ -714,7 +718,7 @@ function AnalysisTab() {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Room", "Receipt No.", "Reference", "Guest", "Method", "Date", "Amount"]} rightAlign={["Amount"]} />
+                <TableHead cells={["Room", "Receipt No.", "Reference", "Guest", "Method", "Date", "Amount", ...(showAudit ? ["Action"] : [])]} rightAlign={["Amount"]} />
                 <tbody>
                   {data.payments.map((p) => (
                     <tr key={p.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
@@ -727,6 +731,7 @@ function AnalysisTab() {
                       <td className={`px-6 py-4 text-right font-semibold ${p.status === "refunded" ? "text-red-600" : "text-[color:var(--black)]"}`}>
                         {p.status === "refunded" ? "−" : ""}{money(p.amount)}
                       </td>
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={p.audit} /></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -734,6 +739,7 @@ function AnalysisTab() {
                   <tr className="bg-[color:var(--text-color)]/3">
                     <td colSpan="6" className="px-6 py-4 font-bold text-[color:var(--black)] text-right">Net Total</td>
                     <td className="px-6 py-4 text-right font-bold text-[color:var(--black)]">{money(data.net_total)}</td>
+                    {showAudit && <td />}
                   </tr>
                 </tfoot>
               </table>
@@ -940,6 +946,7 @@ function PmsReportTab() {
 // ─── Accommodation Report ───────────────────────────────────────────────────
 
 function AccommodationReportTab({ shift }) {
+  const showAudit = canViewAuditTrail();
   const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1024,7 +1031,7 @@ function AccommodationReportTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Room Price", "Breakfast Price", "Payment Mode", "Payment Status", "Paid Today", "Shift", "Remarks"]} />
+                <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Room Price", "Breakfast Price", "Payment Mode", "Payment Status", "Paid Today", "Guest Status", "Remarks", ...(showAudit ? ["Action"] : [])]} />
                 <tbody>
                   {data.rows.map((r, i) => (
                     <tr key={`${r.reservation_id}-${r.room_number}-${i}`} className="border-b border-[color:var(--text-color)]/10">
@@ -1047,12 +1054,17 @@ function AccommodationReportTab({ shift }) {
                         <StatusBadge status={r.is_complementary ? "Complementary" : r.payment_status} />
                       </td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount_paid)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{shift || "—"}</td>
+                      {/* Guest Status: where the guest is in the stay. Remarks: how the
+                          booking came in (walk-in / website / OTA). No Shift column: it
+                          repeated one name on every row, and the By Staff section and
+                          the Action links now answer who did what. */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <StatusBadge status={r.remarks} />
+                          <StatusBadge status={r.guest_status} />
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.reservation_type || "—"}</td>
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -1077,16 +1089,28 @@ function AccommodationReportTab({ shift }) {
                 subtitle={`${group.count} transaction(s) · ${money(group.total)}`}
               >
                 <table className="w-full text-xl">
-                  <TableHead cells={["Guest", "Room", "Amount", "Status", "Receipt No.", "Time"]} rightAlign={["Amount"]} />
+                  <TableHead cells={["Guest", "Room", "Amount", "Receipt No.", "Time", ...(showAudit ? ["Action"] : [])]} rightAlign={["Amount"]} />
                   <tbody>
                     {group.payments.map((pmt) => (
                       <tr key={pmt.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
-                        <td className="px-6 py-4 font-medium text-[color:var(--black)]">{pmt.guest_name}</td>
+                        {/* No Status column: its only values were "completed" (money in)
+                            and "refunded" (money out). A refund now reads as what it did to
+                            the drawer: a negative amount, tagged. */}
+                        <td className="px-6 py-4 font-medium text-[color:var(--black)]">
+                          <span className="flex items-center gap-2 flex-wrap">
+                            {pmt.guest_name}
+                            {pmt.status === "refunded" && (
+                              <span className="text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Refund</span>
+                            )}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 text-[color:var(--text-color)]/84">{pmt.room_numbers || "Unassigned"}</td>
-                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(pmt.amount)}</td>
-                        <td className="px-6 py-4"><StatusBadge status={pmt.status} /></td>
+                        <td className={`px-6 py-4 text-right ${pmt.status === "refunded" ? "text-red-600 font-semibold" : "text-[color:var(--text-color)]/84"}`}>
+                          {pmt.status === "refunded" ? "-" : ""}{money(pmt.amount)}
+                        </td>
                         <td className="px-6 py-4 text-[color:var(--text-color)]/84">{pmt.receipt_number || pmt.payment_reference || "—"}</td>
                         <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(pmt.payment_date)}</td>
+                        {showAudit && <td className="px-6 py-4"><AuditLink audit={pmt.audit} /></td>}
                       </tr>
                     ))}
                   </tbody>
@@ -1100,7 +1124,7 @@ function AccommodationReportTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No."]} rightAlign={["Amount"]} />
+                <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No.", ...(showAudit ? ["Action"] : [])]} rightAlign={["Amount"]} />
                 <tbody>
                   {data.paid_before.map((d) => (
                     <tr key={d.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
@@ -1110,6 +1134,7 @@ function AccommodationReportTab({ shift }) {
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
                       <td className="px-6 py-4"><StatusBadge status={d.status} /></td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.receipt_number || "—"}</td>
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={d.audit} /></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -1122,7 +1147,7 @@ function AccommodationReportTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Guest", "Room", "Date Owed", "Total Owed", "Total Paid", "Method", "Reference"]} rightAlign={["Total Owed", "Total Paid"]} />
+                <TableHead cells={["Guest", "Room", "Date Owed", "Total Owed", "Total Paid", "Method", "Reference", ...(showAudit ? ["Action"] : [])]} rightAlign={["Total Owed", "Total Paid"]} />
                 <tbody>
                   {data.debt_recovery.map((d, i) => (
                     <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
@@ -1133,6 +1158,7 @@ function AccommodationReportTab({ shift }) {
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_paid)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.payment_reference}</td>
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={d.audit} /></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -1200,16 +1226,18 @@ function SalesTotals({ data }) {
 // StaffActivitySection in reportUi.jsx). It used to sit directly under the
 // summary cards, which made Food/Drink the odd ones out.
 function SalesByStaff({ data }) {
+  const showAudit = canViewAuditTrail();
   return (
     <ReportSection title="By Staff" subtitle="Who posted each charge">
       {data.staff_breakdown.length === 0 ? <EmptyRow /> : (
         <table className="w-full text-xl">
-          <TableHead cells={["Staff", "Total"]} rightAlign={["Total"]} />
+          <TableHead cells={["Staff", "Total", ...(showAudit ? ["Action"] : [])]} rightAlign={["Total"]} />
           <tbody>
             {data.staff_breakdown.map((s, i) => (
               <tr key={i} className="border-b border-[color:var(--text-color)]/10 last:border-b-0">
                 <td className="px-6 py-4 font-medium text-[color:var(--black)]">{s.staff_name}</td>
                 <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(s.total)}</td>
+                {showAudit && <td className="px-6 py-4"><AuditLink audit={s.audit} /></td>}
               </tr>
             ))}
           </tbody>
@@ -1256,6 +1284,7 @@ function SalesNotes({ data }) {
 }
 
 function FoodSalesReportTab({ shift }) {
+  const showAudit = canViewAuditTrail();
   const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1338,7 +1367,7 @@ function FoodSalesReportTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Customer", "Qty", "Bill No", "Description", "Amount", "Service Charge", "Status", "Payment Method", "Remarks"]} />
+                <TableHead cells={["Customer", "Qty", "Bill No", "Description", "Amount", "Service Charge", "Status", "Payment Method", "Remarks", ...(showAudit ? ["Action"] : [])]} />
                 <tbody>
                   {data.rows.map((r, i) => (
                     <tr key={i} className="border-b border-[color:var(--text-color)]/10">
@@ -1351,6 +1380,7 @@ function FoodSalesReportTab({ shift }) {
                       <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
                       <td className="px-6 py-4 capitalize text-[color:var(--text-color)]/84">{r.payment_method || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.notes || "—"}</td>
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -1373,6 +1403,7 @@ function FoodSalesReportTab({ shift }) {
 }
 
 function DrinkSalesReportTab({ shift }) {
+  const showAudit = canViewAuditTrail();
   const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1455,7 +1486,7 @@ function DrinkSalesReportTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Customer", "Qty", "Bill No", "Description", "Amount", "Service Charge", "Status", "Payment Method", "Remarks"]} />
+                <TableHead cells={["Customer", "Qty", "Bill No", "Description", "Amount", "Service Charge", "Status", "Payment Method", "Remarks", ...(showAudit ? ["Action"] : [])]} />
                 <tbody>
                   {data.rows.map((r, i) => (
                     <tr key={i} className="border-b border-[color:var(--text-color)]/10">
@@ -1468,6 +1499,7 @@ function DrinkSalesReportTab({ shift }) {
                       <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
                       <td className="px-6 py-4 capitalize text-[color:var(--text-color)]/84">{r.payment_method || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.notes || "—"}</td>
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -1490,6 +1522,7 @@ function DrinkSalesReportTab({ shift }) {
 }
 
 function BarStockReportTab({ shift }) {
+  const showAudit = canViewAuditTrail();
   const [date, setDate] = useState(adminTodayISO());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1578,7 +1611,7 @@ function BarStockReportTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Stock", "Opening", "Added", "Total (before sales)", "Damaged", "Sold", "Unit Cost Price", "Total Amount", "Closing", "Service Charge", "Remark"]} />
+                <TableHead cells={["Stock", "Opening", "Added", "Total (before sales)", "Damaged", "Sold", "Unit Cost Price", "Total Amount", "Closing", "Service Charge", "Remark", ...(showAudit ? ["Action"] : [])]} />
                 <tbody>
                   {data.rows.map((r) => (
                     <tr key={r.drink_item_id} className="border-b border-[color:var(--text-color)]/10">
@@ -1593,6 +1626,7 @@ function BarStockReportTab({ shift }) {
                       <td className={`px-6 py-4 font-semibold ${r.closing_stock < 0 ? "text-red-600" : "text-[color:var(--black)]"}`}>{r.closing_stock}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.service_charge)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.remark || "—"}</td>
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
                     </tr>
                   ))}
                 </tbody>

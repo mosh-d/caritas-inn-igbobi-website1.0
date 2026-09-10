@@ -40,10 +40,14 @@ const STYLES = {
   // app's one existing "given away, no charge" convention (complementary
   // rooms).
   complementary: "bg-purple-100 text-purple-700",
-  // Accommodation Report remarks
+  // Manifest guest status. "Stay over" (a guest already in house the day
+  // before) replaced "in house" on 2026-09-10.
   "checked in": "bg-blue-100 text-blue-700",
   "checked out": "bg-gray-100 text-gray-600",
-  "in house": "bg-green-100 text-green-700",
+  "stay over": "bg-green-100 text-green-700",
+  // A same-day stay: the one departure the Manifest still lists, since its
+  // room was sold that day.
+  "checked in & out": "bg-indigo-100 text-indigo-700",
 };
 
 export default function StatusBadge({ status, className = "" }) {
