@@ -373,6 +373,17 @@ export const canEditMenu = () => isManager() || isAccountant() || isStorekeeper(
 // bypass.
 export const isReceptionist = () => getStoredStaffRole() === "receptionist";
 
+// Who may hand money BACK — folio credit refunds, deposit refunds and
+// non-guest credit refunds (2026-09-10). Receptionists and managers, by the
+// owner's call. Developer is included to mirror RolesGuard's developer
+// bypass, so a developer session sees exactly the controls the API will
+// accept. Mirrors @Roles('receptionist', 'manager') on all three refund
+// endpoints.
+export const canRefund = () => {
+  const role = getStoredStaffRole();
+  return role === "receptionist" || role === "manager" || role === "developer";
+};
+
 // No developer bypass here, unlike isManager()/isAccountant()/isWaitstaff()
 // above — this gates a role DOWN to a narrower tab set (Reports), so a
 // developer session correctly stays unrestricted, matching isReceptionist()'s

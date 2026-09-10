@@ -13,7 +13,7 @@ import CopyIconButton from "../components/shared/CopyIconButton";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
-import { getStoredStaffRole } from "../utils/auth";
+import { canRefund, getStoredStaffRole } from "../utils/auth";
 import {
   fetchFolios,
   fetchPendingFolios,
@@ -765,7 +765,7 @@ export default function AdminFoliosPage() {
                           <span className={`font-bold whitespace-nowrap ${Number(c.available) > 0 ? "" : "text-green-700/50 line-through"}`}>
                             {money(Number(c.available) > 0 ? c.available : c.amount)}
                           </span>
-                          {Number(c.available) > 0 && (
+                          {Number(c.available) > 0 && canRefund() && (
                             <button
                               onClick={() => setRefundCreditTarget(c)}
                               disabled={refundingCreditId === c.id}
@@ -1030,7 +1030,9 @@ export default function AdminFoliosPage() {
                 {/* Refunding a credit is allowed even on a closed folio — a folio
                     auto-closes the moment a credit appears, so this is the normal
                     case, not an edge case gated behind "still open". */}
-                {hasCreditBalance && (
+                {/* Receptionists and managers only — see canRefund. The API refuses every other
+                    role, so the form is hidden rather than left to 403. */}
+                {hasCreditBalance && canRefund() && (
                   <div className="flex flex-col gap-4 mt-2 border-t border-[color:var(--text-color)]/10 pt-6">
                     {refundError && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{refundError}</p>}
                     <p className="text-lg font-semibold uppercase tracking-wide text-red-600">Record a refund to the guest</p>

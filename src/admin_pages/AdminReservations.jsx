@@ -32,6 +32,7 @@ import {
   fetchAvailableRoomNumbers,
 } from "../utils/reservations-pms-api";
 import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, refundDeposit, fetchGuestCredit } from "../utils/folios-api";
+import { canRefund } from "../utils/auth";
 import { fetchRoomDetails } from "../utils/room-data";
 import { hasPassedNoonCutoff } from "../utils/date-utils";
 
@@ -1169,13 +1170,17 @@ export default function AdminReservationsPage() {
                               >
                                 {depositActionLoading === dep.id ? "..." : "Apply"}
                               </button>
-                              <button
-                                onClick={() => handleRefundDeposit(dep.id)}
-                                disabled={depositActionLoading === dep.id}
-                                className={btn.rowDanger}
-                              >
-                                {depositActionLoading === dep.id ? "..." : "Refund"}
-                              </button>
+                              {/* Receptionists and managers only — see canRefund. Apply stays open to
+                                  everyone; only paying money back out is restricted. */}
+                              {canRefund() && (
+                                <button
+                                  onClick={() => handleRefundDeposit(dep.id)}
+                                  disabled={depositActionLoading === dep.id}
+                                  className={btn.rowDanger}
+                                >
+                                  {depositActionLoading === dep.id ? "..." : "Refund"}
+                                </button>
+                              )}
                             </>
                           )}
                         </div>

@@ -105,6 +105,7 @@ const SECTIONS = [
       "Discount on a charge is always a percentage. Tax can be switched between a fixed amount or a percentage — both convert to a real amount before saving.",
       "For a discount of a specific amount rather than a percentage, post a charge with a negative amount instead (e.g. -2,000) — it reduces the balance by exactly that much.",
       "Recording a payment, refund, or reservation credit shows a popup with the reference number large and in monospace — write it down or read it to the guest before dismissing it (it won't auto-hide).",
+      "Refunds — folio credit, reservation credit and non-guest credit — can only be recorded by a receptionist or a manager. The Refund buttons do not appear for any other role, and the server refuses the request from anyone else. Applying a credit to a folio is still open to everyone.",
       "Receipt number is always optional — the system-generated payment/credit reference works as the record on its own if there's no physical receipt book entry.",
       "A folio only auto-closes once its balance reaches zero AND the guest has actually checked out — an open balance keeps it open as a receivable even after checkout.",
     ],
