@@ -627,7 +627,7 @@ export default function AdminCheckInsPage() {
 
         {/* WALK-IN */}
         {tab === "walkin" && (
-          <div className="w-full max-w-3xl">
+          <div className="w-full">
             {walkInSuccess ? (
               <div className="flex flex-col items-center gap-6 py-16 text-center bg-white rounded-xl border border-[color:var(--text-color)]/10 w-full">
                 <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-5xl font-bold">✓</div>
@@ -647,7 +647,7 @@ export default function AdminCheckInsPage() {
                 <button onClick={resetWalkIn} className={`${btn.primary} mt-4`}>New Walk-In</button>
               </div>
             ) : (
-              <form onSubmit={handleWalkIn} className="flex flex-col gap-8 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-8">
+              <form onSubmit={handleWalkIn} className="w-full flex flex-col gap-8 bg-white rounded-xl border border-[color:var(--text-color)]/10 p-8">
                 {walkInError && (
                   <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{walkInError}</p>
                 )}
@@ -703,11 +703,11 @@ export default function AdminCheckInsPage() {
                         No rooms available for {walkIn.roomsBooked} room(s) on those dates.
                       </p>
                     ) : (
-                      <div className="flex flex-col gap-2">
+                      <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(22rem,1fr))]">
                         {availableTypes.map((rt) => (
                           <label
                             key={rt.room_type_id}
-                            className={`flex items-center justify-between border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
+                            className={`w-full max-w-[32rem] flex items-center justify-between gap-4 border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
                               walkIn.roomTypeId === String(rt.room_type_id)
                                 ? "border-[color:var(--emphasis)] bg-[color:var(--emphasis)]/5 ring-1 ring-[color:var(--emphasis)]"
                                 : "border-[color:var(--text-color)]/20 hover:border-[color:var(--emphasis)]/40"
@@ -1491,11 +1491,11 @@ function FutureBookingForm() {
               No rooms available for {form.roomsBooked} room(s) on those dates.
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(22rem,1fr))]">
               {roomTypes.map((rt) => (
                 <label
                   key={rt.room_type_id}
-                  className={`flex items-center justify-between border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
+                  className={`w-full max-w-[32rem] flex items-center justify-between gap-4 border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
                     form.roomTypeId === String(rt.room_type_id)
                       ? "border-[color:var(--emphasis)] bg-[color:var(--emphasis)]/5 ring-1 ring-[color:var(--emphasis)]"
                       : "border-[color:var(--text-color)]/20 hover:border-[color:var(--emphasis)]/40"
