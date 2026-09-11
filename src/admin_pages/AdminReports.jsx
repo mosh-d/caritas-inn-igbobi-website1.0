@@ -149,7 +149,7 @@ export default function AdminReportsPage() {
           : activeTab === "pms"
           ? "A shift-handoff snapshot: room status (vacant/occupied/out-of-order/reserved/complementary) plus arrivals and departures — pick Evening for end-of-day or Morning to see the previous night's audit."
           : activeTab === "accommodation"
-          ? "The day's room sales: one row per room occupied that night — guest, room, tariff, payment, and whether they checked in today or stayed over from yesterday. Guests who checked out during the day are left off."
+          ? "The day's room sales: one row per room occupied that night — guest, room, tariff, payment, and whether they checked in today or stayed over from yesterday. Guests who checked out during the day are left off, and complementary and manager's rooms are listed separately under Non-Revenue Rooms."
           : activeTab === "food-sales"
           ? "Every food order for a given date — charged to a room's folio or a non-guest folio — with quantity, amount, payment status, and payment method."
           : activeTab === "drink-sales"
@@ -1031,7 +1031,7 @@ function AccommodationReportTab({ shift }) {
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Room Price", "Breakfast Price", "Payment Mode", "Payment Status", "Paid Today", "Guest Status", "Remarks", ...(showAudit ? ["Action"] : [])]} />
+                <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Arrival", "Check-Out", "Room Price", "Breakfast Price", "Payment Mode", "Payment Status", "Receipt No.", "Paid Today", "Refund", "Guest Status", "Remarks", ...(showAudit ? ["Action"] : [])]} />
                 <tbody>
                   {data.rows.map((r, i) => (
                     <tr key={`${r.reservation_id}-${r.room_number}-${i}`} className="border-b border-[color:var(--text-color)]/10">
@@ -1039,21 +1039,25 @@ function AccommodationReportTab({ shift }) {
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_type_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_number}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">
-                        {r.is_complementary ? <s className="text-[color:var(--text-color)]/50">{money(r.room_price)}</s> : money(r.room_price)}
-                      </td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">
-                        {r.is_complementary ? <s className="text-[color:var(--text-color)]/50">{money(r.breakfast_price)}</s> : money(r.breakfast_price)}
-                      </td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 whitespace-nowrap">{formatDate(r.arrival_date)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 whitespace-nowrap">{formatDate(r.checkout_date)}</td>
+                      {/* Complementary rooms are listed under Non-Revenue Rooms below, so
+                          every row here is a room that was sold. */}
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.room_price)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.breakfast_price)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.payment_mode}</td>
-                      {/* A complementary stay isn't actually owing anyone money — showing
-                          "Owing" there just because nothing's been paid reads as a real
-                          debt. Complementary replaces the payment status instead of
-                          tagging along in Remarks a second time. */}
                       <td className="px-6 py-4">
-                        <StatusBadge status={r.is_complementary ? "Complementary" : r.payment_status} />
+                        <StatusBadge status={r.payment_status} />
                       </td>
+                      {/* Receipt No.: the receipt of the payment that settled this night.
+                          NIL while it is still owing. */}
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.receipt_number || "NIL"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount_paid)}</td>
+                      {/* Refund: money handed back to the guest that day, shown as what it
+                          did to the drawer. NIL when nothing went back. */}
+                      <td className={`px-6 py-4 whitespace-nowrap ${r.refund_amount ? "text-red-600 font-semibold" : "text-[color:var(--text-color)]/84"}`}>
+                        {r.refund_amount ? `-${money(Math.abs(r.refund_amount))}` : "NIL"}
+                      </td>
                       {/* Guest Status: where the guest is in the stay. Remarks: how the
                           booking came in (walk-in / website / OTA). No Shift column: it
                           repeated one name on every row, and the By Staff section and
@@ -1071,6 +1075,30 @@ function AccommodationReportTab({ shift }) {
               </table>
             )}
             <RoomRevenueTotal amount={data.room_revenue_total} />
+          </ReportSection>
+
+          {/* Rooms someone stayed in that bring in no money: complementary guests,
+              and any room set aside for a manager. Managers are never checked in,
+              so there is no guest record to name; the row just says "Manager".
+              Out-of-order rooms are not listed, since nobody stayed in them. */}
+          <ReportSection title="Non-Revenue Rooms" subtitle="Complementary stays and manager's rooms">
+            {(data.non_revenue_rooms || []).length === 0 ? (
+              <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No complementary rooms or manager rooms in use.</p>
+            ) : (
+              <table className="w-full text-xl">
+                <TableHead cells={["Room No.", "Name", "Status", ...(showAudit ? ["Action"] : [])]} />
+                <tbody>
+                  {data.non_revenue_rooms.map((r) => (
+                    <tr key={`${r.room_number}-${r.status}`} className="border-b border-[color:var(--text-color)]/10">
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_number}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.name}</td>
+                      <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
+                      {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </ReportSection>
 
           {/* One section per payment method — the front desk reconciles the

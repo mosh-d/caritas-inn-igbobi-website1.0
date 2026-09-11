@@ -40,6 +40,9 @@ const STYLES = {
   // app's one existing "given away, no charge" convention (complementary
   // rooms).
   complementary: "bg-purple-100 text-purple-700",
+  // A room set aside for a manager (Non-Revenue Rooms on the Manifest). Same
+  // colour RoomStatusTag gives a reserved room everywhere else.
+  reserved: "bg-indigo-100 text-indigo-700",
   // Manifest guest status. "Stay over" (a guest already in house the day
   // before) replaced "in house" on 2026-09-10.
   "checked in": "bg-blue-100 text-blue-700",
