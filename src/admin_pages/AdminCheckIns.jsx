@@ -703,11 +703,11 @@ export default function AdminCheckInsPage() {
                         No rooms available for {walkIn.roomsBooked} room(s) on those dates.
                       </p>
                     ) : (
-                      <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(22rem,1fr))]">
+                      <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(33rem,1fr))]">
                         {availableTypes.map((rt) => (
                           <label
                             key={rt.room_type_id}
-                            className={`w-full max-w-[32rem] flex items-center justify-between gap-4 border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
+                            className={`w-full max-w-[48rem] flex items-center justify-between gap-4 border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
                               walkIn.roomTypeId === String(rt.room_type_id)
                                 ? "border-[color:var(--emphasis)] bg-[color:var(--emphasis)]/5 ring-1 ring-[color:var(--emphasis)]"
                                 : "border-[color:var(--text-color)]/20 hover:border-[color:var(--emphasis)]/40"
@@ -1491,11 +1491,11 @@ function FutureBookingForm() {
               No rooms available for {form.roomsBooked} room(s) on those dates.
             </p>
           ) : (
-            <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(22rem,1fr))]">
+            <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(33rem,1fr))]">
               {roomTypes.map((rt) => (
                 <label
                   key={rt.room_type_id}
-                  className={`w-full max-w-[32rem] flex items-center justify-between gap-4 border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
+                  className={`w-full max-w-[48rem] flex items-center justify-between gap-4 border rounded-xl px-6 py-4 cursor-pointer transition-colors ${
                     form.roomTypeId === String(rt.room_type_id)
                       ? "border-[color:var(--emphasis)] bg-[color:var(--emphasis)]/5 ring-1 ring-[color:var(--emphasis)]"
                       : "border-[color:var(--text-color)]/20 hover:border-[color:var(--emphasis)]/40"
