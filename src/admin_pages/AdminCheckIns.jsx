@@ -49,6 +49,8 @@ const EMPTY_WALK_IN = {
   roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "", withoutBreakfast: false, complementary: false,
   paymentSplits: [{ amount: "", payment_method: "transfer" }], paymentReceiptNumber: "", paymentNotes: "",
   paymentTaxMode: "fixed", paymentTax: "", paymentDiscountMode: "percentage", paymentDiscount: "",
+  // Nights an OTA is paying for instead of the guest (see OtaNightsFields).
+  ota: { start: "", end: "", breakfast: false, amount: "" },
 };
 
 export default function AdminCheckInsPage() {
@@ -241,17 +243,19 @@ export default function AdminCheckInsPage() {
   // Defaults to the whole stay, which is the usual case; the amount is
   // prefilled from the rate for those nights and stays editable, since an OTA
   // normally remits net of its commission.
-  const [ota, setOta] = useState({ enabled: false, start: "", end: "", breakfast: false, amount: "" });
+  const [ota, setOta] = useState({ start: "", end: "", breakfast: false, amount: "" });
   const otaMin = selected?.check_in ? String(selected.check_in).slice(0, 10) : "";
   const otaMax = selected?.check_out ? String(selected.check_out).slice(0, 10) : "";
 
   useEffect(() => {
-    setOta({ enabled: false, start: otaMin, end: otaMax, breakfast: false, amount: "" });
+    // Defaults to the whole stay, the usual case; narrowing the range leaves
+    // the nights outside it on the guest's bill.
+    setOta({ start: otaMin, end: otaMax, breakfast: false, amount: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id]);
 
   useEffect(() => {
-    if (!selected || !ota.enabled || !ota.start || !ota.end || ota.end <= ota.start) return undefined;
+    if (!selected || !ota.start || !ota.end || ota.end <= ota.start) return undefined;
     let cancelled = false;
     previewOtaAmount({
       reservationId: selected.id,
@@ -263,7 +267,7 @@ export default function AdminCheckInsPage() {
       .catch(() => {});
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id, ota.enabled, ota.start, ota.end, ota.breakfast]);
+  }, [selected?.id, ota.start, ota.end, ota.breakfast]);
 
   const handleCheckIn = async () => {
     if (!selected) return;
@@ -279,7 +283,7 @@ export default function AdminCheckInsPage() {
       // on. A failure here must never read as a failed check-in — the guest
       // is in — so it is reported on its own terms instead.
       let otaError = null;
-      if (ota.enabled && ota.start && ota.end && ota.end > ota.start) {
+      if (ota.start && ota.end && ota.end > ota.start) {
         try {
           await createOtaSettlement({
             reservationId: checkedInId,
@@ -387,6 +391,25 @@ export default function AdminCheckInsPage() {
       await confirmReservationById(internalId);
       await checkInReservation(internalId);
 
+      // The folio exists by now (confirmReservationById above), which is what
+      // an OTA settlement hangs on. Reported as a warning rather than thrown:
+      // the guest is checked in either way.
+      if (walkIn.ota.start && walkIn.ota.end && walkIn.ota.end > walkIn.ota.start) {
+        try {
+          await createOtaSettlement({
+            reservationId: internalId,
+            startDate: walkIn.ota.start,
+            endDate: walkIn.ota.end,
+            includesBreakfast: walkIn.ota.breakfast,
+            amount: walkIn.ota.amount || undefined,
+          });
+        } catch (err) {
+          setWalkInPaymentWarning(
+            `The OTA payment was not saved: ${err.response?.data?.message || "add it from the guest folio"}.`,
+          );
+        }
+      }
+
       // Payment is optional — only attempted if the receptionist actually
       // entered an amount. Failing this must never undo or hide the
       // check-in that already succeeded; it's reported as a separate
@@ -469,6 +492,25 @@ export default function AdminCheckInsPage() {
   const walkInTotal = walkInPerNightRate * Number(walkIn.roomsBooked || 1) * walkInNights;
   const walkInValidRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
   const walkInBaseRate = Number(selectedWalkInRoomType?.base_rate || 0);
+
+  // What the OTA is expected to cover, so the desk can see what to actually
+  // take from the guest rather than working it out in their head. A typed
+  // amount wins (an OTA usually remits net of its commission); otherwise it is
+  // the rate for the nights in the range, which is exactly what the server
+  // fills in when the field is left blank.
+  const walkInOtaNights = walkIn.ota.start && walkIn.ota.end && walkIn.ota.end > walkIn.ota.start
+    ? Math.max(0, Math.round((new Date(walkIn.ota.end) - new Date(walkIn.ota.start)) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const walkInOtaPerNight = walkInRoomRate + (walkIn.ota.breakfast && walkInBreakfastIncluded ? walkInBreakfastRate : 0);
+  const walkInOtaAmount = walkInOtaNights === 0
+    ? 0
+    : (String(walkIn.ota.amount).trim() !== ""
+      ? Number(walkIn.ota.amount) || 0
+      : walkInOtaPerNight * Number(walkIn.roomsBooked || 1) * walkInOtaNights);
+  // Everything the OTA is not covering is the guest's own. Floored at zero:
+  // an OTA remitting more than the stay costs is the folio's problem to hold
+  // as credit, not a negative sum to ask someone for.
+  const walkInGuestDue = Math.max(walkInTotal - walkInOtaAmount, 0);
 
   // Tax/Discount applied at payment time — distinct from the Discount above
   // (which adjusts the Room Rate the stay bills at going forward). These
@@ -993,6 +1035,13 @@ export default function AdminCheckInsPage() {
                   </div>
                 </div>
 
+                <OtaNightsFields
+                  value={walkIn.ota}
+                  onChange={(next) => setWalkIn((p) => ({ ...p, ota: next }))}
+                  minDate={walkInCheckInISO()}
+                  maxDate={walkIn.checkOut}
+                />
+
                 {/* Payment (optional) — a walk-in commonly pays at the desk
                     right away; recording it here saves the trip to the
                     folio afterward. Left blank, nothing is charged and the
@@ -1004,6 +1053,27 @@ export default function AdminCheckInsPage() {
                       If the guest is paying now, record it here — leave the amount blank to skip and record it later from the folio.
                     </p>
                   </div>
+                  {/* With an OTA covering part of the stay, the stay total is
+                      not what the guest owes — this states the difference so
+                      nobody has to work it out at the desk. */}
+                  {walkInOtaAmount > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 flex flex-col gap-1">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <span className="text-xl text-amber-800">Stay total</span>
+                        <span className="text-xl font-semibold text-amber-800">{fmtCurrency(walkInTotal)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <span className="text-xl text-amber-800">
+                          OTA is paying ({walkInOtaNights} night{walkInOtaNights > 1 ? "s" : ""})
+                        </span>
+                        <span className="text-xl font-semibold text-amber-800">-{fmtCurrency(walkInOtaAmount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 flex-wrap border-t border-amber-200 mt-1 pt-2">
+                        <span className="text-xl font-bold text-amber-900">Collect from the guest</span>
+                        <span className="text-2xl font-bold text-amber-900">{fmtCurrency(walkInGuestDue)}</span>
+                      </div>
+                    </div>
+                  )}
                   <PaymentSplitRows
                     splits={walkIn.paymentSplits}
                     setSplits={(splits) => setWalkIn((p) => ({ ...p, paymentSplits: splits }))}
@@ -1156,70 +1226,11 @@ export default function AdminCheckInsPage() {
             )}
           </div>
 
-          {/* Nights an OTA is paying for. They stay charged to the folio, so it
-              reads owing until the OTA remits, and the guest is never asked for
-              them. */}
-          <div className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-4">
-            <label className="flex items-center gap-2 text-xl cursor-pointer">
-              <input
-                type="checkbox"
-                checked={ota.enabled}
-                onChange={(e) => setOta({ ...ota, enabled: e.target.checked })}
-                className="w-5 h-5 cursor-pointer"
-              />
-              An OTA is paying for these nights
-            </label>
-            {ota.enabled && (
-              <>
-                <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                  <div className="flex flex-col gap-2">
-                    <label className={field.label}>OTA covers from</label>
-                    <input
-                      type="date"
-                      value={ota.start}
-                      min={otaMin}
-                      max={otaMax}
-                      onChange={(e) => setOta({ ...ota, start: e.target.value })}
-                      className={field.input}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className={field.label}>Until</label>
-                    <input
-                      type="date"
-                      value={ota.end}
-                      min={otaMin}
-                      max={otaMax}
-                      onChange={(e) => setOta({ ...ota, end: e.target.value })}
-                      className={field.input}
-                    />
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 text-xl cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={ota.breakfast}
-                    onChange={(e) => setOta({ ...ota, breakfast: e.target.checked })}
-                    className="w-5 h-5 cursor-pointer"
-                  />
-                  The OTA rate includes breakfast
-                </label>
-                <div className="flex flex-col gap-2">
-                  <label className={field.label}>Amount the OTA will pay</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={ota.amount}
-                    onChange={(e) => setOta({ ...ota, amount: e.target.value })}
-                    className={field.input}
-                  />
-                  <p className="text-lg text-[color:var(--text-color)]/60">
-                    Prefilled from the rate for those nights. Lower it if the OTA remits net of its commission.
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
+          {/* Nights an OTA is paying for — the same control the Walk-In and
+              Future Booking forms use, so the question reads identically
+              wherever a booking is keyed in. Defaults to the whole stay here,
+              since an arrival being checked in already has its dates. */}
+          <OtaNightsFields value={ota} onChange={setOta} minDate={otaMin} maxDate={otaMax} />
         </Modal>
       )}
     </>
@@ -1250,6 +1261,87 @@ const EMPTY_FUTURE_BOOKING = {
  * after 2 hours (HOLD_EXPIRY_HOURS) — one taken today for next week would
  * release itself the same afternoon.
  */
+// The OTA half of both booking forms: which nights an OTA is paying for
+// instead of the guest. Keyed in by hand because there is no channel manager —
+// an OTA booking reaches the desk as a walk-in or as a future booking, never
+// as an automatic arrival.
+//
+// The amount is optional here, unlike on the arrivals check-in form: the
+// reservation does not exist yet, so there is nothing to price the nights from
+// until it does. Left blank, the server fills in the rate for those nights.
+function OtaNightsFields({ value, onChange, minDate, maxDate }) {
+  const set = (patch) => onChange({ ...value, ...patch });
+  // The range is the switch: dates filled in mean an OTA is paying for those
+  // nights, blank means nobody is. A checkbox over the whole stay could not
+  // express the common case — three nights booked through an OTA and a fourth
+  // added at the desk, which the guest pays for themselves.
+  const hasRange = Boolean(value.start && value.end && value.end > value.start);
+  return (
+    <div className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-4">
+      <div className="flex flex-col gap-1">
+        <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">
+          OTA-paid nights — optional
+        </p>
+        <p className="text-lg text-[color:var(--text-color)]/60">
+          Leave both dates blank if no OTA is involved. Any night outside this range stays on the guest&apos;s own
+          bill, so a guest can add nights and pay for them directly.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>OTA covers from</label>
+          <input
+            type="date"
+            value={value.start}
+            min={minDate}
+            max={maxDate}
+            onChange={(e) => set({ start: e.target.value })}
+            className={field.input}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>Until</label>
+          <input
+            type="date"
+            value={value.end}
+            min={minDate}
+            max={maxDate}
+            onChange={(e) => set({ end: e.target.value })}
+            className={field.input}
+          />
+        </div>
+      </div>
+      {hasRange && (
+        <label className="flex items-center gap-2 text-xl cursor-pointer">
+          <input
+            type="checkbox"
+            checked={value.breakfast}
+            onChange={(e) => set({ breakfast: e.target.checked })}
+            className="w-5 h-5 cursor-pointer"
+          />
+          The OTA rate includes breakfast
+        </label>
+      )}
+      {hasRange && (
+        <div className="flex flex-col gap-2">
+          <label className={field.label}>Amount the OTA will pay — optional</label>
+          <input
+            type="number"
+            min="0"
+            value={value.amount}
+            onChange={(e) => set({ amount: e.target.value })}
+            placeholder="Leave blank to use the rate for those nights"
+            className={field.input}
+          />
+          <p className="text-lg text-[color:var(--text-color)]/60">
+            Fill this to use a custom amount for the OTA payment.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FutureBookingForm() {
   const [form, setForm] = useState(EMPTY_FUTURE_BOOKING);
   const [availability, setAvailability] = useState(null);
@@ -1258,6 +1350,7 @@ function FutureBookingForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [created, setCreated] = useState(null);
+  const [futureOta, setFutureOta] = useState({ start: "", end: "", breakfast: false, amount: "" });
   const [guestMatches, setGuestMatches] = useState([]);
   const [activeGuestField, setActiveGuestField] = useState(null);
 
@@ -1392,7 +1485,27 @@ function FutureBookingForm() {
       // a real number, future-dated or not.
       await assignRoom(hold.internal_id, chosenRooms);
       await confirmReservationById(hold.internal_id);
+
+      // Same as the walk-in form: the folio exists once the reservation is
+      // confirmed, and a failure here must not read as a failed booking.
+      let otaWarning = null;
+      if (futureOta.start && futureOta.end && futureOta.end > futureOta.start) {
+        try {
+          await createOtaSettlement({
+            reservationId: hold.internal_id,
+            startDate: futureOta.start,
+            endDate: futureOta.end,
+            includesBreakfast: futureOta.breakfast,
+            amount: futureOta.amount || undefined,
+          });
+        } catch (err) {
+          otaWarning = err.response?.data?.message || "the OTA payment could not be saved";
+        }
+      }
+
       setCreated({ reference: hold.reservation_id, checkIn: form.checkIn });
+      if (otaWarning) setError(`Reservation created, but ${otaWarning}. Add it from the guest folio.`);
+      setFutureOta({ start: "", end: "", breakfast: false, amount: "" });
       setForm(EMPTY_FUTURE_BOOKING);
       setAvailability(null);
       setRooms(null);
@@ -1557,6 +1670,13 @@ function FutureBookingForm() {
             )}
           </div>
         )}
+
+        <OtaNightsFields
+          value={futureOta}
+          onChange={setFutureOta}
+          minDate={form.checkIn}
+          maxDate={form.checkOut}
+        />
 
         <button type="submit" disabled={!canSubmit} className={`${btn.primary} self-start px-12! py-4!`}>
           {submitting ? "Creating..." : "Create Reservation"}
