@@ -4,17 +4,25 @@ import LoadingSpinner from "./LoadingSpinner";
 import { fetchStaffAccounts } from "../../utils/staff-accounts-api";
 import { selectCurrentShift } from "../../utils/shifts-api";
 
-// The 6am prompt: which receptionist this business day belongs to.
+// How each rota reads on screen. The front desk and the F&B floor are
+// prompted the same way, from their own roster.
+const ROTA = {
+  receptionist: { person: "receptionist", locked: "The front desk stays locked" },
+  waitron: { person: "waitron", locked: "Food and drink sales stay locked" },
+};
+
+// The 6am prompt: who this business day belongs to, for one rota.
 //
 // Deliberately not the shared Modal — that one closes on ESC, on a backdrop
-// click and from its own X, and any of those would defeat the lock. The front
-// desk stays shut until the shift is recorded. onCancel is passed only when a
-// manager opens this to correct an already-recorded shift, which is a
+// click and from its own X, and any of those would defeat the lock. The rota
+// stays shut until its shift is recorded. onCancel is passed only when
+// someone reopens this to correct an already-recorded shift, which is a
 // different, non-blocking use.
 //
 // Picking a name never records it outright: the whole day is attributed to
 // whoever is named here, so the choice is read back for confirmation first.
-export default function ShiftGate({ businessDate, currentName, onSelected, onCancel }) {
+export default function ShiftGate({ role, businessDate, currentName, onSelected, onCancel }) {
+  const rota = ROTA[role] || ROTA.receptionist;
   const [staff, setStaff] = useState(null);
   const [selected, setSelected] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -22,13 +30,16 @@ export default function ShiftGate({ businessDate, currentName, onSelected, onCan
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchStaffAccounts("receptionist")
+    setStaff(null);
+    setSelected("");
+    setConfirming(false);
+    fetchStaffAccounts(role)
       .then((list) => setStaff(list || []))
       .catch(() => {
         setStaff([]);
-        setError("Could not load the receptionist list. Refresh the page and try again.");
+        setError("Could not load the staff list. Refresh the page and try again.");
       });
-  }, []);
+  }, [role]);
 
   const selectedName = (staff || []).find((person) => String(person.id) === String(selected))?.username;
 
@@ -37,7 +48,7 @@ export default function ShiftGate({ businessDate, currentName, onSelected, onCan
     try {
       setSaving(true);
       setError(null);
-      onSelected(await selectCurrentShift(selected));
+      onSelected(await selectCurrentShift(role, selected));
     } catch (err) {
       setError(err.response?.data?.message || "Could not record the shift. Try again.");
       setSaving(false);
@@ -56,9 +67,9 @@ export default function ShiftGate({ businessDate, currentName, onSelected, onCan
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl font-bold text-[color:var(--black)]">Whose shift is this?</h2>
           <p className="text-xl text-[color:var(--text-color)]/76">
-            The business day{businessDate ? ` (${businessDate})` : ""} has started. Pick the receptionist on
-            duty — your own name, or the colleague whose shift it is. The front desk stays locked until this is
-            recorded, and the choice goes to the audit trail.
+            The business day{businessDate ? ` (${businessDate})` : ""} has started. Pick the {rota.person} on
+            duty — your own name, or the colleague whose shift it is. {rota.locked} until this is recorded, and
+            the choice goes to the audit trail.
           </p>
           {currentName && (
             <p className="text-xl text-[color:var(--text-color)]/76">
@@ -75,30 +86,30 @@ export default function ShiftGate({ businessDate, currentName, onSelected, onCan
           <LoadingSpinner />
         ) : confirming ? (
           // Read the name back before it is recorded: a mis-pick attributes a
-          // whole day of the desk to the wrong person, and correcting it
-          // afterwards needs a manager.
+          // whole day to the wrong person.
           <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-6 py-5 flex flex-col gap-3">
             <p className="text-2xl font-bold text-[color:var(--black)]">
               Record {selectedName} as the shift?
             </p>
             <p className="text-xl text-[color:var(--text-color)]/76">
-              Everything the front desk does for this business day
-              {businessDate ? ` (${businessDate})` : ""} will be attributed to {selectedName}. Your own name
-              goes on the record as the person who made the choice. Only a manager can change it afterwards.
+              Everything done on this business day{businessDate ? ` (${businessDate})` : ""} will be attributed
+              to {selectedName}. Your own name goes on the record as the person who made the choice.
             </p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <label className={field.label}>Receptionist on duty</label>
+            <label className={field.label}>
+              {rota.person.charAt(0).toUpperCase() + rota.person.slice(1)} on duty
+            </label>
             <select value={selected} onChange={(e) => setSelected(e.target.value)} className={field.select}>
-              <option value="">Select a receptionist</option>
+              <option value="">Select a name</option>
               {staff.map((person) => (
                 <option key={person.id} value={person.id}>{person.username}</option>
               ))}
             </select>
             {staff.length === 0 && !error && (
               <p className="text-lg text-[color:var(--text-color)]/60">
-                No active receptionist accounts for this branch. A manager has to add one first.
+                No active {rota.person} accounts for this branch. A manager has to add one first.
               </p>
             )}
           </div>

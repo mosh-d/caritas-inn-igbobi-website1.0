@@ -12,6 +12,12 @@ import { applyServerClock, deviceClockDriftMinutes, currentBusinessDateISO } fro
 import ShiftGate from "../components/shared/ShiftGate";
 import { fetchCurrentShift } from "../utils/shifts-api";
 
+// The rotas that get a 6am prompt of their own. Every other role works
+// without one, and never sees the readout — a manager has no use for a list
+// of other people's rotas in the top bar.
+const SHIFT_ROLES = ["receptionist", "waitron"];
+const SHIFT_LABELS = { receptionist: "Front desk", waitron: "F&B" };
+
 export default function AdminRootLayout() {
   const [hasNewReservation, setHasNewReservation] = useState(false);
   const { subscribe } = useWebSocketContext();
@@ -39,19 +45,23 @@ export default function AdminRootLayout() {
     return unsubscribe;
   }, [subscribe, handleNewReservation, canSeeReservations]);
 
-  // Whose shift the business day is, recorded once at the 6am rollover.
+  // Whose shift the business day is, per rota, recorded at the 6am rollover.
   //
-  // Only the front desk is locked out until it is recorded (owner's call,
-  // 2026-09-11): the desk resumes around 8am while the business day starts at
-  // 6am, so deriving the shift from whoever logs in first would either leave
-  // 06:00-07:59 unattributed or block check-ins through it. Everyone else
-  // works normally and just sees whose shift it is.
+  // Only a rota's own people are locked out until theirs is recorded (owner's
+  // call, 2026-09-11): staff resume around 8am while the business day starts
+  // at 6am, so deriving the shift from whoever logs in first would either
+  // leave 06:00-07:59 unattributed or block work through it.
   const staffRole = getStoredStaffRole();
-  const locksOnShift = staffRole === "receptionist";
-  const showsShift = locksOnShift || staffRole === "manager" || staffRole === "developer";
-  const canChangeShift = staffRole === "manager" || staffRole === "developer";
-  const [shift, setShift] = useState(null);
-  const [changingShift, setChangingShift] = useState(false);
+  const lockRole = SHIFT_ROLES.includes(staffRole) ? staffRole : null;
+  // A manager or developer sees both rotas and can correct either, without
+  // being locked out of anything; anyone with a rota of their own sees just
+  // that one; every other role (an accountant, say) is shown none at all,
+  // rather than a list of other people's rotas.
+  const seesEveryRota = staffRole === "manager" || staffRole === "developer";
+  const visibleShiftRoles = seesEveryRota ? SHIFT_ROLES : lockRole ? [lockRole] : [];
+  const visibleShiftKey = visibleShiftRoles.join(",");
+  const [shifts, setShifts] = useState({});
+  const [changingRole, setChangingRole] = useState(null);
   const [businessDate, setBusinessDate] = useState(currentBusinessDateISO());
 
   // A tab left open across 6am has to notice the rollover, since the new day
@@ -63,18 +73,29 @@ export default function AdminRootLayout() {
   }, []);
 
   useEffect(() => {
-    if (!showsShift) return undefined;
+    if (!visibleShiftKey) return undefined;
     let cancelled = false;
-    fetchCurrentShift()
-      .then((current) => { if (!cancelled) setShift(current); })
-      .catch(() => { if (!cancelled) setShift(null); });
+    visibleShiftKey.split(",").forEach((role) => {
+      fetchCurrentShift(role)
+        .then((current) => { if (!cancelled) setShifts((all) => ({ ...all, [role]: current })); })
+        .catch(() => { if (!cancelled) setShifts((all) => ({ ...all, [role]: null })); });
+    });
     return () => { cancelled = true; };
-  }, [showsShift, businessDate]);
+  }, [visibleShiftKey, businessDate]);
 
-  // Only lock on a KNOWN empty shift — if the request itself failed, shift
-  // stays null and the desk keeps working rather than being shut out by an
-  // API hiccup.
-  const mustRecordShift = locksOnShift && shift !== null && !shift.staff_account_id;
+  // Only lock on a KNOWN empty shift — if the request itself failed the entry
+  // is null, and work continues rather than being shut out by an API hiccup.
+  const lockShift = lockRole ? shifts[lockRole] : null;
+  const mustRecordShift = Boolean(lockRole && lockShift && !lockShift.staff_account_id);
+  const gateRole = changingRole || (mustRecordShift ? lockRole : null);
+  const shiftReadouts = visibleShiftRoles.map((role) => ({
+    key: role,
+    // One rota of your own needs no qualifier; a developer sees both, so both
+    // get named.
+    label: visibleShiftRoles.length > 1 ? SHIFT_LABELS[role] : "Shift",
+    name: shifts[role]?.staff_name || null,
+    onChange: shifts[role] ? () => setChangingRole(role) : undefined,
+  }));
 
   // Anchor every admin-facing date helper to the server's clock, once per
   // session. A front-desk PC with a wrong clock or timezone otherwise shows
@@ -242,10 +263,7 @@ export default function AdminRootLayout() {
       )}
 
       <header className="bg-white shadow-sm shrink-0">
-        <AdminTopBar
-          shiftName={shift?.staff_name}
-          onChangeShift={canChangeShift && shift ? () => setChangingShift(true) : undefined}
-        />
+        <AdminTopBar shifts={shiftReadouts} />
       </header>
       <div className="flex flex-1 overflow-hidden">
         <AdminNavBar />
@@ -254,19 +272,24 @@ export default function AdminRootLayout() {
         </main>
       </div>
 
-      {(mustRecordShift || changingShift) && (
+      {gateRole && (
         <ShiftGate
-          businessDate={shift?.business_date}
-          currentName={shift?.staff_name}
+          role={gateRole}
+          businessDate={shifts[gateRole]?.business_date}
+          currentName={shifts[gateRole]?.staff_name}
           onSelected={(result) => {
-            setShift({
-              business_date: result.business_date,
-              staff_account_id: result.staff_account_id,
-              staff_name: result.staff_name,
-            });
-            setChangingShift(false);
+            setShifts((all) => ({
+              ...all,
+              [result.role]: {
+                business_date: result.business_date,
+                role: result.role,
+                staff_account_id: result.staff_account_id,
+                staff_name: result.staff_name,
+              },
+            }));
+            setChangingRole(null);
           }}
-          onCancel={changingShift ? () => setChangingShift(false) : undefined}
+          onCancel={changingRole ? () => setChangingRole(null) : undefined}
         />
       )}
     </div>

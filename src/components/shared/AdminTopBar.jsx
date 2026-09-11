@@ -28,7 +28,7 @@ const branchLocationName = (fullName) => {
   return match ? fullName.slice(match.length).trim() : fullName;
 };
 
-export default function AdminTopBar({ shiftName, onChangeShift }) {
+export default function AdminTopBar({ shifts = [] }) {
   const isLogin = window.location.pathname === '/admin';
   // Deliberately the real role, not the effective (possibly simulated) one
   // getStoredStaffRole() would return — "Signed in as" states an actual
@@ -80,23 +80,24 @@ export default function AdminTopBar({ shiftName, onChangeShift }) {
           </NavLink>
         )}
         {/* Whose shift the business day is, from the 6am prompt (ShiftGate).
-            Managers and developers can reopen it to correct a wrong pick;
-            every change is audit-logged. */}
-        {(shiftName || onChangeShift) && (
-          <div className='flex items-center gap-2 text-lg text-white/70'>
-            <span className='max-sm:hidden'>Shift</span>
-            <span className='text-xl font-semibold text-white'>{shiftName || 'Not recorded'}</span>
-            {onChangeShift && (
+            Only the rotas themselves and a developer are shown this — nobody
+            else is made to read a list of other people's rotas. Reopening it
+            corrects a wrong pick; every change is audit-logged. */}
+        {shifts.map((shift) => (
+          <div key={shift.key} className='flex items-center gap-2 text-lg text-white/70'>
+            <span className='max-sm:hidden'>{shift.label}</span>
+            <span className='text-xl font-semibold text-white'>{shift.name || 'Not recorded'}</span>
+            {shift.onChange && (
               <button
                 type='button'
-                onClick={onChangeShift}
+                onClick={shift.onChange}
                 className='cursor-pointer rounded-lg border border-white/30 px-3 py-1 text-base font-medium text-white transition-colors hover:bg-white/10'
               >
-                {shiftName ? 'Change' : 'Record'}
+                {shift.name ? 'Change' : 'Record'}
               </button>
             )}
           </div>
-        )}
+        ))}
         {isRealDeveloper && (
           <label className='flex items-center gap-2 text-lg text-white/70' onClick={(e) => e.stopPropagation()}>
             <span className='max-sm:hidden'>Viewing as</span>

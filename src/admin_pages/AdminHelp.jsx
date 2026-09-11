@@ -228,7 +228,7 @@ const SECTIONS = [
     summary: "A record of every action taken by staff on this branch's account — who did what, and when. Manager, accountant, and developer visibility only — always read-only, no actions taken from here.",
     workflow: [
       "Filter by Staff, Role, or Action to narrow the list — all three can be combined at once.",
-      "Whose shift a day belongs to is recorded here too (Shift recorded): the front desk picks the receptionist on duty at the 6am prompt, and whoever recorded it is logged alongside whoever it was recorded against — the two are often different people, since the desk resumes around 8am.",
+      "Whose shift a day belongs to is recorded here too (Shift recorded). The front desk and the F&B floor each have their own rota: a receptionist names the receptionist on duty, a waitron names the waitron, and neither can record the other. Whoever recorded it is logged alongside whoever it was recorded against — often different people, since staff resume around 8am while the business day starts at 6am.",
       "Report rows with an Action column link straight here with the filters already set: who did it, which kind of action, and the business day. That traces any line on a report back to the log entry behind it. The Action column only appears for roles that can open this page.",
       "Some actions link straight to the specific record affected (e.g. \"View folio →\") — for a payment, this opens the folio and highlights that exact payment line.",
       "Not every action is logged with a full readable sentence yet — anything not listed below still shows up, just as a plain \"METHOD /route\" entry.",
