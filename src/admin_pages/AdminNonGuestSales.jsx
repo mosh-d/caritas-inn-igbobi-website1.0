@@ -10,6 +10,7 @@ import TransactionReceiptModal from "../components/shared/TransactionReceiptModa
 import PrintReceiptModal from "../components/shared/PrintReceiptModal";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import PhoneInput from "../components/shared/PhoneInput";
+import OrderItemRows from "../components/shared/OrderItemRows";
 import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
@@ -100,7 +101,16 @@ export default function AdminNonGuestSalesPage() {
   // Bill No is optional — the system generates a receipt number if it's
   // left blank (see PrintReceiptModal), so it's no longer required here the
   // way a docket/bill book number used to be.
-  const newFolioRowsValid = newFolio.rows.length > 0 && newFolio.rows.every((row) => row.reference_id && Number(row.quantity) > 0);
+  // Same rule as Guest Sales (see its rowUntouched): a line added and left
+  // alone is dropped on submit instead of blocking the bill; a line someone
+  // started has to be finished.
+  const rowUntouched = (row) => !row.reference_id && String(row.quantity) === "1" && !row.is_complementary && !row.is_manager;
+  const postableNewFolioRows = newFolio.rows.filter((row) => !rowUntouched(row));
+  const newFolioRowsValid = postableNewFolioRows.length > 0
+    && postableNewFolioRows.every((row) => row.reference_id && Number(row.quantity) > 0);
+  const newFolioBlockReason = postableNewFolioRows.length === 0
+    ? "Pick an item on at least one line."
+    : "Finish the lines you started — each needs an item and a quantity of 1 or more.";
 
   const updateNewFolioRow = (index, patch) => {
     setNewFolio({ ...newFolio, rows: newFolio.rows.map((row, i) => (i === index ? { ...row, ...patch } : row)) });
@@ -117,7 +127,7 @@ export default function AdminNonGuestSalesPage() {
         guest_name: newFolio.guest_name.trim() || undefined,
         guest_phone: newFolio.guest_phone.trim() || undefined,
         bill_no: newFolio.bill_no.trim() || undefined,
-        items: newFolio.rows.map((row) => ({
+        items: postableNewFolioRows.map((row) => ({
           item_kind: row.item_kind,
           reference_id: Number(row.reference_id),
           quantity: Number(row.quantity),
@@ -446,67 +456,17 @@ export default function AdminNonGuestSalesPage() {
           </div>
         )}
 
-        {newFolio.rows.map((row, index) => (
-          <div key={index} className="flex flex-col gap-4 pb-4 border-b border-[color:var(--text-color)]/10 last:border-0 last:pb-0">
-            <div className="flex flex-col gap-2">
-              <label className={field.label}>Kind</label>
-              <select
-                value={row.item_kind}
-                onChange={(e) => updateNewFolioRow(index, { item_kind: e.target.value, reference_id: "", is_complementary: false, is_manager: false })}
-                className={field.select}
-              >
-                <option value="food">Food</option>
-                <option value="drink">Drink</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className={field.label}>Item</label>
-              <select
-                value={row.reference_id}
-                onChange={(e) => updateNewFolioRow(index, { reference_id: e.target.value })}
-                className={field.select}
-              >
-                <option value="">Select an item</option>
-                {menuFor(row.item_kind).map((i) => <option key={i.id} value={i.id}>{i.name} — {money(i.price)}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className={field.label}>Quantity</label>
-              <input type="number" min="1" value={row.quantity} onChange={(e) => updateNewFolioRow(index, { quantity: e.target.value })} className={field.input} />
-            </div>
-            <div className="flex gap-6 flex-wrap items-center">
-              <label className="flex items-center gap-2 text-xl cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={row.is_complementary || row.is_manager}
-                  disabled={row.is_manager}
-                  onChange={(e) => updateNewFolioRow(index, { is_complementary: e.target.checked })}
-                  className="w-5 h-5 cursor-pointer"
-                />
-                Complementary
-              </label>
-              <label className="flex items-center gap-2 text-xl cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={row.is_manager}
-                  onChange={(e) => updateNewFolioRow(index, { is_manager: e.target.checked, is_complementary: e.target.checked ? true : row.is_complementary })}
-                  className="w-5 h-5 cursor-pointer"
-                />
-                For Manager
-              </label>
-            </div>
-            {Number(rowServiceCharge(row)) > 0 && (
-              <p className="text-lg text-[color:var(--text-color)]/60">Service Charge: {money(rowServiceCharge(row))}</p>
-            )}
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-xl font-bold whitespace-nowrap">{money(rowAmount(row) + rowServiceCharge(row))}</span>
-              {newFolio.rows.length > 1 && (
-                <button type="button" onClick={() => removeNewFolioRow(index)} className={btn.rowDanger}>Remove</button>
-              )}
-            </div>
-          </div>
-        ))}
-        <button type="button" onClick={addNewFolioRow} className={`${btn.rowSecondary} self-start`}>+ Add Item</button>
+        <OrderItemRows
+          rows={newFolio.rows}
+          onUpdate={updateNewFolioRow}
+          onRemove={removeNewFolioRow}
+          onAdd={addNewFolioRow}
+          menuFor={menuFor}
+          itemFor={itemFor}
+          rowAmount={rowAmount}
+          rowServiceCharge={rowServiceCharge}
+          showManagerToggle
+        />
 
         <div className="flex justify-between items-center border-t border-[color:var(--text-color)]/10 pt-4">
           <span className="text-xl font-bold uppercase tracking-wide text-[color:var(--text-color)]/68">Total</span>
@@ -520,6 +480,10 @@ export default function AdminNonGuestSalesPage() {
         >
           {creating ? "Opening..." : "Open Folio"}
         </button>
+        {/* Never leave a disabled button unexplained. */}
+        {!newFolioRowsValid && !creating && (
+          <p className="text-lg text-[color:var(--text-color)]/68">{newFolioBlockReason}</p>
+        )}
       </div>
 
       {/* ==== Folio list ==== */}

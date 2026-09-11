@@ -8,6 +8,7 @@ import PrintReceiptModal from "../components/shared/PrintReceiptModal";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
+import OrderItemRows from "../components/shared/OrderItemRows";
 import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
@@ -97,7 +98,22 @@ export default function AdminGuestSalesPage() {
 
   const selectedGuest = inHouse.find((r) => String(r.id) === String(order.reservation_id));
   const orderTotal = order.rows.reduce((sum, row) => sum + rowAmount(row) + rowServiceCharge(row), 0);
-  const orderValid = order.reservation_id && order.rows.length > 0 && order.rows.every((row) => row.reference_id && Number(row.quantity) > 0);
+  // A line nobody has touched — added with + Add Item and then left alone —
+  // is dropped on submit rather than blocking the order, so adding lines can
+  // never strand the Post Order button. It used to: one untouched line
+  // disabled the button with nothing on screen saying which line was the
+  // problem, which read as "past N items the button stops working". A line
+  // someone HAS started still has to be finished, since dropping that one
+  // silently would under-post the bill.
+  const rowUntouched = (row) => !row.reference_id && String(row.quantity) === "1" && !row.is_complementary;
+  const postableRows = order.rows.filter((row) => !rowUntouched(row));
+  const orderValid = Boolean(order.reservation_id) && postableRows.length > 0
+    && postableRows.every((row) => row.reference_id && Number(row.quantity) > 0);
+  const orderBlockReason = !order.reservation_id
+    ? "Select a guest to post this order to."
+    : postableRows.length === 0
+      ? "Pick an item on at least one line."
+      : "Finish the lines you started — each needs an item and a quantity of 1 or more.";
 
   const updateRow = (index, patch) => {
     setOrder({ ...order, rows: order.rows.map((row, i) => (i === index ? { ...row, ...patch } : row)) });
@@ -160,7 +176,7 @@ export default function AdminGuestSalesPage() {
       setError(null);
       const result = await addFolioItemsBatch(selectedGuest.folio.id, {
         bill_no: order.bill_no.trim() || undefined,
-        items: order.rows.map((row) => ({
+        items: postableRows.map((row) => ({
           item_type: row.item_kind === "food" ? "food_charge" : "drink_charge",
           reference_id: Number(row.reference_id),
           quantity: Number(row.quantity),
@@ -276,57 +292,16 @@ export default function AdminGuestSalesPage() {
           One receipt number covers the whole order — leave it blank and the system fills one in.
         </p>
 
-        {order.rows.map((row, index) => (
-          <div key={index} className="flex flex-col gap-4 pb-4 border-b border-[color:var(--text-color)]/10 last:border-0 last:pb-0">
-            <div className="flex flex-col gap-2">
-              <label className={field.label}>Kind</label>
-              <select
-                value={row.item_kind}
-                onChange={(e) => updateRow(index, { item_kind: e.target.value, reference_id: "", is_complementary: false })}
-                className={field.select}
-              >
-                <option value="food">Food</option>
-                <option value="drink">Drink</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className={field.label}>Item</label>
-              <select
-                value={row.reference_id}
-                onChange={(e) => updateRow(index, { reference_id: e.target.value })}
-                className={field.select}
-              >
-                <option value="">Select an item</option>
-                {menuFor(row.item_kind).map((i) => <option key={i.id} value={i.id}>{i.name} — {money(i.price)}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className={field.label}>Quantity</label>
-              <input type="number" min="1" value={row.quantity} onChange={(e) => updateRow(index, { quantity: e.target.value })} className={field.input} />
-            </div>
-            <div className="flex gap-6 flex-wrap items-center">
-              <label className="flex items-center gap-2 text-xl cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={row.is_complementary}
-                  onChange={(e) => updateRow(index, { is_complementary: e.target.checked })}
-                  className="w-5 h-5 cursor-pointer"
-                />
-                Complementary
-              </label>
-            </div>
-            {Number(rowServiceCharge(row)) > 0 && (
-              <p className="text-lg text-[color:var(--text-color)]/60">Service Charge: {money(rowServiceCharge(row))}</p>
-            )}
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-xl font-bold whitespace-nowrap">{money(rowAmount(row) + rowServiceCharge(row))}</span>
-              {order.rows.length > 1 && (
-                <button type="button" onClick={() => removeRow(index)} className={btn.rowDanger}>Remove</button>
-              )}
-            </div>
-          </div>
-        ))}
-        <button type="button" onClick={addRow} className={`${btn.rowSecondary} self-start`}>+ Add Item</button>
+        <OrderItemRows
+          rows={order.rows}
+          onUpdate={updateRow}
+          onRemove={removeRow}
+          onAdd={addRow}
+          menuFor={menuFor}
+          itemFor={itemFor}
+          rowAmount={rowAmount}
+          rowServiceCharge={rowServiceCharge}
+        />
 
         <div className="flex justify-between items-center border-t border-[color:var(--text-color)]/10 pt-4">
           <span className="text-xl font-bold uppercase tracking-wide text-[color:var(--text-color)]/68">Total</span>
@@ -340,6 +315,11 @@ export default function AdminGuestSalesPage() {
         >
           {submitting ? "Posting..." : "Post Order"}
         </button>
+        {/* Never leave a disabled button unexplained — that is what made this
+            look broken rather than incomplete. */}
+        {!orderValid && !submitting && (
+          <p className="text-lg text-[color:var(--text-color)]/68">{orderBlockReason}</p>
+        )}
       </div>
 
       <div className={table.card}>
