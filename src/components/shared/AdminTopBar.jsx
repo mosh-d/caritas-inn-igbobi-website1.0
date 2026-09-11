@@ -28,6 +28,26 @@ const branchLocationName = (fullName) => {
   return match ? fullName.slice(match.length).trim() : fullName;
 };
 
+// One rota's readout: who is on it today, plus the control to correct a
+// wrong pick.
+function ShiftRow({ shift }) {
+  return (
+    <div className='flex items-center gap-2 text-lg text-white/70'>
+      <span className='max-sm:hidden'>{shift.label}</span>
+      <span className='text-xl font-semibold text-white'>{shift.name || 'Not recorded'}</span>
+      {shift.onChange && (
+        <button
+          type='button'
+          onClick={shift.onChange}
+          className='cursor-pointer rounded-lg border border-white/30 px-3 py-1 text-base font-medium text-white transition-colors hover:bg-white/10'
+        >
+          {shift.name ? 'Change' : 'Record'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function AdminTopBar({ shifts = [] }) {
   const isLogin = window.location.pathname === '/admin';
   // Deliberately the real role, not the effective (possibly simulated) one
@@ -80,24 +100,22 @@ export default function AdminTopBar({ shifts = [] }) {
           </NavLink>
         )}
         {/* Whose shift the business day is, from the 6am prompt (ShiftGate).
-            Only the rotas themselves and a developer are shown this — nobody
-            else is made to read a list of other people's rotas. Reopening it
-            corrects a wrong pick; every change is audit-logged. */}
-        {shifts.map((shift) => (
-          <div key={shift.key} className='flex items-center gap-2 text-lg text-white/70'>
-            <span className='max-sm:hidden'>{shift.label}</span>
-            <span className='text-xl font-semibold text-white'>{shift.name || 'Not recorded'}</span>
-            {shift.onChange && (
-              <button
-                type='button'
-                onClick={shift.onChange}
-                className='cursor-pointer rounded-lg border border-white/30 px-3 py-1 text-base font-medium text-white transition-colors hover:bg-white/10'
-              >
-                {shift.name ? 'Change' : 'Record'}
-              </button>
-            )}
-          </div>
-        ))}
+            Only the rotas themselves, a manager and a developer see this at
+            all. Anyone who sees BOTH rotas gets them behind a "Shifts"
+            toggle — two more stacked lines made an already tall top bar
+            taller — while a rota of your own stays inline, being one line.
+            Reopening a row corrects a wrong pick; every change is
+            audit-logged. */}
+        {shifts.length > 1 ? (
+          <details className='text-lg text-white/70'>
+            <summary className='cursor-pointer transition-colors hover:text-white'>Shifts</summary>
+            <div className='flex flex-col gap-1 pt-2'>
+              {shifts.map((shift) => <ShiftRow key={shift.key} shift={shift} />)}
+            </div>
+          </details>
+        ) : (
+          shifts.map((shift) => <ShiftRow key={shift.key} shift={shift} />)
+        )}
         {isRealDeveloper && (
           <label className='flex items-center gap-2 text-lg text-white/70' onClick={(e) => e.stopPropagation()}>
             <span className='max-sm:hidden'>Viewing as</span>
