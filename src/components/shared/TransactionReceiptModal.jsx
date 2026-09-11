@@ -1,6 +1,7 @@
 import Modal from "./Modal";
 import { btn } from "./ui";
 import CopyIconButton from "./CopyIconButton";
+import { formatPaymentMethod } from "../../utils/report-format";
 
 // Shown right after any payment/refund/deposit is recorded — the reference
 // number is the thing the guest takes down or the receptionist writes on a
@@ -25,7 +26,7 @@ export default function TransactionReceiptModal({ title, reference, amount, item
         {lines.map((line, i) => (
           <div key={line.reference || i} className="flex flex-col items-center gap-3 w-full">
             <p className="text-xl font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">
-              {lines.length > 1 ? `Reference / Payment ID (${line.method || `#${i + 1}`})` : "Reference / Payment ID"}
+              {lines.length > 1 ? `Reference / Payment ID (${line.method ? formatPaymentMethod(line.method) : `#${i + 1}`})` : "Reference / Payment ID"}
             </p>
             <p className="text-4xl font-bold font-mono tracking-wide text-[color:var(--black)] break-all">{line.reference}</p>
             {line.amount != null && <p className="text-2xl text-[color:var(--text-color)]/76">{line.amount}</p>}

@@ -17,3 +17,37 @@ export const formatDateTime = (d) =>
 // actual_check_in/actual_check_out timestamp once it's a real past event.
 export const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";
+
+// Payment methods are stored lowercase (cash, pos, transfer, ota, ...). OTA
+// and POS are initialisms, so a CSS capitalize class rendered them as "Ota"
+// and "Pos" — every display of a method goes through here instead. The
+// backend has the same helper in common/utils/payment-method.util.ts.
+//
+// Reports build comma-joined lists of methods ("cash, pos"), so each value is
+// handled in turn.
+const PAYMENT_METHOD_LABELS = {
+  ota: "OTA",
+  pos: "POS",
+  // The Manifest writes NIL for a night with nothing paid against it.
+  nil: "NIL",
+  charged_to_room: "Charged to Room",
+  reservation_credit: "Reservation Credit",
+};
+
+export const formatPaymentMethod = (method) => {
+  const raw = String(method ?? "").trim();
+  if (!raw) return "—";
+  return raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const key = part.toLowerCase();
+      if (PAYMENT_METHOD_LABELS[key]) return PAYMENT_METHOD_LABELS[key];
+      return key
+        .split(/[\s_]+/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    })
+    .join(", ");
+};

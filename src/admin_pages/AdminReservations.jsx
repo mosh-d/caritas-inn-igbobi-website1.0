@@ -35,6 +35,7 @@ import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, r
 import { canRefund } from "../utils/auth";
 import { fetchRoomDetails } from "../utils/room-data";
 import { hasPassedNoonCutoff } from "../utils/date-utils";
+import { formatPaymentMethod } from "../utils/report-format";
 
 const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
 const BRANCH_ID = 3; // Caritas Inn Igbobi branch ID
@@ -1125,7 +1126,7 @@ export default function AdminReservationsPage() {
                             {c.booking_reference && <> · from booking {c.booking_reference}</>}
                           </span>
                           <span className="text-xl font-medium">
-                            {money(c.amount)} · <span className="capitalize">{c.payment_method}</span>
+                            {money(c.amount)} · <span>{formatPaymentMethod(c.payment_method)}</span>
                           </span>
                         </div>
                         <button
@@ -1154,7 +1155,7 @@ export default function AdminReservationsPage() {
                             {dep.deposit_reference}{dep.receipt_number && <> · Receipt #{dep.receipt_number}</>} · {formatDate(dep.deposit_date)}
                           </span>
                           <span className="text-xl font-medium">
-                            {money(dep.amount)} · <span className="capitalize">{dep.payment_method}</span>
+                            {money(dep.amount)} · <span>{formatPaymentMethod(dep.payment_method)}</span>
                             {dep.notes && <span className="text-[color:var(--text-color)]/68 ml-2">— {dep.notes}</span>}
                           </span>
                         </div>

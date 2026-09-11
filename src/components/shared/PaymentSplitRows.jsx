@@ -1,4 +1,5 @@
 import { field, btn } from "./ui";
+import { formatPaymentMethod } from "../../utils/report-format";
 
 const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 
@@ -29,7 +30,7 @@ export default function PaymentSplitRows({ splits, setSplits }) {
           <div className="flex flex-col gap-2">
             <label className={field.label}>Method *</label>
             <select value={s.payment_method} onChange={(e) => updateSplit(i, { payment_method: e.target.value })} className={field.select}>
-              {PAYMENT_METHODS.map((m) => <option key={m} value={m} className="capitalize">{m}</option>)}
+              {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{formatPaymentMethod(m)}</option>)}
             </select>
           </div>
           {splits.length > 1 && (

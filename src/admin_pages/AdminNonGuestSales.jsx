@@ -14,6 +14,7 @@ import OrderItemRows from "../components/shared/OrderItemRows";
 import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
+import { formatPaymentMethod } from "../utils/report-format";
 import {
   fetchNonGuestFolios,
   fetchNonGuestFolioById,
@@ -755,7 +756,7 @@ export default function AdminNonGuestSalesPage() {
                     {selectedFolio.payments.map((p) => (
                       <div key={p.id} className="flex justify-between items-center gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl">
                         <div className="min-w-0">
-                          <span className="capitalize font-medium">Payment · {p.payment_method}</span>
+                          <span className="font-medium">Payment · {formatPaymentMethod(p.payment_method)}</span>
                           {p.notes && <span className="text-[color:var(--text-color)]/68 ml-2">· {p.notes}</span>}
                           <span className="block text-base text-[color:var(--text-color)]/60">
                             <span className="font-mono">{p.payment_reference}</span>

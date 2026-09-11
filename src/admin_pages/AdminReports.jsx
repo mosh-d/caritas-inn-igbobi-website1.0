@@ -37,6 +37,7 @@ import { isAccountant, isReceptionist, isStorekeeper, isWaitron } from "../utils
 import { money, pct, formatDate, formatDateTime } from "../utils/report-format";
 import { canViewAuditTrail } from "../components/shared/adminNavItems";
 import { AuditLink, ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge, StaffActivitySection } from "../components/shared/reportUi";
+import { formatPaymentMethod } from "../utils/report-format";
 
 function currentMonthRange() {
   const now = new Date();
@@ -435,7 +436,7 @@ function DashboardTab() {
                     <tbody>
                       {paymentMethods.map((row, i) => (
                         <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
-                          <td className="px-6 py-4 font-medium text-[color:var(--black)] capitalize">{row.payment_method}</td>
+                          <td className="px-6 py-4 font-medium text-[color:var(--black)]">{formatPaymentMethod(row.payment_method)}</td>
                           <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.count}</td>
                           <td className="px-6 py-4 text-right font-semibold text-[color:var(--black)]">{money(row.total)}</td>
                           <td className="px-6 py-4 text-right text-[color:var(--text-color)]/76">
@@ -726,7 +727,7 @@ function AnalysisTab() {
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{p.receipt_number || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/68 font-mono text-lg">{p.payment_reference}</td>
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{p.guest_name}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{p.payment_method}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(p.payment_method)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(p.payment_date)}</td>
                       <td className={`px-6 py-4 text-right font-semibold ${p.status === "refunded" ? "text-red-600" : "text-[color:var(--black)]"}`}>
                         {p.status === "refunded" ? "−" : ""}{money(p.amount)}
@@ -1045,7 +1046,7 @@ function AccommodationReportTab({ shift }) {
                           every row here is a room that was sold. */}
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.room_price)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.breakfast_price)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.payment_mode}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(r.payment_mode)}</td>
                       <td className="px-6 py-4">
                         <StatusBadge status={r.payment_status} />
                       </td>
@@ -1113,7 +1114,7 @@ function AccommodationReportTab({ shift }) {
             data.payments_by_method.map((group) => (
               <ReportSection
                 key={group.payment_method}
-                title={`Payments — ${group.payment_method}`}
+                title={`Payments — ${formatPaymentMethod(group.payment_method)}`}
                 subtitle={`${group.count} transaction(s) · ${money(group.total)}`}
               >
                 <table className="w-full text-xl">
@@ -1159,7 +1160,7 @@ function AccommodationReportTab({ shift }) {
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.amount)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(d.payment_method)}</td>
                       <td className="px-6 py-4"><StatusBadge status={d.status} /></td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.receipt_number || "—"}</td>
                       {showAudit && <td className="px-6 py-4"><AuditLink audit={d.audit} /></td>}
@@ -1184,7 +1185,7 @@ function AccommodationReportTab({ shift }) {
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(d.debt_date)}</td>
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_owed)}</td>
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_paid)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{d.payment_method}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(d.payment_method)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.payment_reference}</td>
                       {showAudit && <td className="px-6 py-4"><AuditLink audit={d.audit} /></td>}
                     </tr>
@@ -1233,7 +1234,7 @@ function SalesTotals({ data }) {
         {data.payment_breakdown.map((p, i) => (
           <SummaryCard
             key={i}
-            label={p.payment_method === "charged_to_room" ? "Charged to Room" : p.payment_method}
+            label={formatPaymentMethod(p.payment_method)}
             value={money(p.total)}
             sub={p.payment_method === "charged_to_room" ? undefined : `${p.count} sale${p.count === 1 ? "" : "s"}`}
           />
@@ -1290,7 +1291,7 @@ function SalesNotes({ data }) {
         <li>
           Payment methods: {data.payment_breakdown.length === 0 ? "none" : data.payment_breakdown.map((p, i) => (
             <span key={i}>
-              {p.payment_method === "charged_to_room" ? "Charged to Room" : p.payment_method}: <strong className="text-[color:var(--black)]">{money(p.total)}</strong>
+              {formatPaymentMethod(p.payment_method)}: <strong className="text-[color:var(--black)]">{money(p.total)}</strong>
               {i < data.payment_breakdown.length - 1 ? " · " : ""}
             </span>
           ))}
@@ -1406,7 +1407,7 @@ function FoodSalesReportTab({ shift }) {
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.service_charge)}</td>
                       <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
-                      <td className="px-6 py-4 capitalize text-[color:var(--text-color)]/84">{r.payment_method || "—"}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(r.payment_method)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.notes || "—"}</td>
                       {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
                     </tr>
@@ -1525,7 +1526,7 @@ function DrinkSalesReportTab({ shift }) {
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.service_charge)}</td>
                       <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
-                      <td className="px-6 py-4 capitalize text-[color:var(--text-color)]/84">{r.payment_method || "—"}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(r.payment_method)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/76">{r.notes || "—"}</td>
                       {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
                     </tr>
