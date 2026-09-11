@@ -28,7 +28,7 @@ const branchLocationName = (fullName) => {
   return match ? fullName.slice(match.length).trim() : fullName;
 };
 
-export default function AdminTopBar() {
+export default function AdminTopBar({ shiftName, onChangeShift }) {
   const isLogin = window.location.pathname === '/admin';
   // Deliberately the real role, not the effective (possibly simulated) one
   // getStoredStaffRole() would return — "Signed in as" states an actual
@@ -78,6 +78,24 @@ export default function AdminTopBar() {
               <StatusBadge status={staffRole} />
             </div>
           </NavLink>
+        )}
+        {/* Whose shift the business day is, from the 6am prompt (ShiftGate).
+            Managers and developers can reopen it to correct a wrong pick;
+            every change is audit-logged. */}
+        {(shiftName || onChangeShift) && (
+          <div className='flex items-center gap-2 text-lg text-white/70'>
+            <span className='max-sm:hidden'>Shift</span>
+            <span className='text-xl font-semibold text-white'>{shiftName || 'Not recorded'}</span>
+            {onChangeShift && (
+              <button
+                type='button'
+                onClick={onChangeShift}
+                className='cursor-pointer rounded-lg border border-white/30 px-3 py-1 text-base font-medium text-white transition-colors hover:bg-white/10'
+              >
+                {shiftName ? 'Change' : 'Record'}
+              </button>
+            )}
+          </div>
         )}
         {isRealDeveloper && (
           <label className='flex items-center gap-2 text-lg text-white/70' onClick={(e) => e.stopPropagation()}>

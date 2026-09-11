@@ -2,13 +2,15 @@ import { useWebSocketContext } from '../context/WebSocketContext';
 import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { IoClose } from 'react-icons/io5';
-import { verifyToken, getDefaultAdminRoute } from "../utils/auth";
+import { verifyToken, getDefaultAdminRoute, getStoredStaffRole } from "../utils/auth";
 import { canAccessNavItem } from "../components/shared/adminNavItems";
 import AdminNavBar from "../components/shared/AdminNavBar";
 import AdminTopBar from "../components/shared/AdminTopBar";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { fetchBusinessDate } from "../utils/front-office-api";
-import { applyServerClock, deviceClockDriftMinutes } from "../utils/date-utils";
+import { applyServerClock, deviceClockDriftMinutes, currentBusinessDateISO } from "../utils/date-utils";
+import ShiftGate from "../components/shared/ShiftGate";
+import { fetchCurrentShift } from "../utils/shifts-api";
 
 export default function AdminRootLayout() {
   const [hasNewReservation, setHasNewReservation] = useState(false);
@@ -36,6 +38,43 @@ export default function AdminRootLayout() {
     const unsubscribe = subscribe(handleNewReservation, 'reservations');
     return unsubscribe;
   }, [subscribe, handleNewReservation, canSeeReservations]);
+
+  // Whose shift the business day is, recorded once at the 6am rollover.
+  //
+  // Only the front desk is locked out until it is recorded (owner's call,
+  // 2026-09-11): the desk resumes around 8am while the business day starts at
+  // 6am, so deriving the shift from whoever logs in first would either leave
+  // 06:00-07:59 unattributed or block check-ins through it. Everyone else
+  // works normally and just sees whose shift it is.
+  const staffRole = getStoredStaffRole();
+  const locksOnShift = staffRole === "receptionist";
+  const showsShift = locksOnShift || staffRole === "manager" || staffRole === "developer";
+  const canChangeShift = staffRole === "manager" || staffRole === "developer";
+  const [shift, setShift] = useState(null);
+  const [changingShift, setChangingShift] = useState(false);
+  const [businessDate, setBusinessDate] = useState(currentBusinessDateISO());
+
+  // A tab left open across 6am has to notice the rollover, since the new day
+  // has no shift recorded yet. Compared locally each minute; only a real
+  // change costs a request.
+  useEffect(() => {
+    const timer = setInterval(() => setBusinessDate(currentBusinessDateISO()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!showsShift) return undefined;
+    let cancelled = false;
+    fetchCurrentShift()
+      .then((current) => { if (!cancelled) setShift(current); })
+      .catch(() => { if (!cancelled) setShift(null); });
+    return () => { cancelled = true; };
+  }, [showsShift, businessDate]);
+
+  // Only lock on a KNOWN empty shift — if the request itself failed, shift
+  // stays null and the desk keeps working rather than being shut out by an
+  // API hiccup.
+  const mustRecordShift = locksOnShift && shift !== null && !shift.staff_account_id;
 
   // Anchor every admin-facing date helper to the server's clock, once per
   // session. A front-desk PC with a wrong clock or timezone otherwise shows
@@ -203,7 +242,10 @@ export default function AdminRootLayout() {
       )}
 
       <header className="bg-white shadow-sm shrink-0">
-        <AdminTopBar />
+        <AdminTopBar
+          shiftName={shift?.staff_name}
+          onChangeShift={canChangeShift && shift ? () => setChangingShift(true) : undefined}
+        />
       </header>
       <div className="flex flex-1 overflow-hidden">
         <AdminNavBar />
@@ -211,6 +253,22 @@ export default function AdminRootLayout() {
           <Outlet />
         </main>
       </div>
+
+      {(mustRecordShift || changingShift) && (
+        <ShiftGate
+          businessDate={shift?.business_date}
+          currentName={shift?.staff_name}
+          onSelected={(result) => {
+            setShift({
+              business_date: result.business_date,
+              staff_account_id: result.staff_account_id,
+              staff_name: result.staff_name,
+            });
+            setChangingShift(false);
+          }}
+          onCancel={changingShift ? () => setChangingShift(false) : undefined}
+        />
+      )}
     </div>
   );
 }

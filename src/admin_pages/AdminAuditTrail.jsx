@@ -51,6 +51,7 @@ const ACTION_LABELS = {
   "deposit.refund": "Deposit refunded",
   "room.price_update": "Room price updated",
   "room.status_change": "Room status changed",
+  "shift.select": "Shift recorded",
   "reservation.confirm": "Reservation confirmed",
   "reservation.cancel": "Reservation cancelled",
   "reservation.checkin": "Check-in",
