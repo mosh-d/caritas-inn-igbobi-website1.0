@@ -11,9 +11,13 @@ import { selectCurrentShift } from "../../utils/shifts-api";
 // desk stays shut until the shift is recorded. onCancel is passed only when a
 // manager opens this to correct an already-recorded shift, which is a
 // different, non-blocking use.
+//
+// Picking a name never records it outright: the whole day is attributed to
+// whoever is named here, so the choice is read back for confirmation first.
 export default function ShiftGate({ businessDate, currentName, onSelected, onCancel }) {
   const [staff, setStaff] = useState(null);
   const [selected, setSelected] = useState("");
+  const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -26,6 +30,8 @@ export default function ShiftGate({ businessDate, currentName, onSelected, onCan
       });
   }, []);
 
+  const selectedName = (staff || []).find((person) => String(person.id) === String(selected))?.username;
+
   const submit = async () => {
     if (!selected) return;
     try {
@@ -35,6 +41,7 @@ export default function ShiftGate({ businessDate, currentName, onSelected, onCan
     } catch (err) {
       setError(err.response?.data?.message || "Could not record the shift. Try again.");
       setSaving(false);
+      setConfirming(false);
     }
   };
 
@@ -66,6 +73,20 @@ export default function ShiftGate({ businessDate, currentName, onSelected, onCan
 
         {staff === null ? (
           <LoadingSpinner />
+        ) : confirming ? (
+          // Read the name back before it is recorded: a mis-pick attributes a
+          // whole day of the desk to the wrong person, and correcting it
+          // afterwards needs a manager.
+          <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-6 py-5 flex flex-col gap-3">
+            <p className="text-2xl font-bold text-[color:var(--black)]">
+              Record {selectedName} as the shift?
+            </p>
+            <p className="text-xl text-[color:var(--text-color)]/76">
+              Everything the front desk does for this business day
+              {businessDate ? ` (${businessDate})` : ""} will be attributed to {selectedName}. Your own name
+              goes on the record as the person who made the choice. Only a manager can change it afterwards.
+            </p>
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             <label className={field.label}>Receptionist on duty</label>
@@ -84,11 +105,24 @@ export default function ShiftGate({ businessDate, currentName, onSelected, onCan
         )}
 
         <div className="flex gap-3 flex-wrap">
-          <button onClick={submit} disabled={!selected || saving} className={btn.primary}>
-            {saving ? "Saving..." : "Start the shift"}
-          </button>
-          {onCancel && (
-            <button onClick={onCancel} disabled={saving} className={btn.secondary}>Cancel</button>
+          {confirming ? (
+            <>
+              <button onClick={submit} disabled={saving} className={btn.primary}>
+                {saving ? "Saving..." : `Yes, record ${selectedName}`}
+              </button>
+              <button onClick={() => setConfirming(false)} disabled={saving} className={btn.secondary}>
+                Go back
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setConfirming(true)} disabled={!selected} className={btn.primary}>
+                Start the shift
+              </button>
+              {onCancel && (
+                <button onClick={onCancel} className={btn.secondary}>Cancel</button>
+              )}
+            </>
           )}
         </div>
       </div>
