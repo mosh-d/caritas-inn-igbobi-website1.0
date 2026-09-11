@@ -60,20 +60,36 @@ export default function PhoneInput({
 
   return (
     <div className={`flex gap-2 items-stretch ${className}`.trim()}>
-      <select
-        aria-label="Country code"
-        title="Country code"
-        value={dial}
-        onChange={(e) => handleDialChange(e.target.value)}
-        disabled={disabled}
-        className={`shrink-0 max-w-[13rem] ${selectClassName}`.trim()}
-      >
-        {COUNTRY_OPTIONS.map((country) => (
-          <option key={country.dial} value={country.dial}>
-            {country.label}
-          </option>
-        ))}
-      </select>
+      {/* Closed, this shows the dial code alone: "NG (+234)" made the picker
+          wider than the number field beside it. The real <select> is stretched
+          invisibly over that display, so the dropdown is still the native one —
+          where every option keeps its country code, which is what makes a list
+          of 200 navigable — and keyboard and mobile behaviour are untouched.
+          focus-within puts the ring on the visible part, since the element
+          actually focused is transparent. */}
+      <div className="relative shrink-0 rounded-lg focus-within:ring-2 focus-within:ring-[color:var(--emphasis)]">
+        <div
+          aria-hidden="true"
+          className={`flex items-center gap-2 whitespace-nowrap ${disabled ? "opacity-60" : ""} ${selectClassName}`.trim()}
+        >
+          <span>+{dial}</span>
+          <span className="text-[0.6em] leading-none opacity-60">&#9660;</span>
+        </div>
+        <select
+          aria-label="Country code"
+          title="Country code"
+          value={dial}
+          onChange={(e) => handleDialChange(e.target.value)}
+          disabled={disabled}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        >
+          {COUNTRY_OPTIONS.map((country) => (
+            <option key={country.dial} value={country.dial}>
+              {country.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <input
         type="tel"
         inputMode="tel"
