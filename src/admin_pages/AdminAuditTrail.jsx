@@ -52,6 +52,8 @@ const ACTION_LABELS = {
   "room.price_update": "Room price updated",
   "room.status_change": "Room status changed",
   "shift.select": "Shift recorded",
+  "ota_settlement.record": "OTA payment expected",
+  "ota_settlement.paid": "OTA payment received",
   "reservation.confirm": "Reservation confirmed",
   "reservation.cancel": "Reservation cancelled",
   "reservation.checkin": "Check-in",

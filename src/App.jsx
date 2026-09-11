@@ -25,6 +25,7 @@ import AdminCheckOuts from "./admin_pages/AdminCheckOuts";
 import AdminInHouse from "./admin_pages/AdminInHouse";
 import AdminReports from "./admin_pages/AdminReports";
 import AdminAlerts from "./admin_pages/AdminAlerts";
+import AdminOtaPayments from "./admin_pages/AdminOtaPayments";
 import AdminNightAudit from "./admin_pages/AdminNightAudit";
 import AdminAuditTrail from "./admin_pages/AdminAuditTrail";
 import AdminMenu from "./admin_pages/AdminMenu";
@@ -70,6 +71,7 @@ const router = createBrowserRouter([
       { path: "reports", element: <AdminReports /> },
       { path: "night-audit", element: <AdminNightAudit /> },
       { path: "alerts", element: <AdminAlerts /> },
+      { path: "ota-payments", element: <AdminOtaPayments /> },
       { path: "audit-trail", element: <AdminAuditTrail /> },
       { path: "menu", element: <AdminMenu /> },
       { path: "non-guest-sales", element: <AdminNonGuestSales /> },

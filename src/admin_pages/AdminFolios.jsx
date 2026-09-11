@@ -14,6 +14,7 @@ import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { canRefund, getStoredStaffRole } from "../utils/auth";
+import { markOtaSettlementPaid } from "../utils/ota-api";
 import {
   fetchFolios,
   fetchPendingFolios,
@@ -315,6 +316,24 @@ export default function AdminFoliosPage() {
       ? Number(selectedFolio.balance) * (Number(paymentForm.discount || 0) / 100)
       : Number(paymentForm.discount || 0)
     : 0;
+
+  // The OTA's money usually arrives long after the guest has gone.
+  // Recording it here settles the nights it covered; the same action lives on
+  // the OTA Payments page, which is where a departed guest is still reachable.
+  const [otaPayingId, setOtaPayingId] = useState(null);
+  const handleMarkOtaPaid = async (settlementId) => {
+    try {
+      setOtaPayingId(settlementId);
+      setPaymentError(null);
+      await markOtaSettlementPaid(settlementId);
+      await refreshSelectedFolio();
+      loadFolios();
+    } catch (err) {
+      setPaymentError(err.response?.data?.message || "Failed to record the OTA payment.");
+    } finally {
+      setOtaPayingId(null);
+    }
+  };
 
   const handleRecordPayment = async () => {
     if (!selectedFolio || !hasValidPaymentSplits) return;
@@ -716,6 +735,51 @@ export default function AdminFoliosPage() {
                   tone={hasOutstandingBalance ? "danger" : "success"}
                 />
               </div>
+              {/* Nights an OTA is paying for, not the guest. They are charged on
+                  this folio like any others — so Balance Due above stays owing
+                  until the money lands — but the desk must never ask the guest
+                  for them, which is what Guest To Pay is. */}
+              {Number(selectedFolio.ota_pending) > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <span className="text-amber-800 font-bold text-xl">Awaiting OTA payment:</span>
+                    <span className="text-amber-800 font-bold text-2xl">{money(selectedFolio.ota_pending)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <span className="text-xl font-bold text-[color:var(--black)]">Guest to pay:</span>
+                    <span className="text-2xl font-bold text-[color:var(--black)]">
+                      {money(Math.max(Number(selectedFolio.guest_due || 0), 0))}
+                    </span>
+                  </div>
+                  <p className="text-lg text-amber-800/80">
+                    Do not collect the OTA share from the guest. Mark it paid below once the OTA remits it.
+                  </p>
+                </div>
+              )}
+              {(selectedFolio.ota_settlements || []).length > 0 && (
+                <div className="border border-[color:var(--text-color)]/15 rounded-lg px-5 py-4 flex flex-col gap-3">
+                  <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">OTA Payments</p>
+                  {selectedFolio.ota_settlements.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between gap-4 flex-wrap border-b border-[color:var(--text-color)]/10 last:border-0 pb-3 last:pb-0">
+                      <div className="flex flex-col">
+                        <span className="text-xl font-medium text-[color:var(--black)]">
+                          {s.start_date} to {s.end_date} &middot; {money(s.amount)}
+                        </span>
+                        <span className="text-lg text-[color:var(--text-color)]/68">
+                          {s.includes_breakfast ? "Room and breakfast" : "Room only"}{s.reference ? ` · ${s.reference}` : ""}
+                        </span>
+                      </div>
+                      {s.status === "pending" ? (
+                        <button onClick={() => handleMarkOtaPaid(s.id)} disabled={otaPayingId === s.id} className={btn.rowSuccess}>
+                          {otaPayingId === s.id ? "Recording..." : "Mark OTA Paid"}
+                        </button>
+                      ) : (
+                        <StatusBadge status="paid" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               {hasCreditBalance && (
                 <div className="bg-green-50 border border-green-200 rounded-lg px-5 py-4 flex items-center justify-between">
                   <span className="text-green-700 font-bold text-xl">Credit Due to Guest:</span>

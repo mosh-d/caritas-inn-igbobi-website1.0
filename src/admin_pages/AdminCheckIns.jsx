@@ -26,6 +26,7 @@ import {
   fetchAvailableRoomNumbers,
   updateRoomStatus,
 } from "../utils/reservations-pms-api";
+import { createOtaSettlement, previewOtaAmount } from "../utils/ota-api";
 import { fetchFolios, recordPayment, addFolioItem } from "../utils/folios-api";
 
 const BRANCH_ID = 3;
@@ -235,6 +236,35 @@ export default function AdminCheckInsPage() {
     </div>
   );
 
+  // Nights an OTA is paying for instead of the guest, recorded as part of
+  // checking in — this is when the desk has the booking in front of them.
+  // Defaults to the whole stay, which is the usual case; the amount is
+  // prefilled from the rate for those nights and stays editable, since an OTA
+  // normally remits net of its commission.
+  const [ota, setOta] = useState({ enabled: false, start: "", end: "", breakfast: false, amount: "" });
+  const otaMin = selected?.check_in ? String(selected.check_in).slice(0, 10) : "";
+  const otaMax = selected?.check_out ? String(selected.check_out).slice(0, 10) : "";
+
+  useEffect(() => {
+    setOta({ enabled: false, start: otaMin, end: otaMax, breakfast: false, amount: "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  useEffect(() => {
+    if (!selected || !ota.enabled || !ota.start || !ota.end || ota.end <= ota.start) return undefined;
+    let cancelled = false;
+    previewOtaAmount({
+      reservationId: selected.id,
+      startDate: ota.start,
+      endDate: ota.end,
+      includesBreakfast: ota.breakfast,
+    })
+      .then((result) => { if (!cancelled) setOta((prev) => ({ ...prev, amount: String(result.amount) })); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id, ota.enabled, ota.start, ota.end, ota.breakfast]);
+
   const handleCheckIn = async () => {
     if (!selected) return;
     try {
@@ -245,8 +275,29 @@ export default function AdminCheckInsPage() {
       await assignRoom(selected.id, roomNumbers);
       const checkedInId = selected.id;
       await checkInReservation(checkedInId);
+      // Recorded after the check-in, since the folio has to exist to hang it
+      // on. A failure here must never read as a failed check-in — the guest
+      // is in — so it is reported on its own terms instead.
+      let otaError = null;
+      if (ota.enabled && ota.start && ota.end && ota.end > ota.start) {
+        try {
+          await createOtaSettlement({
+            reservationId: checkedInId,
+            startDate: ota.start,
+            endDate: ota.end,
+            includesBreakfast: ota.breakfast,
+            amount: ota.amount || undefined,
+          });
+        } catch (err) {
+          otaError = err.response?.data?.message || "the OTA payment could not be saved";
+        }
+      }
       setSelected(null);
       setRoomNumbers([]);
+      if (otaError) {
+        setError(`Checked in, but ${otaError}. Add it from the guest folio.`);
+        return;
+      }
       // Straight to the folio so staff can record payment right away —
       // covers a hold that was paid but never recorded, or a guest paying
       // now at the front desk.
@@ -1102,6 +1153,71 @@ export default function AdminCheckInsPage() {
               <p className="text-lg text-orange-600">
                 {roomNumbers.length} of {selected.rooms_booked} room(s) assigned — a room number is required for every room before check-in.
               </p>
+            )}
+          </div>
+
+          {/* Nights an OTA is paying for. They stay charged to the folio, so it
+              reads owing until the OTA remits, and the guest is never asked for
+              them. */}
+          <div className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-4">
+            <label className="flex items-center gap-2 text-xl cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ota.enabled}
+                onChange={(e) => setOta({ ...ota, enabled: e.target.checked })}
+                className="w-5 h-5 cursor-pointer"
+              />
+              An OTA is paying for these nights
+            </label>
+            {ota.enabled && (
+              <>
+                <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                  <div className="flex flex-col gap-2">
+                    <label className={field.label}>OTA covers from</label>
+                    <input
+                      type="date"
+                      value={ota.start}
+                      min={otaMin}
+                      max={otaMax}
+                      onChange={(e) => setOta({ ...ota, start: e.target.value })}
+                      className={field.input}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className={field.label}>Until</label>
+                    <input
+                      type="date"
+                      value={ota.end}
+                      min={otaMin}
+                      max={otaMax}
+                      onChange={(e) => setOta({ ...ota, end: e.target.value })}
+                      className={field.input}
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-xl cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={ota.breakfast}
+                    onChange={(e) => setOta({ ...ota, breakfast: e.target.checked })}
+                    className="w-5 h-5 cursor-pointer"
+                  />
+                  The OTA rate includes breakfast
+                </label>
+                <div className="flex flex-col gap-2">
+                  <label className={field.label}>Amount the OTA will pay</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={ota.amount}
+                    onChange={(e) => setOta({ ...ota, amount: e.target.value })}
+                    className={field.input}
+                  />
+                  <p className="text-lg text-[color:var(--text-color)]/60">
+                    Prefilled from the rate for those nights. Lower it if the OTA remits net of its commission.
+                  </p>
+                </div>
+              </>
             )}
           </div>
         </Modal>

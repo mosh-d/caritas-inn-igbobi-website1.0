@@ -18,6 +18,7 @@ import {
   IoCartOutline,
   IoFastFoodOutline,
   IoShirtOutline,
+  IoBusinessOutline,
 } from "react-icons/io5";
 import { getStoredStaffRole } from "../../utils/auth";
 
@@ -82,6 +83,10 @@ export const ADMIN_NAV_ITEMS = [
   { to: "/admin/reports", label: "REPORTS", icon: IoBarChartOutline, alwaysVisible: true },
   { to: "/admin/night-audit", label: "NIGHT AUDIT", icon: IoMoonOutline },
   { to: "/admin/alerts", label: "ALERTS", icon: IoNotificationsOutline, showAlertBadge: true },
+  // Money owed by OTAs rather than by guests. accountantVisible because an
+  // OTA normally pays into the bank long after the guest has gone, and the
+  // accountant is the one watching it land.
+  { to: "/admin/ota-payments", label: "OTA PAYMENTS", icon: IoBusinessOutline, accountantVisible: true },
   // managerOnly hides this from receptionist; accountantVisible additionally
   // shows it to an accountant (the two flags don't conflict — see
   // visibleAdminNavItems()'s accountant branch, which never even reaches
