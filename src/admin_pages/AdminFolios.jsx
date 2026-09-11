@@ -14,7 +14,8 @@ import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { canRefund, getStoredStaffRole } from "../utils/auth";
-import { markOtaSettlementPaid } from "../utils/ota-api";
+import { markOtaSettlementPaid, createOtaSettlement, previewOtaAmount } from "../utils/ota-api";
+import { formatPaymentMethod } from "../utils/report-format";
 import {
   fetchFolios,
   fetchPendingFolios,
@@ -316,6 +317,52 @@ export default function AdminFoliosPage() {
       ? Number(selectedFolio.balance) * (Number(paymentForm.discount || 0) / 100)
       : Number(paymentForm.discount || 0)
     : 0;
+
+  // Recording an OTA's share after check-in. The nights are bounded by the
+  // stay, exactly as on the check-in form, and the amount is prefilled from
+  // the rate for them before anyone edits it down to the OTA's net figure.
+  const canRecordOta = ["receptionist", "manager", "developer"].includes(getStoredStaffRole());
+  const [otaForm, setOtaForm] = useState({ open: false, start: "", end: "", breakfast: false, amount: "" });
+  const [addingOta, setAddingOta] = useState(false);
+  const otaMin = selectedFolio?.reservation?.check_in ? String(selectedFolio.reservation.check_in).slice(0, 10) : "";
+  const otaMax = selectedFolio?.reservation?.check_out ? String(selectedFolio.reservation.check_out).slice(0, 10) : "";
+
+  useEffect(() => {
+    if (!otaForm.open || !otaForm.start || !otaForm.end || otaForm.end <= otaForm.start) return undefined;
+    if (!selectedFolio?.reservation?.id) return undefined;
+    let cancelled = false;
+    previewOtaAmount({
+      reservationId: selectedFolio.reservation.id,
+      startDate: otaForm.start,
+      endDate: otaForm.end,
+      includesBreakfast: otaForm.breakfast,
+    })
+      .then((result) => { if (!cancelled) setOtaForm((prev) => ({ ...prev, amount: String(result.amount) })); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [otaForm.open, otaForm.start, otaForm.end, otaForm.breakfast, selectedFolio?.reservation?.id]);
+
+  const handleAddOta = async () => {
+    if (!selectedFolio?.reservation?.id) return;
+    try {
+      setAddingOta(true);
+      setPaymentError(null);
+      await createOtaSettlement({
+        reservationId: selectedFolio.reservation.id,
+        startDate: otaForm.start,
+        endDate: otaForm.end,
+        includesBreakfast: otaForm.breakfast,
+        amount: otaForm.amount || undefined,
+      });
+      setOtaForm({ open: false, start: "", end: "", breakfast: false, amount: "" });
+      await refreshSelectedFolio();
+      loadFolios();
+    } catch (err) {
+      setPaymentError(err.response?.data?.message || "Failed to record the OTA payment.");
+    } finally {
+      setAddingOta(false);
+    }
+  };
 
   // The OTA's money usually arrives long after the guest has gone.
   // Recording it here settles the nights it covered; the same action lives on
@@ -727,6 +774,21 @@ export default function AdminFoliosPage() {
               {/* Summary */}
               <div className="grid grid-cols-1 gap-4">
                 <SummaryStat label="Guest" value={selectedFolio.guest ? `${selectedFolio.guest.first_name} ${selectedFolio.guest.last_name}` : (selectedFolio.reservation?.guest_name || "N/A")} />
+                {/* The stay the folio belongs to. Shows what actually happened
+                    once it has — an arrival or departure that is still only
+                    scheduled says so, rather than passing a plan off as fact. */}
+                <SummaryStat
+                  label="Check-In"
+                  value={selectedFolio.reservation?.actual_check_in
+                    ? formatDate(selectedFolio.reservation.actual_check_in)
+                    : `${formatDate(selectedFolio.reservation?.check_in)} (expected)`}
+                />
+                <SummaryStat
+                  label="Check-Out"
+                  value={selectedFolio.reservation?.actual_check_out
+                    ? formatDate(selectedFolio.reservation.actual_check_out)
+                    : `${formatDate(selectedFolio.reservation?.check_out)} (expected)`}
+                />
                 <SummaryStat label="Total Charged" value={money(selectedFolio.total_amount)} />
                 <SummaryStat label="Total Paid" value={money(selectedFolio.total_received ?? selectedFolio.amount_paid)} />
                 <SummaryStat
@@ -779,6 +841,83 @@ export default function AdminFoliosPage() {
                     </div>
                   ))}
                 </div>
+              )}
+              {canRecordOta && selectedFolio.status !== "closed" && selectedFolio.reservation && (
+                otaForm.open ? (
+                  <div className="border border-[color:var(--text-color)]/15 rounded-lg px-5 py-4 flex flex-col gap-4">
+                    <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">
+                      Add an OTA payment
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                      <div className="flex flex-col gap-2">
+                        <label className={field.label}>OTA covers from</label>
+                        <input
+                          type="date"
+                          value={otaForm.start}
+                          min={otaMin}
+                          max={otaMax}
+                          onChange={(e) => setOtaForm({ ...otaForm, start: e.target.value })}
+                          className={field.input}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className={field.label}>Until</label>
+                        <input
+                          type="date"
+                          value={otaForm.end}
+                          min={otaMin}
+                          max={otaMax}
+                          onChange={(e) => setOtaForm({ ...otaForm, end: e.target.value })}
+                          className={field.input}
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 text-xl cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={otaForm.breakfast}
+                        onChange={(e) => setOtaForm({ ...otaForm, breakfast: e.target.checked })}
+                        className="w-5 h-5 cursor-pointer"
+                      />
+                      The OTA rate includes breakfast
+                    </label>
+                    <div className="flex flex-col gap-2">
+                      <label className={field.label}>Amount the OTA will pay</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={otaForm.amount}
+                        onChange={(e) => setOtaForm({ ...otaForm, amount: e.target.value })}
+                        className={field.input}
+                      />
+                      <p className="text-lg text-[color:var(--text-color)]/60">
+                        Prefilled from the rate for those nights. Change it to use a custom amount for the OTA payment.
+                      </p>
+                    </div>
+                    <div className="flex gap-3 flex-wrap">
+                      <button
+                        onClick={handleAddOta}
+                        disabled={addingOta || !otaForm.start || !otaForm.end || otaForm.end <= otaForm.start}
+                        className={btn.primary}
+                      >
+                        {addingOta ? "Saving..." : "Save OTA payment"}
+                      </button>
+                      <button
+                        onClick={() => setOtaForm({ open: false, start: "", end: "", breakfast: false, amount: "" })}
+                        className={btn.secondary}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setOtaForm({ open: true, start: otaMin, end: otaMax, breakfast: false, amount: "" })}
+                    className={`${btn.secondary} self-start`}
+                  >
+                    An OTA is paying for some nights
+                  </button>
+                )
               )}
               {hasCreditBalance && (
                 <div className="bg-green-50 border border-green-200 rounded-lg px-5 py-4 flex items-center justify-between">
@@ -992,7 +1131,7 @@ export default function AdminFoliosPage() {
                           }`}
                         >
                           <div className="min-w-0">
-                            <span className="capitalize font-medium">{isRefund ? "Refund" : "Payment"} · {p.payment_method}</span>
+                            <span className="font-medium">{isRefund ? "Refund" : "Payment"} · {formatPaymentMethod(p.payment_method)}</span>
                             {p.notes && <span className="text-[color:var(--text-color)]/68 ml-2">· {p.notes}</span>}
                             <span className="flex items-center gap-1 text-base text-[color:var(--text-color)]/60">
                               <span className="font-mono">{p.payment_reference}</span>
@@ -1114,7 +1253,7 @@ export default function AdminFoliosPage() {
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Method *</label>
                         <select value={refundForm.payment_method} onChange={(e) => setRefundForm({ ...refundForm, payment_method: e.target.value })} className={field.select}>
-                          {PAYMENT_METHODS.map((m) => <option key={m} value={m} className="capitalize">{m}</option>)}
+                          {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{formatPaymentMethod(m)}</option>)}
                         </select>
                       </div>
                       <div className="flex flex-col gap-2">
