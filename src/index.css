@@ -25,3 +25,35 @@
     width: 100%;
   }
 }
+
+/* S/N column on every table on the Reports page (owner's ask, 2026-09-14).
+   Generated here rather than hand-added to each of the ~20 report tables, so a
+   table added later gets it too. Rows number from 1 per table; footer rows
+   (totals) get an empty cell so their columns stay aligned. */
+[data-component="AdminReports"] table tbody {
+  counter-reset: report-sn;
+}
+[data-component="AdminReports"] table tr::before {
+  display: table-cell;
+  padding: 1rem 1.5rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  text-align: left;
+}
+[data-component="AdminReports"] table thead tr::before {
+  content: "S/N";
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: color-mix(in srgb, var(--text-color) 76%, transparent);
+}
+[data-component="AdminReports"] table tbody tr::before {
+  counter-increment: report-sn;
+  content: counter(report-sn);
+  color: color-mix(in srgb, var(--text-color) 60%, transparent);
+}
+[data-component="AdminReports"] table tfoot tr::before {
+  content: "";
+}
