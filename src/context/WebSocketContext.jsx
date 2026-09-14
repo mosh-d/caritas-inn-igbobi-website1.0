@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback } f
 import { io } from 'socket.io-client';
 import { SOCKET_SERVER_URL } from '../utils/server-config';
 import { fetchAlerts } from '../utils/alerts-api';
+import { canAccessNavItem } from '../components/shared/adminNavItems';
 
 const WebSocketContext = createContext(null);
 
@@ -118,8 +119,11 @@ function WebSocketProvider({ children }) {
         const prev = prevAlertCountRef.current;
         // Update shared badge count
         syncAlertCount(newCount);
-        // Browser notification only when count increases
-        if (prev !== null && newCount > prev && 'Notification' in window && Notification.permission === 'granted') {
+        // Browser notification only when count increases, and only for an
+        // account that can open Alerts: the notification exists to send them
+        // there, so a role without that page never gets one (2026-09-14).
+        if (prev !== null && newCount > prev && canAccessNavItem('/admin/alerts')
+          && 'Notification' in window && Notification.permission === 'granted') {
           new Notification('Hotel PMS — New Alert', {
             body: `${newCount} unresolved alert${newCount !== 1 ? 's' : ''} require${newCount === 1 ? 's' : ''} attention.`,
             icon: '/favicon.ico',
@@ -162,4 +166,8 @@ function useWebSocketContext() {
   return context;
 }
 
+// A context module exports its provider and its hook together by design;
+// the fast-refresh rule only wants component-only files. Pre-existing
+// lint failure, surfaced when this file was next touched (2026-09-14).
+// eslint-disable-next-line react-refresh/only-export-components
 export { WebSocketProvider, useWebSocketContext };
