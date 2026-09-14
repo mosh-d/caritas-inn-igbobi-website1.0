@@ -83,10 +83,9 @@ export const ADMIN_NAV_ITEMS = [
   { to: "/admin/reports", label: "REPORTS", icon: IoBarChartOutline, alwaysVisible: true },
   { to: "/admin/night-audit", label: "NIGHT AUDIT", icon: IoMoonOutline },
   { to: "/admin/alerts", label: "ALERTS", icon: IoNotificationsOutline, showAlertBadge: true },
-  // Money owed by OTAs rather than by guests. accountantVisible because an
-  // OTA normally pays into the bank long after the guest has gone, and the
-  // accountant is the one watching it land.
-  { to: "/admin/ota-payments", label: "OTA PAYMENTS", icon: IoBusinessOutline, accountantVisible: true },
+  // Money owed by OTAs rather than by guests. Front desk and managers only —
+  // taken off the accountant's view (owner's call, 2026-09-14).
+  { to: "/admin/ota-payments", label: "OTA PAYMENTS", icon: IoBusinessOutline },
   // managerOnly hides this from receptionist; accountantVisible additionally
   // shows it to an accountant (the two flags don't conflict — see
   // visibleAdminNavItems()'s accountant branch, which never even reaches
