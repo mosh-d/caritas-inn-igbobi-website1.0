@@ -11,6 +11,7 @@ import PrintReceiptModal from "../components/shared/PrintReceiptModal";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchLaundryItems } from "../utils/menu-api";
+import { getStoredStaffRole } from "../utils/auth";
 import {
   fetchNonGuestFolios,
   fetchNonGuestFolioById,
@@ -146,6 +147,20 @@ export default function AdminLaundrySalesPage() {
     setDetail(await fetchNonGuestFolioById(id));
     await loadFolios();
   };
+
+  // Laundry is posted by the front desk (owner's call, 2026-09-14). The nav
+  // no longer offers it to a waitron and the server refuses their laundry
+  // charge; this covers someone reaching the page by its address.
+  const canAccessLaundry = ["receptionist", "manager", "developer"].includes(getStoredStaffRole());
+  if (!canAccessLaundry) {
+    return (
+      <div data-component="AdminLaundrySales" className="px-[4rem] max-sm:px-[1rem] py-[4rem]">
+        <p className="text-2xl text-[color:var(--text-color)]/68">
+          You don&apos;t have permission to view this page.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div data-component="AdminLaundrySales" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">

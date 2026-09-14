@@ -71,10 +71,10 @@ export const ADMIN_NAV_ITEMS = [
   // a non-guest order, e.g. covering the bar when no waitstaff is on duty) —
   // accountant is the only role that never sees it, same as GUEST FOLIOS.
   { to: "/admin/non-guest-sales", label: "NON-GUEST SALES", icon: IoCartOutline, waitstaffVisible: true },
-  // Laundry for a walk-in customer. Same audience as NON-GUEST SALES above —
-  // it is the same folio/payment workflow against a different catalogue — so
-  // it carries the same visibility.
-  { to: "/admin/laundry-sales", label: "LAUNDRY SALES", icon: IoShirtOutline, waitstaffVisible: true },
+  // Laundry for a walk-in customer. The front desk posts it, not the F&B floor
+  // (owner's call, 2026-09-14), so unlike NON-GUEST SALES above it is not
+  // waitstaffVisible — the server refuses a waitron's laundry charge as well.
+  { to: "/admin/laundry-sales", label: "LAUNDRY SALES", icon: IoShirtOutline },
   { to: "/admin/check-ins", label: "CHECK-INS", icon: IoLogInOutline },
   { to: "/admin/check-outs", label: "CHECK-OUTS", icon: IoLogOutOutline },
   { to: "/admin/in-house", label: "IN-HOUSE", icon: IoHomeOutline },
