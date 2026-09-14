@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { IoDocumentTextOutline } from "react-icons/io5";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
@@ -109,15 +109,27 @@ export default function AdminAuditTrail() {
   const [error, setError] = useState(null);
 
   const [staffOptions, setStaffOptions] = useState([]);
-  const [filterStaffId, setFilterStaffId] = useState("");
+  // Deep links from the reports' Action columns (see AuditLink in
+  // reportUi.jsx) carry their filters in the URL. They seed the filters at the
+  // very first render, so every effect below sees them from the start —
+  // seeding them later, from an effect, let effects that had already captured
+  // the empty values fire unfiltered loads over the filtered one.
+  const [searchParams] = useSearchParams();
+  const [filterStaffId, setFilterStaffId] = useState(() => searchParams.get("staff_id") || "");
   const [filterRole, setFilterRole] = useState("");
-  const [filterAction, setFilterAction] = useState("");
-  const [filterFrom, setFilterFrom] = useState("");
-  const [filterTo, setFilterTo] = useState("");
-  const [filterSearch, setFilterSearch] = useState("");
+  const [filterAction, setFilterAction] = useState(() => searchParams.get("action") || "");
+  const [filterFrom, setFilterFrom] = useState(() => searchParams.get("from") || "");
+  const [filterTo, setFilterTo] = useState(() => searchParams.get("to") || "");
+  const [filterSearch, setFilterSearch] = useState(() => searchParams.get("search") || "");
   const hasFilters = filterStaffId || filterRole || filterAction || filterFrom || filterTo || filterSearch;
 
+  // Only the newest request may write the list. Several loads can be in
+  // flight at once (arrival, a socket reconnect, typing), and without this a
+  // slower, older response — possibly unfiltered — could land last and win.
+  const latestRequest = useRef(0);
+
   const load = useCallback(async (p = 1, filters = {}) => {
+    const requestId = ++latestRequest.current;
     try {
       setLoading(true);
       const data = await fetchAuditLogHistory({
@@ -130,22 +142,24 @@ export default function AdminAuditTrail() {
         to: filters.to || undefined,
         search: filters.search || undefined,
       });
+      if (requestId !== latestRequest.current) return;
       setEntries(data.data || []);
       setTotal(data.total || 0);
       setPage(p);
       setError(null);
     } catch (err) {
+      if (requestId !== latestRequest.current) return;
       setError((err.response?.data?.message || "Failed to load the audit trail.") + " Please refresh the page.");
     } finally {
-      setLoading(false);
+      if (requestId === latestRequest.current) setLoading(false);
     }
   }, []);
 
-  // Deep links from the reports' Action columns arrive with the filters in the
-  // URL (see AuditLink in reportUi.jsx): who acted, which action, and the
-  // business day. Applied once on arrival; the page's own controls take over
-  // from there, exactly as before.
-  const [searchParams] = useSearchParams();
+  // Load on arrival with the URL's filters, and again whenever the URL itself
+  // changes — back/forward between two deep links keeps this page mounted.
+  // The page's own controls do not write to the URL, so this never fights
+  // them.
+  const urlKey = searchParams.toString();
   useEffect(() => {
     if (!canView) return;
     const fromUrl = {
@@ -164,7 +178,7 @@ export default function AdminAuditTrail() {
     load(1, fromUrl);
     fetchAuditStaffOptions().then(setStaffOptions).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canView]);
+  }, [canView, urlKey]);
 
   // Re-fetch whenever the socket (re)connects, same pattern as
   // AdminNightAudit.jsx/AdminOverview.jsx.
@@ -178,8 +192,15 @@ export default function AdminAuditTrail() {
   // Debounced — unlike the dropdown/date filters below (which fire
   // immediately since each change is one discrete action), reloading on
   // every keystroke here would mean one request per character typed.
+  // Skips its mount run: the arrival load above already covered it, and this
+  // one's job is only to follow typing.
+  const searchTyped = useRef(false);
   useEffect(() => {
     if (!canView) return;
+    if (!searchTyped.current) {
+      searchTyped.current = true;
+      return;
+    }
     const timer = setTimeout(() => {
       load(1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo, search: filterSearch });
     }, 400);
