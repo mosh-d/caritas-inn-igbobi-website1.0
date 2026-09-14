@@ -1195,17 +1195,50 @@ function AccommodationReportTab({ shift }) {
             )}
           </ReportSection>
 
+          {/* Notes: everything charged today that is neither a room night nor
+              food and drink — laundry, penalties, adjustments, corrections —
+              with the description and remark it was posted with, followed by
+              the guests' own notes (owner's ask, 2026-09-14). */}
           <ReportSection title="Notes">
-            {data.notes.length === 0 ? (
-              <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No guest notes recorded for this business day.</p>
+            {(data.other_charges || []).length === 0 && data.notes.length === 0 ? (
+              <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No other charges or guest notes for this business day.</p>
             ) : (
-              <div className="flex flex-col gap-2 p-6">
-                {data.notes.map((n, i) => (
-                  <p key={i} className="text-xl">
-                    <span className="font-bold">{n.guest_name}</span>{" "}
-                    <span className="text-[color:var(--text-color)]/60">({n.booking_reference})</span> — {n.note}
-                  </p>
-                ))}
+              <div className="flex flex-col gap-4">
+                {(data.other_charges || []).length > 0 && (
+                  <table className="w-full text-xl">
+                    <TableHead
+                      cells={["Guest", "Room", "Type", "Description", "Remarks", "Amount", ...(showAudit ? ["Action"] : [])]}
+                      rightAlign={["Amount"]}
+                    />
+                    <tbody>
+                      {data.other_charges.map((c) => (
+                        <tr key={c.id} className="border-b border-[color:var(--text-color)]/10">
+                          <td className="px-6 py-4 font-medium text-[color:var(--black)]">{c.guest_name}</td>
+                          <td className="px-6 py-4 text-[color:var(--text-color)]/84">{c.room_numbers || "—"}</td>
+                          <td className="px-6 py-4 text-[color:var(--text-color)]/84">{c.type}</td>
+                          <td className="px-6 py-4 text-[color:var(--text-color)]/84">{c.description || "—"}</td>
+                          <td className="px-6 py-4 text-[color:var(--text-color)]/76">{c.remarks || "—"}</td>
+                          {/* Adjustments and corrections are often negative — shown as
+                              what they did to the bill. */}
+                          <td className={`px-6 py-4 text-right whitespace-nowrap ${Number(c.amount) < 0 ? "text-red-600 font-semibold" : "text-[color:var(--text-color)]/84"}`}>
+                            {Number(c.amount) < 0 ? "-" : ""}{money(Math.abs(Number(c.amount)))}
+                          </td>
+                          {showAudit && <td className="px-6 py-4"><AuditLink audit={c.audit} /></td>}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {data.notes.length > 0 && (
+                  <div className="flex flex-col gap-2 px-6 py-4">
+                    {data.notes.map((n, i) => (
+                      <p key={i} className="text-xl">
+                        <span className="font-bold">{n.guest_name}</span>{" "}
+                        <span className="text-[color:var(--text-color)]/60">({n.booking_reference})</span> — {n.note}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </ReportSection>
