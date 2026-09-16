@@ -126,13 +126,11 @@ export default function AdminReservationsPage() {
   const [showEarlyCheckoutConfirm, setShowEarlyCheckoutConfirm] = useState(false);
   const [earlyCheckoutError, setEarlyCheckoutError] = useState("");
 
-  const loadReservations = useCallback(async () => {
-    // TEMP DIAGNOSTIC — remove once the "reloads every few seconds" report is
-    // root-caused. Prints exactly what called this, so if it's firing on a
-    // timer we can see it's not from anywhere in this file/its websocket sub.
-    console.trace('[AdminReservations] loadReservations() called');
+  // quiet: a socket-driven refresh repaints the table in place. A status
+  // changing elsewhere shouldn't blank the list someone is reading.
+  const loadReservations = useCallback(async ({ quiet = false } = {}) => {
     try {
-      setLoading(true);
+      if (!quiet) setLoading(true);
       const params = { page, limit };
       if (statusFilter !== "all") params.status = statusFilter;
       if (sourceFilter.trim()) params.source = sourceFilter.trim();
@@ -150,7 +148,7 @@ export default function AdminReservationsPage() {
     } catch (err) {
       setError((err.response?.data?.message || "Failed to load reservations.") + " Please refresh the page.");
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [page, statusFilter, sourceFilter, channelFilter, startDate, endDate, noShowOnly]);
 
@@ -171,7 +169,10 @@ export default function AdminReservationsPage() {
   }, []);
 
   const { subscribe, isConnected } = useWebSocketContext();
-  useEffect(() => subscribe(loadReservations, "reservations"), [subscribe, loadReservations]);
+  // Fires on every reservation state change now (created, room assigned,
+  // confirmed, checked in/out, cancelled, no-show, hold expired), so a row
+  // never sits showing the status it had when the page loaded.
+  useEffect(() => subscribe(() => loadReservations({ quiet: true }), "reservations"), [subscribe, loadReservations]);
 
   // Re-fetch whenever the socket (re)connects (e.g. after a backend
   // restart) so a page left open recovers instead of sitting on a load

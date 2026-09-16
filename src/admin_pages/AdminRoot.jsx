@@ -39,9 +39,12 @@ export default function AdminRootLayout() {
   // appears.
   const canSeeReservations = canAccessNavItem("/admin/reservations");
 
+  // 'new_reservation' is the guest-facing site's own bookings only — a
+  // walk-in or future booking typed at the desk refreshes the lists without
+  // raising this (owner, 2026-09-16).
   useEffect(() => {
     if (!canSeeReservations) return;
-    const unsubscribe = subscribe(handleNewReservation, 'reservations');
+    const unsubscribe = subscribe(handleNewReservation, 'new_reservation');
     return unsubscribe;
   }, [subscribe, handleNewReservation, canSeeReservations]);
 
@@ -191,8 +194,8 @@ export default function AdminRootLayout() {
               <span className="text-3xl" style={{ color: 'var(--emphasis)' }}>🔔</span>
             </div>
             <div className="flex-1">
-              <h4 className="text-xl font-bold text-gray-900 leading-tight">New Reservation</h4>
-              <p className="text-gray-600 text-lg">You have a new reservation</p>
+              <h4 className="text-xl font-bold text-gray-900 leading-tight">New Online Booking</h4>
+              <p className="text-gray-600 text-lg">A guest just booked on the website</p>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); setHasNewReservation(false); }}
@@ -236,8 +239,8 @@ export default function AdminRootLayout() {
               <span className="text-3xl" style={{ color: 'var(--emphasis)' }}>🔔</span>
             </div>
             <div className="flex-1">
-              <h4 className="text-xl font-bold text-gray-900 leading-tight">New Reservation</h4>
-              <p className="text-gray-600 text-lg">You have a new reservation</p>
+              <h4 className="text-xl font-bold text-gray-900 leading-tight">New Online Booking</h4>
+              <p className="text-gray-600 text-lg">A guest just booked on the website</p>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); setHasNewReservation(false); }}

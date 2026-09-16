@@ -92,16 +92,18 @@ export default function AdminCheckInsPage() {
   const [walkInReceipt, setWalkInReceipt] = useState(null);
   const [walkInPaymentWarning, setWalkInPaymentWarning] = useState(null);
 
-  const loadList = useCallback(async () => {
+  // quiet: a socket-driven refresh repaints the list in place — another
+  // receptionist checking a guest in shouldn't blank the list being read.
+  const loadList = useCallback(async (quiet = false) => {
     try {
-      setLoading(true);
+      if (!quiet) setLoading(true);
       const result = await fetchCheckInList(date);
       setReservations(Array.isArray(result) ? result : []);
       setError(null);
     } catch (err) {
       setError((err.response?.data?.message || "Failed to load check-in list.") + " Please refresh the page.");
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [date]);
 
@@ -109,12 +111,16 @@ export default function AdminCheckInsPage() {
 
   // Re-fetch whenever the socket (re)connects (e.g. after a backend
   // restart), same pattern as AdminOverview.jsx/AdminRooms.jsx.
-  const { isConnected } = useWebSocketContext();
+  const { isConnected, subscribe } = useWebSocketContext();
   useEffect(() => {
     if (!isConnected) return;
     loadList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
+
+  // ...and whenever any reservation changes state, so an arrival checked in
+  // at another desk drops off this list straight away.
+  useEffect(() => subscribe(() => loadList(true), "reservations"), [subscribe, loadList]);
 
   const openCheckIn = (reservation) => {
     setSelected(reservation);

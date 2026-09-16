@@ -16,10 +16,19 @@ const BRANCH_ID = import.meta.env.VITE_BRANCH_ID || '3';
 // disconnect lasts; stops the instant 'connect' fires.
 const DISCONNECTED_FALLBACK_MS = 30000;
 
+// A single walk-in changes a reservation four times within seconds (created,
+// room assigned, confirmed, checked in). Refreshes are coalesced over this
+// window so each page refetches once rather than four times.
+const RESERVATION_REFRESH_DEBOUNCE_MS = 250;
+
 function WebSocketProvider({ children }) {
   const socketRef = useRef(null);
   const roomListenersRef = useRef(new Set());
   const reservationListenersRef = useRef(new Set());
+  // Kept apart from the refresh listeners above: this is the front desk
+  // popup, which only a booking from the guest-facing site may raise.
+  const newReservationListenersRef = useRef(new Set());
+  const reservationRefreshTimerRef = useRef(null);
   const alertListenersRef = useRef(new Set());
   const disconnectedIntervalRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -101,11 +110,28 @@ function WebSocketProvider({ children }) {
       }
     });
 
-    // Handle new_reservation
-    socketRef.current.on('new_reservation', (data) => {
-      console.log('🔔 [WebSocketProvider] New reservation:', data);
-      if (Number(data.branch_id) === Number(BRANCH_ID)) {
+    const notifyReservationListeners = (data) => {
+      if (reservationRefreshTimerRef.current) clearTimeout(reservationRefreshTimerRef.current);
+      reservationRefreshTimerRef.current = setTimeout(() => {
+        reservationRefreshTimerRef.current = null;
         reservationListenersRef.current.forEach(callback => {
+          try { callback(data); } catch (e) { console.error(e); }
+        });
+      }, RESERVATION_REFRESH_DEBOUNCE_MS);
+    };
+
+    // Any reservation changing state — what keeps a displayed status honest.
+    socketRef.current.on('reservations_updated', (data) => {
+      if (Number(data.branch_id) === Number(BRANCH_ID)) notifyReservationListeners(data);
+    });
+
+    // A booking from the guest-facing site: refreshes the lists like any
+    // other change, and separately raises the front desk popup.
+    socketRef.current.on('new_reservation', (data) => {
+      console.log('🔔 [WebSocketProvider] New online booking:', data);
+      if (Number(data.branch_id) === Number(BRANCH_ID)) {
+        notifyReservationListeners(data);
+        newReservationListenersRef.current.forEach(callback => {
           try { callback(data); } catch (e) { console.error(e); }
         });
       }
@@ -139,12 +165,15 @@ function WebSocketProvider({ children }) {
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
       if (disconnectedIntervalRef.current) clearInterval(disconnectedIntervalRef.current);
+      if (reservationRefreshTimerRef.current) clearTimeout(reservationRefreshTimerRef.current);
     };
   }, []);
 
   const subscribe = useCallback((callback, type = 'rooms') => {
     const targetSet =
       type === 'reservations' ? reservationListenersRef.current :
+      // The popup only — never a walk-in the receptionist is typing.
+      type === 'new_reservation' ? newReservationListenersRef.current :
       type === 'alerts' ? alertListenersRef.current :
       roomListenersRef.current;
     targetSet.add(callback);
