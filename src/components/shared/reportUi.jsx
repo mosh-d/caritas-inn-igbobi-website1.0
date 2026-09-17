@@ -83,18 +83,19 @@ export function OccupancyBadge({ value }) {
 // day and sends a `date`; single-day reports send null and the column is
 // dropped. "Unattributed" covers activity recorded before individual staff
 // logins existed — those rows have no staff account to resolve to.
-// A row's link into the audit trail, prefilled with who acted, which kind of
-// action, and the business day it happened (ReportsService.auditLink builds
-// the `audit` object on the backend). A row with nothing to trace shows a dash.
+// A row's link into the audit trail, prefilled with who acted, which guest it
+// was for, and the report's OWN date range — never the date of the action it
+// happens to have found, which could be months earlier (ReportsService
+// stamps the window; see pinAuditWindow). No action is set: the reader may be
+// checking that an amount was recorded rather than that a check-in happened,
+// and the trail's own dropdown is there if they want to narrow it. A row with
+// nothing to trace shows a dash.
 export function AuditLink({ audit }) {
   if (!audit) return <span className="text-[color:var(--text-color)]/40">—</span>;
   const params = new URLSearchParams();
   if (audit.staff_account_id) params.set("staff_id", String(audit.staff_account_id));
-  if (audit.action) params.set("action", audit.action);
-  if (audit.date) {
-    params.set("from", audit.date);
-    params.set("to", audit.date);
-  }
+  if (audit.from) params.set("from", audit.from);
+  if (audit.to) params.set("to", audit.to);
   if (audit.search) params.set("search", audit.search);
   return (
     <Link
