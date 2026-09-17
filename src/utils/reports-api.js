@@ -67,14 +67,16 @@ export const downloadPmsReportExport = (date, variant) =>
 export const downloadAccommodationReportExport = (date, shift) =>
   downloadXlsx("/api/reports/accommodation/export", { date, shift }, `manifest_${date}.xlsx`);
 
-export const emailReportsDashboard = async (from, to, email) => {
-  const response = await axios.post(
-    `${baseUrl}/api/reports/email`,
-    { from, to, email },
-    { headers: getAuthHeaders() },
-  );
-  return response.data;
-};
+// Parked with the Email Report button (2026-09-17) — the backend endpoint
+// is commented out alongside it in reports.controller.ts.
+// export const emailReportsDashboard = async (from, to, email) => {
+//   const response = await axios.post(
+//     `${baseUrl}/api/reports/email`,
+//     { from, to, email },
+//     { headers: getAuthHeaders() },
+//   );
+//   return response.data;
+// };
 
 export const fetchManifest = async (date) => {
   const response = await axios.get(`${baseUrl}/api/reports/manifest`, {

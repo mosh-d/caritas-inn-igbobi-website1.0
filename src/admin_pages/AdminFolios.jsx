@@ -15,6 +15,7 @@ import RoomStatusTag from "../components/shared/RoomStatusTag";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { canRefund, getStoredStaffRole } from "../utils/auth";
 import { markOtaSettlementPaid, createOtaSettlement, updateOtaSettlement, previewOtaAmount } from "../utils/ota-api";
+import { fetchInHouse } from "../utils/front-office-api";
 import { formatPaymentMethod } from "../utils/report-format";
 import {
   fetchFolios,
@@ -29,6 +30,7 @@ import {
   refundDeposit,
   fetchGuestCredit,
   applyDeposit,
+  transferDepositCredit,
 } from "../utils/folios-api";
 
 const CHARGE_TYPES = ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
@@ -501,6 +503,49 @@ export default function AdminFoliosPage() {
   // and can't carry the reference/amount styling the other destructive
   // confirmations use.
   const [refundCreditTarget, setRefundCreditTarget] = useState(null);
+
+  // Moving a credit to another folio: the same guest booked under a different
+  // number last time, so their two stays never matched to one account and the
+  // automatic match can't see it (owner, 2026-09-16). Same roles as a refund —
+  // money is moving either way.
+  const [transferCreditId, setTransferCreditId] = useState(null);
+  const [transferTo, setTransferTo] = useState("");
+  const [inHouseOptions, setInHouseOptions] = useState([]);
+  const [transferring, setTransferring] = useState(false);
+
+  const openTransfer = async (creditId) => {
+    setTransferCreditId(creditId);
+    setTransferTo("");
+    setRefundError(null);
+    try {
+      const list = await fetchInHouse();
+      // Whoever is in the house now, minus this stay — a credit already on
+      // this folio has nowhere to go here.
+      setInHouseOptions((Array.isArray(list) ? list : []).filter((r) => r.id !== selectedFolio?.reservation?.id));
+    } catch {
+      setInHouseOptions([]);
+    }
+  };
+
+  const closeTransfer = () => {
+    setTransferCreditId(null);
+    setTransferTo("");
+  };
+
+  const handleTransferCredit = async (creditId) => {
+    try {
+      setTransferring(true);
+      setRefundError(null);
+      await transferDepositCredit(creditId, Number(transferTo));
+      closeTransfer();
+      await refreshSelectedFolio();
+      loadFolios();
+    } catch (err) {
+      setRefundError(err.response?.data?.message || "Failed to move the credit.");
+    } finally {
+      setTransferring(false);
+    }
+  };
   const [refundingCreditId, setRefundingCreditId] = useState(null);
   const handleRefundCredit = async () => {
     const credit = refundCreditTarget;
@@ -1079,33 +1124,76 @@ export default function AdminFoliosPage() {
                     const spent = Number(c.amount_applied) > 0;
                     const refunded = c.status === "refunded";
                     return (
-                      <div key={c.id} className="flex items-center justify-between gap-4 text-lg text-green-700/90 flex-wrap">
-                        <span>
-                          <span className="font-mono text-base">{c.deposit_reference}</span>
-                          <span className="ml-2">{c.from_overpayment ? "from an overpayment" : "paid in advance"}</span>
-                          {refunded ? (
-                            <span className="ml-2 text-green-700/70">· refunded to the guest</span>
-                          ) : spent ? (
-                            <span className="ml-2 text-green-700/70">
-                              · {money(c.amount_applied)} of {money(c.amount)} went to charges
-                              {Number(c.available) > 0 ? "" : " (fully used)"}
-                            </span>
-                          ) : null}
-                        </span>
-                        <span className="flex items-center gap-3">
-                          <span className={`font-bold whitespace-nowrap ${Number(c.available) > 0 ? "" : "text-green-700/50 line-through"}`}>
-                            {money(Number(c.available) > 0 ? c.available : c.amount)}
+                      <div key={c.id} className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between gap-4 text-lg text-green-700/90 flex-wrap">
+                          <span>
+                            <span className="font-mono text-base">{c.deposit_reference}</span>
+                            <span className="ml-2">{c.from_overpayment ? "from an overpayment" : "paid in advance"}</span>
+                            {refunded ? (
+                              <span className="ml-2 text-green-700/70">· refunded to the guest</span>
+                            ) : spent ? (
+                              <span className="ml-2 text-green-700/70">
+                                · {money(c.amount_applied)} of {money(c.amount)} went to charges
+                                {Number(c.available) > 0 ? "" : " (fully used)"}
+                              </span>
+                            ) : null}
                           </span>
-                          {Number(c.available) > 0 && canRefund() && (
-                            <button
-                              onClick={() => setRefundCreditTarget(c)}
-                              disabled={refundingCreditId === c.id}
-                              className={btn.rowDanger}
-                            >
-                              {refundingCreditId === c.id ? "Refunding..." : "Refund"}
-                            </button>
-                          )}
-                        </span>
+                          <span className="flex items-center gap-3">
+                            <span className={`font-bold whitespace-nowrap ${Number(c.available) > 0 ? "" : "text-green-700/50 line-through"}`}>
+                              {money(Number(c.available) > 0 ? c.available : c.amount)}
+                            </span>
+                            {Number(c.available) > 0 && canRefund() && (
+                              <>
+                                <button
+                                  onClick={() => openTransfer(c.id)}
+                                  disabled={transferring || refundingCreditId === c.id}
+                                  className={btn.rowSecondary}
+                                  title="Move this credit to another folio"
+                                >
+                                  Transfer
+                                </button>
+                                <button
+                                  onClick={() => setRefundCreditTarget(c)}
+                                  disabled={refundingCreditId === c.id}
+                                  className={btn.rowDanger}
+                                >
+                                  {refundingCreditId === c.id ? "Refunding..." : "Refund"}
+                                </button>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        {transferCreditId === c.id && (
+                          <div className="flex flex-col gap-3 border border-[color:var(--text-color)]/15 rounded-lg px-5 py-4 bg-white">
+                            <p className="text-lg text-[color:var(--text-color)]/68">
+                              Move this credit to another folio — for the same guest booked under a different number,
+                              whose two stays never matched to one account. It settles whatever that folio owes, and
+                              the rest stays claimable there.
+                            </p>
+                            <select value={transferTo} onChange={(e) => setTransferTo(e.target.value)} className={field.select}>
+                              <option value="">Choose the folio to move it to…</option>
+                              {inHouseOptions.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.guest_name}
+                                  {(r.room_assignments || []).length > 0
+                                    ? ` · Room ${(r.room_assignments || []).map((a) => a.room_number).join(", ")}`
+                                    : ""}
+                                  {r.booking_reference ? ` · ${r.booking_reference}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="flex gap-3 flex-wrap">
+                              <button
+                                onClick={() => handleTransferCredit(c.id)}
+                                disabled={!transferTo || transferring}
+                                className={btn.rowPrimary}
+                              >
+                                {transferring ? "Moving..." : "Move the credit"}
+                              </button>
+                              <button onClick={closeTransfer} className={btn.rowSecondary}>Cancel</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

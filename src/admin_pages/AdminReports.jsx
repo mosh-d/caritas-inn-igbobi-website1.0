@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { IoBarChartOutline, IoDownloadOutline, IoMailOutline } from "react-icons/io5";
+import { IoBarChartOutline, IoDownloadOutline } from "react-icons/io5";
+// IoMailOutline comes back with the Email Report button below, if it does.
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
@@ -7,7 +8,7 @@ import StatusBadge from "../components/shared/StatusBadge";
 import {
   fetchReportsDashboard,
   downloadReportsExport,
-  emailReportsDashboard,
+  // emailReportsDashboard, // parked with the Email Report button below
   fetchManifest,
   fetchPaymentsAnalysis,
   fetchPmsReport,
@@ -201,11 +202,16 @@ function DashboardTab() {
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [emailAddress, setEmailAddress] = useState("");
-  const [emailing, setEmailing] = useState(false);
-  const [emailError, setEmailError] = useState(null);
-  const [emailSuccess, setEmailSuccess] = useState(null);
+  // Email Report is parked (owner, 2026-09-17): every account that can open
+  // this page sees the reports live, with shift attribution, so mailing one
+  // by hand earns nothing right now. Kept rather than deleted — bring back
+  // this state, the handler, the two blocks in the markup, the icon and the
+  // api helper together, and the backend endpoint with them.
+  // const [showEmailForm, setShowEmailForm] = useState(false);
+  // const [emailAddress, setEmailAddress] = useState("");
+  // const [emailing, setEmailing] = useState(false);
+  // const [emailError, setEmailError] = useState(null);
+  // const [emailSuccess, setEmailSuccess] = useState(null);
 
   const loadReport = useCallback(async () => {
     if (!from || !to) return;
@@ -234,22 +240,23 @@ function DashboardTab() {
     }
   };
 
-  const handleEmailReport = async () => {
-    if (!from || !to || !emailAddress.trim()) return;
-    try {
-      setEmailing(true);
-      setEmailError(null);
-      setEmailSuccess(null);
-      await emailReportsDashboard(from, to, emailAddress.trim());
-      setEmailSuccess(`Report sent to ${emailAddress.trim()}.`);
-      setEmailAddress("");
-      setTimeout(() => setEmailSuccess(null), 6000);
-    } catch (err) {
-      setEmailError(err.response?.data?.message || "Failed to send report email.");
-    } finally {
-      setEmailing(false);
-    }
-  };
+  // Parked with the rest of Email Report — see the state above.
+  // const handleEmailReport = async () => {
+  //   if (!from || !to || !emailAddress.trim()) return;
+  //   try {
+  //     setEmailing(true);
+  //     setEmailError(null);
+  //     setEmailSuccess(null);
+  //     await emailReportsDashboard(from, to, emailAddress.trim());
+  //     setEmailSuccess(`Report sent to ${emailAddress.trim()}.`);
+  //     setEmailAddress("");
+  //     setTimeout(() => setEmailSuccess(null), 6000);
+  //   } catch (err) {
+  //     setEmailError(err.response?.data?.message || "Failed to send report email.");
+  //   } finally {
+  //     setEmailing(false);
+  //   }
+  // };
 
   const summary = data?.summary || {};
   const paymentMethods = data?.paymentMethods || [];
@@ -303,6 +310,7 @@ function DashboardTab() {
         >
           <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
         </Button>
+        {/* Email Report, parked — see the note by its state above.
         <Button
           onClick={() => setShowEmailForm((v) => !v)}
           disabled={!from || !to}
@@ -311,8 +319,10 @@ function DashboardTab() {
         >
           <IoMailOutline size={20} /> Email Report
         </Button>
+        */}
       </div>
 
+      {/* The Email Report form, parked with its button above.
       {showEmailForm && (
         <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
           <div className="flex flex-col gap-2 flex-1 min-w-[16rem]">
@@ -337,6 +347,7 @@ function DashboardTab() {
           {emailError && <p className="text-red-600 text-xl w-full">{emailError}</p>}
         </div>
       )}
+      */}
 
       {exportError && (
         <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xl w-full">

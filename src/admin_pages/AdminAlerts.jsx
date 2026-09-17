@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { IoClose, IoNotificationsOutline } from "react-icons/io5";
+import { IoClose, IoNotificationsOutline, IoMenuOutline } from "react-icons/io5";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
@@ -149,6 +149,19 @@ export default function AdminAlertsPage() {
 
   const setPage = (key, p) => setPages((prev) => ({ ...prev, [key]: p }));
 
+  // Five tabs don't fit a phone screen — the last of them was cut off the
+  // edge (owner, 2026-09-17), so below sm they collapse into a menu.
+  const [tabMenuOpen, setTabMenuOpen] = useState(false);
+  const tabMenuRef = useRef(null);
+  useEffect(() => {
+    if (!tabMenuOpen) return undefined;
+    const handleClickOutside = (e) => {
+      if (tabMenuRef.current && !tabMenuRef.current.contains(e.target)) setTabMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [tabMenuOpen]);
+
   const paginate = (arr, key) =>
     arr.slice((pages[key] - 1) * PAGE_SIZE, pages[key] * PAGE_SIZE);
 
@@ -160,6 +173,8 @@ export default function AdminAlertsPage() {
     // Money owed back TO a guest, rather than by one (owner's ask, 2026-09-17).
     { key: "credits", label: "Credit to Guest", count: guestCredits.length },
   ];
+
+  const activeTab = tabs.find((t) => t.key === tab);
 
   return (
     <>
@@ -182,28 +197,70 @@ export default function AdminAlertsPage() {
           Alerts
         </PageHeading>
 
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-[color:var(--text-color)]/20 w-full">
-          {tabs.map(({ key, label, count }) => (
+        {/* Tabs. A row of five doesn't fit a phone, so that width gets a
+            menu of the same tabs instead, opening on the current one. */}
+        <div className="w-full">
+          <div className="sm:hidden relative" ref={tabMenuRef}>
             <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`px-8 py-3 text-xl font-bold transition-colors border-b-2 -mb-px flex items-center gap-2 cursor-pointer ${
-                tab === key
-                  ? "border-[color:var(--emphasis)] text-[color:var(--emphasis)]"
-                  : "border-transparent text-[color:var(--text-color)]/76 hover:text-[color:var(--text-color)]"
-              }`}
+              onClick={() => setTabMenuOpen((open) => !open)}
+              className="w-full flex items-center justify-between gap-3 px-6 py-4 border border-[color:var(--text-color)]/20 rounded-xl text-xl font-bold text-[color:var(--emphasis)] cursor-pointer"
             >
-              {label}
-              {count > 0 && (
-                <span className={`text-xl font-bold rounded-full pl-3 pr-3.5 pt-1 pb-1.5 sm:pr-2 md:pt-2 min-w-[1.4rem] text-center leading-tight ${
-                  tab === key ? "bg-[color:var(--emphasis)] text-white" : "bg-red-600 text-white"
-                }`}>
-                  {count}
+              <span className="flex items-center gap-3">
+                <IoMenuOutline size={24} />
+                {activeTab?.label}
+              </span>
+              {activeTab?.count > 0 && (
+                <span className="bg-[color:var(--emphasis)] text-white text-xl font-bold rounded-full px-3 pt-1 pb-1.5 leading-tight">
+                  {activeTab.count}
                 </span>
               )}
             </button>
-          ))}
+            {tabMenuOpen && (
+              <div className="absolute z-30 mt-2 w-full bg-white border border-[color:var(--text-color)]/20 rounded-xl shadow-lg overflow-hidden">
+                {tabs.map(({ key, label, count }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setTab(key); setTabMenuOpen(false); }}
+                    className={`w-full flex items-center justify-between gap-3 px-6 py-4 text-xl text-left cursor-pointer ${
+                      tab === key
+                        ? "bg-[color:var(--emphasis)]/10 text-[color:var(--emphasis)] font-bold"
+                        : "text-[color:var(--text-color)]/76 hover:bg-black/3"
+                    }`}
+                  >
+                    <span>{label}</span>
+                    {count > 0 && (
+                      <span className="bg-red-600 text-white text-lg font-bold rounded-full px-3 pt-1 pb-1.5 leading-tight">
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden sm:flex gap-0 border-b border-[color:var(--text-color)]/20 w-full">
+            {tabs.map(({ key, label, count }) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`px-8 py-3 text-xl font-bold transition-colors border-b-2 -mb-px flex items-center gap-2 cursor-pointer ${
+                  tab === key
+                    ? "border-[color:var(--emphasis)] text-[color:var(--emphasis)]"
+                    : "border-transparent text-[color:var(--text-color)]/76 hover:text-[color:var(--text-color)]"
+                }`}
+              >
+                {label}
+                {count > 0 && (
+                  <span className={`text-xl font-bold rounded-full pl-3 pr-3.5 pt-1 pb-1.5 sm:pr-2 md:pt-2 min-w-[1.4rem] text-center leading-tight ${
+                    tab === key ? "bg-[color:var(--emphasis)] text-white" : "bg-red-600 text-white"
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -281,8 +338,8 @@ export default function AdminAlertsPage() {
               ) : (
                 <div className="w-full flex flex-col gap-4">
                   <p className="text-xl text-[color:var(--text-color)]/76">
-                    These guests checked out with money still on their booking. Open the booking to refund it, or
-                    to transfer it to a booking they have now.
+                    These guests checked out with money still on their folio. Open the folio to refund it, or to
+                    transfer it to a folio they have now.
                   </p>
                   <div className={table.card}>
                     <div className={table.scroll}>
@@ -308,7 +365,12 @@ export default function AdminAlertsPage() {
                               <td className={`${table.td} hidden md:table-cell`}>{formatDate(c.actual_check_out)}</td>
                               <td className={table.td}>
                                 <div className={table.actions}>
-                                  <button onClick={() => navigate("/admin/reservations")} className={btn.rowPrimary}>
+                                  {/* Straight to the folio: refunding and moving
+                                      a credit both happen on the bill. */}
+                                  <button
+                                    onClick={() => navigate(`/admin/folios?reservation_id=${c.reservation_id}`)}
+                                    className={btn.rowPrimary}
+                                  >
                                     View
                                   </button>
                                 </div>
