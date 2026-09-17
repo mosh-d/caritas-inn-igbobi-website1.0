@@ -1,6 +1,48 @@
+import { useEffect, useState } from "react";
 import { FaMapMarkerAlt } from "react-icons/fa";
 
+import { fetchBranchContact } from "../../utils/room-data";
+
+// What this section shows until the server answers, and if it never does.
+// The branches table is the source of truth (owner, 2026-09-17); this copy
+// is only here so a slow or failed request leaves Locate Us reading
+// correctly rather than empty.
+const FALLBACK_CONTACT = {
+  name: "Caritas Inn Igbobi",
+  address:
+    "Caritas Inn, Igbobi, WAEC Bus Stop, Igbobi College Rd, beside First Bank, Yaba, Lagos 101245, Lagos",
+  maps_url: null,
+};
+
 export default function WelcomeSection() {
+  const [contact, setContact] = useState(FALLBACK_CONTACT);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchBranchContact()
+      .then((data) => {
+        if (!cancelled && data?.address) setContact(data);
+      })
+      .catch((error) => {
+        // Not worth showing a guest: the fallback above already reads
+        // correctly, and nothing else on the page depends on this.
+        console.error("Error fetching branch contact:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // The address on file is the hotel's full Google Maps address, its own
+  // name included, so it is searched as it stands and lands on the hotel's
+  // listing rather than on the street.
+  const mapQuery = encodeURIComponent(contact.address || "");
+  const mapsLink =
+    contact.maps_url ||
+    `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
+
   return (
     <div
       data-component="Welcome Component"
@@ -12,8 +54,8 @@ export default function WelcomeSection() {
         className="w-full h-[400px] max-sm:h-[200px] overflow-hidden"
       >
         <iframe
-          title="Google Map - Igbobi College Road, WAEC Bus-stop, Yaba, Lagos"
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3963.9!2d3.3715264111270296!3d6.521371272421725!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103b8c4d5f5f5f5f%3A0x5f5f5f5f5f5f5f5f!2sIgbobi%20College%20Road%2C%20Yaba%2C%20Lagos!5e0!3m2!1sen!2sng!4v1709825424356!5m2!1sen!2sng&style=feature:administrative%7Celement:geometry%7Ccolor:0x1b1b1b&style=feature:administrative%7Celement:labels%7Cvisibility:off&style=feature:administrative.land_parcel%7Celement:geometry%7Ccolor:0x1b1b1b&style=feature:administrative.land_parcel%7Celement:labels%7Cvisibility:off&style=feature:landscape%7Celement:geometry%7Ccolor:0x1b1b1b&style=feature:poi%7Celement:geometry%7Ccolor:0x1b1b1b&style=feature:poi%7Celement:labels%7Cvisibility:off&style=feature:road%7Celement:geometry%7Ccolor:0x404040&style=feature:road%7Celement:labels%7Cvisibility:off&style=feature:transit%7Celement:geometry%7Ccolor:0x404040&style=feature:transit%7Celement:labels%7Cvisibility:off&style=feature:water%7Celement:geometry%7Ccolor:0x0a0a0a&callback=initMap"
+          title={`Google Map - ${contact.address}`}
+          src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
           width="100%"
           height="100%"
           style={{
@@ -28,11 +70,11 @@ export default function WelcomeSection() {
 
       <div className="flex max-sm:flex-col gap-[2rem]">
         <p className="font-secondary text-3xl mx-[1rem] font-bold">
-          Igbobi College Road, Beside First Bank, WAEC Bus-stop, Yaba, Lagos
+          {contact.address}
         </p>
         <a
           data-component="Map link"
-          href="https://maps.google.com/?q=Igbobi+College+Road,+WAEC+Bus-stop,+Yaba,+Lagos"
+          href={mapsLink}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-4 w-fit max-sm:w-full"

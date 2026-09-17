@@ -45,6 +45,22 @@ export const fetchRoomDetails = async (checkIn, checkOut) => {
   }
 };
 
+// This hotel's own name and address, as the owner maintains them on the
+// branches table. Same shape as fetchMaintenanceMode: no session, one branch,
+// and nothing that isn't already printed on this page.
+export const fetchBranchContact = async () => {
+  const baseUrl = API_BASE_URL.endsWith("/")
+    ? API_BASE_URL.slice(0, -1)
+    : API_BASE_URL;
+  const response = await axios.post(
+    `${baseUrl}/api/branches/contact`,
+    { branch_id: BRANCH_ID },
+    { headers: { "Content-Type": "application/json" }, withCredentials: true }
+  );
+
+  return response.data;
+};
+
 export const fetchMaintenanceMode = async () => {
   try {
     const baseUrl = API_BASE_URL.endsWith("/")
