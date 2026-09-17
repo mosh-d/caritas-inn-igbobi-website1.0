@@ -31,7 +31,8 @@ import {
   changeRoomType,
   fetchAvailableRoomNumbers,
 } from "../utils/reservations-pms-api";
-import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, refundDeposit, fetchGuestCredit } from "../utils/folios-api";
+import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, refundDeposit, fetchGuestCredit, transferDepositCredit } from "../utils/folios-api";
+import { fetchInHouse } from "../utils/front-office-api";
 import { canRefund } from "../utils/auth";
 import { fetchRoomDetails } from "../utils/room-data";
 import { hasPassedNoonCutoff } from "../utils/date-utils";
@@ -487,6 +488,48 @@ export default function AdminReservationsPage() {
     }
   };
 
+  // Moving a credit to a different booking. The same guest can end up with
+  // two accounts (they gave a different phone number last time), and the
+  // automatic match can't see that — a person does (owner, 2026-09-16).
+  // Restricted to the roles that can refund: money is moving either way.
+  const [transferCreditId, setTransferCreditId] = useState(null);
+  const [transferTo, setTransferTo] = useState("");
+  const [inHouseOptions, setInHouseOptions] = useState([]);
+
+  const openTransfer = async (depositId) => {
+    setTransferCreditId(depositId);
+    setTransferTo("");
+    setDepositError(null);
+    try {
+      const list = await fetchInHouse();
+      // Whoever is in the house right now, minus this stay itself — Apply
+      // already covers putting a credit on its own booking.
+      setInHouseOptions((Array.isArray(list) ? list : []).filter((r) => r.id !== selectedReservation?.id));
+    } catch {
+      setInHouseOptions([]);
+    }
+  };
+
+  const closeTransfer = () => {
+    setTransferCreditId(null);
+    setTransferTo("");
+  };
+
+  const handleTransferCredit = async (depositId) => {
+    try {
+      setDepositActionLoading(depositId);
+      setDepositError(null);
+      await transferDepositCredit(depositId, Number(transferTo));
+      closeTransfer();
+      const deps = await fetchDeposits({ reservation_id: selectedReservation.id });
+      setDeposits(Array.isArray(deps) ? deps : []);
+    } catch (err) {
+      setDepositError(err.response?.data?.message || "Failed to move the credit.");
+    } finally {
+      setDepositActionLoading(null);
+    }
+  };
+
   const handleApplyCredit = async (depositId) => {
     try {
       setCreditActionLoading(depositId);
@@ -870,7 +913,11 @@ export default function AdminReservationsPage() {
                       <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.check_in)}</td>
                       <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.check_out)}</td>
                       <td className={table.td}><StatusBadge status={r.status} /></td>
-                      <td className={`${table.td} hidden md:table-cell capitalize`}>{r.source || "N/A"}</td>
+                      {/* "OTA, Walk-in" when an OTA pays for part of the stay
+                          and the guest for the rest. Already in the right case,
+                          so no capitalize here — it would keep OTA readable but
+                          turn "Walk-in" into "Walk-In". */}
+                      <td className={`${table.td} hidden md:table-cell`}>{r.source_label || r.source || "N/A"}</td>
                       <td className={table.td}>
                         <div className={table.actions}>
                           {/* No row-level quick-confirm anymore — confirming
@@ -1006,7 +1053,7 @@ export default function AdminReservationsPage() {
                 <InfoCard label="Check-In" value={formatDate(res.check_in)} />
                 <InfoCard label="Check-Out" value={formatDate(res.check_out)} />
                 <InfoCard label="Rooms" value={res.rooms_booked} />
-                <InfoCard label="Source" value={res.source || "N/A"} capitalize />
+                <InfoCard label="Source" value={res.source_label || res.source || "N/A"} />
               </div>
 
               {/* Contact */}
@@ -1150,42 +1197,86 @@ export default function AdminReservationsPage() {
                 {deposits.length > 0 && (
                   <div className="flex flex-col gap-2">
                     {deposits.map((dep) => (
-                      <div key={dep.id} className="flex items-center justify-between bg-[color:var(--text-color)]/3 rounded-lg px-5 py-4 gap-4">
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <span className="text-base text-[color:var(--text-color)]/68 font-mono">
-                            {dep.deposit_reference}{dep.receipt_number && <> · Receipt #{dep.receipt_number}</>} · {formatDate(dep.deposit_date)}
-                          </span>
-                          <span className="text-xl font-medium">
-                            {money(dep.amount)} · <span>{formatPaymentMethod(dep.payment_method)}</span>
-                            {dep.notes && <span className="text-[color:var(--text-color)]/68 ml-2">— {dep.notes}</span>}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 flex-nowrap">
-                          <StatusBadge status={dep.status} />
-                          {dep.status === "pending" && (
-                            <>
-                              <button
-                                onClick={() => handleApplyDeposit(dep.id)}
-                                disabled={depositActionLoading === dep.id || !reservationFolio}
-                                className={btn.rowSuccess}
-                                title={!reservationFolio ? "No folio linked — confirm reservation first" : "Apply to folio"}
-                              >
-                                {depositActionLoading === dep.id ? "..." : "Apply"}
-                              </button>
-                              {/* Receptionists and managers only — see canRefund. Apply stays open to
-                                  everyone; only paying money back out is restricted. */}
-                              {canRefund() && (
+                      <div key={dep.id} className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between bg-[color:var(--text-color)]/3 rounded-lg px-5 py-4 gap-4">
+                          <div className="flex flex-col gap-1 min-w-0">
+                            <span className="text-base text-[color:var(--text-color)]/68 font-mono">
+                              {dep.deposit_reference}{dep.receipt_number && <> · Receipt #{dep.receipt_number}</>} · {formatDate(dep.deposit_date)}
+                            </span>
+                            <span className="text-xl font-medium">
+                              {money(dep.amount)} · <span>{formatPaymentMethod(dep.payment_method)}</span>
+                              {dep.notes && <span className="text-[color:var(--text-color)]/68 ml-2">— {dep.notes}</span>}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-nowrap">
+                            <StatusBadge status={dep.status} />
+                            {dep.status === "pending" && (
+                              <>
                                 <button
-                                  onClick={() => handleRefundDeposit(dep.id)}
-                                  disabled={depositActionLoading === dep.id}
-                                  className={btn.rowDanger}
+                                  onClick={() => handleApplyDeposit(dep.id)}
+                                  disabled={depositActionLoading === dep.id || !reservationFolio}
+                                  className={btn.rowSuccess}
+                                  title={!reservationFolio ? "No folio linked — confirm reservation first" : "Settle what this stay owes from this credit"}
                                 >
-                                  {depositActionLoading === dep.id ? "..." : "Refund"}
+                                  {depositActionLoading === dep.id ? "..." : "Apply"}
                                 </button>
-                              )}
-                            </>
-                          )}
+                                {/* Receptionists and managers only — see canRefund. Apply stays open
+                                    to everyone; moving money to another booking, or paying it back
+                                    out, is not. */}
+                                {canRefund() && (
+                                  <>
+                                    <button
+                                      onClick={() => openTransfer(dep.id)}
+                                      disabled={depositActionLoading === dep.id}
+                                      className={btn.rowSecondary}
+                                      title="Move this credit to another booking"
+                                    >
+                                      Transfer
+                                    </button>
+                                    <button
+                                      onClick={() => handleRefundDeposit(dep.id)}
+                                      disabled={depositActionLoading === dep.id}
+                                      className={btn.rowDanger}
+                                    >
+                                      {depositActionLoading === dep.id ? "..." : "Refund"}
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
+                        {transferCreditId === dep.id && (
+                          <div className="flex flex-col gap-3 border border-[color:var(--text-color)]/15 rounded-lg px-5 py-4">
+                            <p className="text-lg text-[color:var(--text-color)]/68">
+                              Move this credit to another booking — for the same guest booked under a different
+                              number, whose two stays never matched to one account. It settles whatever that
+                              booking owes, and the rest stays claimable there.
+                            </p>
+                            <select value={transferTo} onChange={(e) => setTransferTo(e.target.value)} className={field.select}>
+                              <option value="">Choose the booking to move it to…</option>
+                              {inHouseOptions.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.guest_name}
+                                  {(r.room_assignments || []).length > 0
+                                    ? ` · Room ${(r.room_assignments || []).map((a) => a.room_number).join(", ")}`
+                                    : ""}
+                                  {r.booking_reference ? ` · ${r.booking_reference}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="flex gap-3 flex-wrap">
+                              <button
+                                onClick={() => handleTransferCredit(dep.id)}
+                                disabled={!transferTo || depositActionLoading === dep.id}
+                                className={btn.rowPrimary}
+                              >
+                                {depositActionLoading === dep.id ? "Moving..." : "Move the credit"}
+                              </button>
+                              <button onClick={closeTransfer} className={btn.rowSecondary}>Cancel</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

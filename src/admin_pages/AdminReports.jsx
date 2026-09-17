@@ -575,7 +575,9 @@ function ManifestTab() {
       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(r.amount_deposited)}</td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(r.actual_check_in || r.check_in)}</td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(r.actual_check_out || r.check_out)}</td>
-      <td className="px-6 py-4 text-[color:var(--text-color)]/84 capitalize">{r.source || "—"}</td>
+      {/* Already cased for reading ("OTA, Walk-in"), so no capitalize —
+          it would turn "Walk-in" into "Walk-In". */}
+      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.source_label || r.source || "—"}</td>
       {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
     </tr>
   );

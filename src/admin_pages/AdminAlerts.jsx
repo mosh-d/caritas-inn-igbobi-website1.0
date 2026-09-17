@@ -75,7 +75,7 @@ function Pagination({ page, total, onPage }) {
 export default function AdminAlertsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("missed");
-  const [pages, setPages] = useState({ missed: 1, overdue: 1, balances: 1, unconfirmed: 1 });
+  const [pages, setPages] = useState({ missed: 1, overdue: 1, balances: 1, unconfirmed: 1, credits: 1 });
   const [alerts, setAlerts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,6 +145,7 @@ export default function AdminAlertsPage() {
   const overdue = alerts?.overdue_checkouts ?? [];
   const balances = alerts?.overdue_balances ?? [];
   const unconfirmed = alerts?.unconfirmed ?? [];
+  const guestCredits = alerts?.guest_credits ?? [];
 
   const setPage = (key, p) => setPages((prev) => ({ ...prev, [key]: p }));
 
@@ -156,6 +157,8 @@ export default function AdminAlertsPage() {
     { key: "unconfirmed", label: "Unconfirmed", count: unconfirmed.length },
     { key: "overdue", label: "Overdue Checkouts", count: overdue.length },
     { key: "balances", label: "Overdue Balances", count: balances.length },
+    // Money owed back TO a guest, rather than by one (owner's ask, 2026-09-17).
+    { key: "credits", label: "Credit to Guest", count: guestCredits.length },
   ];
 
   return (
@@ -269,6 +272,58 @@ export default function AdminAlertsPage() {
             )}
 
             {/* Unconfirmed */}
+            {/* Money the hotel is still holding for a guest who has already
+                left. It can no longer settle anything, so it waits here until
+                someone refunds it or moves it to a booking they have now. */}
+            {tab === "credits" && (
+              guestCredits.length === 0 ? (
+                <AllClear message="No credit owed to a departed guest." />
+              ) : (
+                <div className="w-full flex flex-col gap-4">
+                  <p className="text-xl text-[color:var(--text-color)]/76">
+                    These guests checked out with money still on their booking. Open the booking to refund it, or
+                    to transfer it to a booking they have now.
+                  </p>
+                  <div className={table.card}>
+                    <div className={table.scroll}>
+                      <table className={table.el}>
+                        <thead>
+                          <tr className={table.headRow}>
+                            <th className={table.th}>Guest</th>
+                            <th className={table.th}>Credit</th>
+                            <th className={`${table.th} hidden md:table-cell`}>Taken</th>
+                            <th className={`${table.th} hidden md:table-cell`}>Checked Out</th>
+                            <th className={table.th}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginate(guestCredits, "credits").map((c) => (
+                            <tr key={c.id} className={table.row}>
+                              <td className={`${table.td} font-medium`}>
+                                <div>{c.guest_name}</div>
+                                <div className="text-base text-[color:var(--text-color)]/68">{c.booking_reference}</div>
+                              </td>
+                              <td className={`${table.td} font-bold text-green-700`}>{money(c.amount_available)}</td>
+                              <td className={`${table.td} hidden md:table-cell`}>{formatDate(c.deposit_date)}</td>
+                              <td className={`${table.td} hidden md:table-cell`}>{formatDate(c.actual_check_out)}</td>
+                              <td className={table.td}>
+                                <div className={table.actions}>
+                                  <button onClick={() => navigate("/admin/reservations")} className={btn.rowPrimary}>
+                                    View
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <Pagination page={pages.credits} total={guestCredits.length} onPage={(p) => setPage("credits", p)} />
+                </div>
+              )
+            )}
+
             {tab === "unconfirmed" && (
               unconfirmed.length === 0 ? (
                 <AllClear message="No unconfirmed reservations." />

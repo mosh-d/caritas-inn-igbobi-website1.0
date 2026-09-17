@@ -14,7 +14,7 @@ import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { canRefund, getStoredStaffRole } from "../utils/auth";
-import { markOtaSettlementPaid, createOtaSettlement, previewOtaAmount } from "../utils/ota-api";
+import { markOtaSettlementPaid, createOtaSettlement, updateOtaSettlement, previewOtaAmount } from "../utils/ota-api";
 import { formatPaymentMethod } from "../utils/report-format";
 import {
   fetchFolios,
@@ -27,6 +27,8 @@ import {
   recordPayment,
   recordRefund,
   refundDeposit,
+  fetchGuestCredit,
+  applyDeposit,
 } from "../utils/folios-api";
 
 const CHARGE_TYPES = ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
@@ -73,6 +75,11 @@ const emptyRefundForm = { amount: "", payment_method: "transfer", receipt_number
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";
+
+// id set means the form is adjusting that settlement's nights rather than
+// adding a range. touched means someone has actually moved the nights, which
+// is what allows the amount to be re-quoted (see the preview effect).
+const EMPTY_OTA_FORM = { open: false, id: null, start: "", end: "", breakfast: false, amount: "", touched: false };
 
 export default function AdminFoliosPage() {
   // Waitstaff only ever posts charges to a folio still open for business
@@ -322,14 +329,21 @@ export default function AdminFoliosPage() {
   // stay, exactly as on the check-in form, and the amount is prefilled from
   // the rate for them before anyone edits it down to the OTA's net figure.
   const canRecordOta = ["receptionist", "manager", "developer"].includes(getStoredStaffRole());
-  const [otaForm, setOtaForm] = useState({ open: false, start: "", end: "", breakfast: false, amount: "" });
+  const [otaForm, setOtaForm] = useState(EMPTY_OTA_FORM);
   const [addingOta, setAddingOta] = useState(false);
+  // Its own error line: this panel's failures used to surface in the payment
+  // section far below, which read as the save doing nothing at all.
+  const [otaError, setOtaError] = useState(null);
   const otaMin = selectedFolio?.reservation?.check_in ? String(selectedFolio.reservation.check_in).slice(0, 10) : "";
   const otaMax = selectedFolio?.reservation?.check_out ? String(selectedFolio.reservation.check_out).slice(0, 10) : "";
 
   useEffect(() => {
     if (!otaForm.open || !otaForm.start || !otaForm.end || otaForm.end <= otaForm.start) return undefined;
     if (!selectedFolio?.reservation?.id) return undefined;
+    // An adjustment opens on the figure already agreed with the OTA — often
+    // net of its commission, which nobody wants silently recomputed. It is
+    // re-quoted only once someone actually moves the nights.
+    if (otaForm.id && !otaForm.touched) return undefined;
     let cancelled = false;
     previewOtaAmount({
       reservationId: selectedFolio.reservation.id,
@@ -340,27 +354,79 @@ export default function AdminFoliosPage() {
       .then((result) => { if (!cancelled) setOtaForm((prev) => ({ ...prev, amount: String(result.amount) })); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [otaForm.open, otaForm.start, otaForm.end, otaForm.breakfast, selectedFolio?.reservation?.id]);
+  }, [otaForm.open, otaForm.id, otaForm.touched, otaForm.start, otaForm.end, otaForm.breakfast, selectedFolio?.reservation?.id]);
 
-  const handleAddOta = async () => {
+  const handleSaveOta = async () => {
     if (!selectedFolio?.reservation?.id) return;
     try {
       setAddingOta(true);
-      setPaymentError(null);
-      await createOtaSettlement({
-        reservationId: selectedFolio.reservation.id,
-        startDate: otaForm.start,
-        endDate: otaForm.end,
-        includesBreakfast: otaForm.breakfast,
-        amount: otaForm.amount || undefined,
-      });
-      setOtaForm({ open: false, start: "", end: "", breakfast: false, amount: "" });
+      setOtaError(null);
+      if (otaForm.id) {
+        await updateOtaSettlement(otaForm.id, {
+          startDate: otaForm.start,
+          endDate: otaForm.end,
+          includesBreakfast: otaForm.breakfast,
+          amount: otaForm.amount || undefined,
+        });
+      } else {
+        await createOtaSettlement({
+          reservationId: selectedFolio.reservation.id,
+          startDate: otaForm.start,
+          endDate: otaForm.end,
+          includesBreakfast: otaForm.breakfast,
+          amount: otaForm.amount || undefined,
+        });
+      }
+      setOtaForm(EMPTY_OTA_FORM);
       await refreshSelectedFolio();
       loadFolios();
     } catch (err) {
-      setPaymentError(err.response?.data?.message || "Failed to record the OTA payment.");
+      setOtaError(err.response?.data?.message
+        || (otaForm.id ? "Failed to adjust the OTA nights." : "Failed to record the OTA payment."));
     } finally {
       setAddingOta(false);
+    }
+  };
+
+  // A pending deposit left over on another of this guest's stays. The
+  // reservation modal has offered this for a while; the folio is where a bill
+  // actually gets settled, so it belongs here too (owner, 2026-09-16).
+  const [guestCredit, setGuestCredit] = useState([]);
+  const [creditActionLoading, setCreditActionLoading] = useState(null);
+  const [creditError, setCreditError] = useState(null);
+  const creditGuestId = selectedFolio?.guest?.id ?? null;
+  const creditReservationId = selectedFolio?.reservation?.id ?? null;
+
+  const loadGuestCredit = useCallback(async () => {
+    if (!creditGuestId) {
+      setGuestCredit([]);
+      return;
+    }
+    try {
+      const credit = await fetchGuestCredit(creditGuestId);
+      // Credit held against THIS stay is already shown as Reservation
+      // (Credit) below — this panel is only for money left on another one.
+      setGuestCredit((credit || []).filter((c) => c.reservation_id !== creditReservationId));
+    } catch {
+      setGuestCredit([]);
+    }
+  }, [creditGuestId, creditReservationId]);
+
+  useEffect(() => { loadGuestCredit(); }, [loadGuestCredit]);
+
+  const handleApplyCredit = async (depositId) => {
+    if (!creditReservationId) return;
+    try {
+      setCreditActionLoading(depositId);
+      setCreditError(null);
+      await applyDeposit(depositId, creditReservationId);
+      await refreshSelectedFolio();
+      await loadGuestCredit();
+      loadFolios();
+    } catch (err) {
+      setCreditError(err.response?.data?.message || "Failed to apply the credit.");
+    } finally {
+      setCreditActionLoading(null);
     }
   };
 
@@ -668,7 +734,11 @@ export default function AdminFoliosPage() {
                     <tr key={f.id} className={table.row}>
                       <td className={`${table.td} font-medium`}>{f.folio_number}</td>
                       <td className={`${table.td} font-medium text-[color:var(--black)]`}>
-                        {f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : (f.reservation?.guest_name || "N/A")}
+                        {/* The name THIS booking was made under comes first: a
+                            repeat guest's account can carry an older spelling,
+                            which used to show here while the reservation showed
+                            the new one (owner, 2026-09-16). */}
+                        {f.reservation?.guest_name || (f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : "N/A")}
                       </td>
                       {showGuestStatusColumn && (
                         <td className={table.td}>
@@ -773,7 +843,7 @@ export default function AdminFoliosPage() {
             <>
               {/* Summary */}
               <div className="grid grid-cols-1 gap-4">
-                <SummaryStat label="Guest" value={selectedFolio.guest ? `${selectedFolio.guest.first_name} ${selectedFolio.guest.last_name}` : (selectedFolio.reservation?.guest_name || "N/A")} />
+                <SummaryStat label="Guest" value={selectedFolio.reservation?.guest_name || (selectedFolio.guest ? `${selectedFolio.guest.first_name} ${selectedFolio.guest.last_name}` : "N/A")} />
                 {/* The stay the folio belongs to. Shows what actually happened
                     once it has — an arrival or departure that is still only
                     scheduled says so, rather than passing a plan off as fact. */}
@@ -832,9 +902,30 @@ export default function AdminFoliosPage() {
                         </span>
                       </div>
                       {s.status === "pending" ? (
-                        <button onClick={() => handleMarkOtaPaid(s.id)} disabled={otaPayingId === s.id} className={btn.rowSuccess}>
-                          {otaPayingId === s.id ? "Recording..." : "Mark OTA Paid"}
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {canRecordOta && (
+                            <button
+                              onClick={() => {
+                                setOtaError(null);
+                                setOtaForm({
+                                  open: true,
+                                  id: s.id,
+                                  start: String(s.start_date).slice(0, 10),
+                                  end: String(s.end_date).slice(0, 10),
+                                  breakfast: Boolean(s.includes_breakfast),
+                                  amount: String(s.amount ?? ""),
+                                  touched: false,
+                                });
+                              }}
+                              className={btn.rowSecondary}
+                            >
+                              Adjust OTA paid nights
+                            </button>
+                          )}
+                          <button onClick={() => handleMarkOtaPaid(s.id)} disabled={otaPayingId === s.id} className={btn.rowSuccess}>
+                            {otaPayingId === s.id ? "Recording..." : "Mark OTA Paid"}
+                          </button>
+                        </div>
                       ) : (
                         <StatusBadge status="paid" />
                       )}
@@ -846,7 +937,7 @@ export default function AdminFoliosPage() {
                 otaForm.open ? (
                   <div className="border border-[color:var(--text-color)]/15 rounded-lg px-5 py-4 flex flex-col gap-4">
                     <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">
-                      Add an OTA payment
+                      {otaForm.id ? "Adjust OTA paid nights" : "Add an OTA payment"}
                     </p>
                     <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
                       <div className="flex flex-col gap-2">
@@ -856,7 +947,7 @@ export default function AdminFoliosPage() {
                           value={otaForm.start}
                           min={otaMin}
                           max={otaMax}
-                          onChange={(e) => setOtaForm({ ...otaForm, start: e.target.value })}
+                          onChange={(e) => setOtaForm({ ...otaForm, start: e.target.value, touched: true })}
                           className={field.input}
                         />
                       </div>
@@ -867,7 +958,7 @@ export default function AdminFoliosPage() {
                           value={otaForm.end}
                           min={otaMin}
                           max={otaMax}
-                          onChange={(e) => setOtaForm({ ...otaForm, end: e.target.value })}
+                          onChange={(e) => setOtaForm({ ...otaForm, end: e.target.value, touched: true })}
                           className={field.input}
                         />
                       </div>
@@ -876,7 +967,7 @@ export default function AdminFoliosPage() {
                       <input
                         type="checkbox"
                         checked={otaForm.breakfast}
-                        onChange={(e) => setOtaForm({ ...otaForm, breakfast: e.target.checked })}
+                        onChange={(e) => setOtaForm({ ...otaForm, breakfast: e.target.checked, touched: true })}
                         className="w-5 h-5 cursor-pointer"
                       />
                       The OTA rate includes breakfast
@@ -894,16 +985,19 @@ export default function AdminFoliosPage() {
                         Prefilled from the rate for those nights. Change it to use a custom amount for the OTA payment.
                       </p>
                     </div>
+                    {otaError && (
+                      <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{otaError}</p>
+                    )}
                     <div className="flex gap-3 flex-wrap">
                       <button
-                        onClick={handleAddOta}
+                        onClick={handleSaveOta}
                         disabled={addingOta || !otaForm.start || !otaForm.end || otaForm.end <= otaForm.start}
                         className={btn.primary}
                       >
-                        {addingOta ? "Saving..." : "Save OTA payment"}
+                        {addingOta ? "Saving..." : otaForm.id ? "Adjust OTA paid nights" : "Save OTA payment"}
                       </button>
                       <button
-                        onClick={() => setOtaForm({ open: false, start: "", end: "", breakfast: false, amount: "" })}
+                        onClick={() => { setOtaForm(EMPTY_OTA_FORM); setOtaError(null); }}
                         className={btn.secondary}
                       >
                         Cancel
@@ -912,12 +1006,46 @@ export default function AdminFoliosPage() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => setOtaForm({ open: true, start: otaMin, end: otaMax, breakfast: false, amount: "" })}
+                    onClick={() => { setOtaError(null); setOtaForm({ ...EMPTY_OTA_FORM, open: true, start: otaMin, end: otaMax }); }}
                     className={`${btn.secondary} self-start`}
                   >
-                    An OTA is paying for some nights
+                    {(selectedFolio.ota_settlements || []).length > 0
+                      ? "Add another OTA range"
+                      : "An OTA is paying for some nights"}
                   </button>
                 )
+              )}
+              {/* Money this guest left behind on a DIFFERENT stay — the same
+                  panel the reservation modal offers, put where a bill is
+                  actually settled (owner, 2026-09-16). */}
+              {guestCredit.length > 0 && selectedFolio.status !== "closed" && (
+                <div className="border border-[color:var(--text-color)]/15 rounded-lg px-5 py-4 flex flex-col gap-3">
+                  <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">
+                    Credit from a previous stay
+                  </p>
+                  {guestCredit.map((c) => (
+                    <div key={c.id} className="flex items-center justify-between gap-4 flex-wrap border-b border-[color:var(--text-color)]/10 last:border-0 pb-3 last:pb-0">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-base text-[color:var(--text-color)]/68 font-mono">
+                          {c.deposit_reference}{c.receipt_number ? ` · Receipt #${c.receipt_number}` : ""} · {formatDate(c.deposit_date)}
+                          {c.booking_reference ? ` · from booking ${c.booking_reference}` : ""}
+                        </span>
+                        <span className="text-xl font-medium">
+                          {money(c.amount)} · {formatPaymentMethod(c.payment_method)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleApplyCredit(c.id)}
+                        disabled={creditActionLoading === c.id || !creditReservationId}
+                        className={btn.rowSuccess}
+                        title={creditReservationId ? "Apply this credit to this folio" : "This folio has no reservation to apply a credit to"}
+                      >
+                        {creditActionLoading === c.id ? "..." : "Apply"}
+                      </button>
+                    </div>
+                  ))}
+                  {creditError && <p className="text-red-600 text-lg">{creditError}</p>}
+                </div>
               )}
               {hasCreditBalance && (
                 <div className="bg-green-50 border border-green-200 rounded-lg px-5 py-4 flex items-center justify-between">

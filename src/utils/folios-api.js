@@ -111,6 +111,19 @@ export const fetchDeposits = async (params = {}) => {
   return response.data;
 };
 
+// Moving an unspent credit to a DIFFERENT booking: the same guest under a
+// different phone number, so their two stays never matched to one account and
+// the automatic same-guest rule (see applyDeposit) rightly refuses. The credit
+// moves and settles whatever is owed on the booking it lands on.
+export const transferDepositCredit = async (id, targetReservationId) => {
+  const response = await axios.post(
+    `${baseUrl}/api/deposits/${id}/transfer`,
+    { target_reservation_id: Number(targetReservationId) },
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+};
+
 export const applyDeposit = async (id, targetReservationId) => {
   const response = await axios.post(
     `${baseUrl}/api/deposits/${id}/apply`,

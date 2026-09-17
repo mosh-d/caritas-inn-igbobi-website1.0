@@ -51,6 +51,24 @@ export const createOtaSettlement = async ({ reservationId, startDate, endDate, i
 // The OTA's money arrived. The payment lands on the folio with method "ota"
 // automatically — nobody picks it — so it settles and reports like any other
 // money taken.
+// Correcting the nights before the OTA pays for them — the range was keyed
+// in wrong, or the guest's dates moved. Leave the amount out and the backend
+// re-quotes it from the new nights; send one to keep the OTA's own figure.
+export const updateOtaSettlement = async (id, { startDate, endDate, includesBreakfast, amount, reference }) => {
+  const response = await axios.patch(
+    `${baseUrl}/api/ota-settlements/${id}`,
+    {
+      ...(startDate ? { start_date: startDate } : {}),
+      ...(endDate ? { end_date: endDate } : {}),
+      includes_breakfast: Boolean(includesBreakfast),
+      ...(amount ? { amount: Number(amount) } : {}),
+      ...(reference ? { reference } : {}),
+    },
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+};
+
 export const markOtaSettlementPaid = async (id, reference) => {
   const response = await axios.post(
     `${baseUrl}/api/ota-settlements/${id}/paid`,
