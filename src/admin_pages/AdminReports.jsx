@@ -523,20 +523,27 @@ function DashboardTab() {
   );
 }
 
+// A labelled figure at the foot of a report section, with an optional
+// one-line note underneath saying what it counts.
+function TotalLine({ label, amount, note, emphasis = false }) {
+  return (
+    <div className="flex flex-col items-end gap-1 px-6 py-4 border-t border-[color:var(--text-color)]/10">
+      <p className="text-xl">
+        <span className="text-[color:var(--text-color)]/68 uppercase tracking-wide font-semibold">{label}</span>{" "}
+        <span className={`font-bold ml-3 ${emphasis ? "text-[color:var(--emphasis)]" : "text-[color:var(--black)]"}`}>{money(amount)}</span>
+      </p>
+      {note && <p className="text-lg text-[color:var(--text-color)]/60 text-right">{note}</p>}
+    </div>
+  );
+}
+
 // Room revenue only: breakfast is excluded because these reports are read
 // for room revenue and breakfast is accounted for separately, and
 // complementary rooms are excluded because their price was waived (which is
 // why both tables render it struck through). The figure is computed by the
 // backend's sumRoomRevenue so the screen and the Excel export can't drift.
 function RoomRevenueTotal({ amount }) {
-  return (
-    <div className="flex justify-end px-6 py-4 border-t border-[color:var(--text-color)]/10">
-      <p className="text-xl">
-        <span className="text-[color:var(--text-color)]/68 uppercase tracking-wide font-semibold">Total Room Revenue (excluding breakfast)</span>{" "}
-        <span className="font-bold text-[color:var(--black)] ml-3">{money(amount)}</span>
-      </p>
-    </div>
-  );
+  return <TotalLine label="Total Room Revenue (excluding breakfast)" amount={amount} />;
 }
 
 // ─── Manifest ─────────────────────────────────────────────────────────────────
@@ -1088,7 +1095,16 @@ function AccommodationReportTab({ shift }) {
                 </tbody>
               </table>
             )}
-            <RoomRevenueTotal amount={data.room_revenue_total} />
+            {/* What guests actually paid for their ROOMS today - partial or in
+                full - not what the rooms cost. Breakfast is left out, and so is
+                PB: that money is counted under Reservation (Credit) on the day
+                it was paid, and counting it again here would count it twice
+                (owner, 2026-09-18). */}
+            <TotalLine
+              label="Manifest Total (excluding breakfast)"
+              amount={data.manifest_total}
+              note="Room money guests paid today. Paid Before (PB) is counted under Reservation (Credit), on the day it was paid."
+            />
           </ReportSection>
 
           {/* Rooms someone stayed in that bring in no money: complementary guests,
@@ -1182,6 +1198,10 @@ function AccommodationReportTab({ shift }) {
                 </tbody>
               </table>
             )}
+            {/* Shown even on a day with no advance payments, so the combined
+                figure is always there to read off. */}
+            <TotalLine label="Reservation Total" amount={data.reservation_total} />
+            <TotalLine label="Manifest Total plus Reservation" amount={data.manifest_plus_reservation_total} emphasis />
           </ReportSection>
 
           <ReportSection title="Debt Recovery" subtitle="Old debt cleared by a payment received this business day">
