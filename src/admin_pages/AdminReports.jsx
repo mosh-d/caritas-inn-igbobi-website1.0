@@ -1048,6 +1048,19 @@ function AccommodationReportTab({ shift }) {
             </div>
           </div>
 
+          {/* Until the night audit closes the day (6am the next morning), its
+              stay-over nights are not charged and PB credit is not applied, so
+              the figures are incomplete - shown only while that is true
+              (owner, 2026-09-18). */}
+          {data.night_audit_done === false && (
+            <div className="p-5 rounded-xl border w-full text-xl bg-orange-50 border-orange-200 text-orange-700">
+              <strong>Not final yet:</strong> the night audit for this day runs at 6:00 AM the next morning.
+              Until it does, stay-over nights are not charged and Paid Before (PB) credit is not applied, so
+              Payment Status, Paid Today, Counted in Total and the Manifest Total are incomplete. Read this
+              Manifest again after 6:00 AM tomorrow.
+            </div>
+          )}
+
           {/* The Manifest Total is what guests actually paid for their ROOMS
               today - partial or in full - not what the rooms cost. Breakfast is
               left out, and so is PB: that money is counted under Reservation
