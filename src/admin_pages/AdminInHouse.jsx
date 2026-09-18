@@ -26,6 +26,7 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 import { hasPassedNoonCutoff } from "../utils/date-utils";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
 
+import DateInput from "../components/shared/DateInput";
 const roomStatusKey = (roomTypeId, roomNumber) => `${roomTypeId}::${roomNumber}`;
 
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
@@ -661,8 +662,7 @@ export default function AdminInHousePage() {
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
                 <h3 className="text-2xl font-bold text-[color:var(--black)]">Extend Stay</h3>
                 <div className="flex gap-3 flex-nowrap items-center">
-                  <input
-                    type="date"
+                  <DateInput
                     value={newCheckOutDate}
                     onChange={(e) => setNewCheckOutDate(e.target.value)}
                     className={field.input}

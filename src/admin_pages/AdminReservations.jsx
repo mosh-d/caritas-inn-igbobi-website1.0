@@ -38,6 +38,7 @@ import { fetchRoomDetails } from "../utils/room-data";
 import { hasPassedNoonCutoff } from "../utils/date-utils";
 import { formatPaymentMethod } from "../utils/report-format";
 
+import DateInput from "../components/shared/DateInput";
 const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
 const BRANCH_ID = 3; // Caritas Inn Igbobi branch ID
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
@@ -858,8 +859,8 @@ export default function AdminReservationsPage() {
                     <input type="text" placeholder="Booking Channel" value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)} className={field.input} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={field.input} />
-                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={field.input} />
+                    <DateInput value={startDate} onChange={(e) => setStartDate(e.target.value)} className={field.input} />
+                    <DateInput value={endDate} onChange={(e) => setEndDate(e.target.value)} className={field.input} />
                   </div>
                   <label className="flex items-center gap-3 cursor-pointer text-lg">
                     <input type="checkbox" checked={noShowOnly} onChange={(e) => setNoShowOnly(e.target.checked)} className="w-5 h-5 accent-[var(--emphasis)] cursor-pointer" />
@@ -1127,8 +1128,7 @@ export default function AdminReservationsPage() {
                   {!res.actual_check_in && (
                     <div className="flex flex-col gap-2">
                       <label className={field.label}>Check-In Date</label>
-                      <input
-                        type="date"
+                      <DateInput
                         value={editFields.check_in}
                         onChange={(e) => setEditFields({ ...editFields, check_in: e.target.value })}
                         className={field.input}
@@ -1408,7 +1408,7 @@ export default function AdminReservationsPage() {
                 <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
                   <h3 className="text-2xl font-bold text-[color:var(--black)]">Extend Stay</h3>
                   <div className="flex gap-3 flex-nowrap items-center">
-                    <input type="date" value={newCheckOutDate} onChange={(e) => setNewCheckOutDate(e.target.value)} className={field.input} />
+                    <DateInput value={newCheckOutDate} onChange={(e) => setNewCheckOutDate(e.target.value)} className={field.input} />
                     <button
                       onClick={handleExtendStay}
                       disabled={extending || !newCheckOutDate}
@@ -1531,11 +1531,11 @@ export default function AdminReservationsPage() {
           <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
             <div className="flex flex-col gap-2">
               <label className={field.label}>Start Date</label>
-              <input type="date" value={exportStartDate} onChange={(e) => setExportStartDate(e.target.value)} className={field.input} />
+              <DateInput value={exportStartDate} onChange={(e) => setExportStartDate(e.target.value)} className={field.input} />
             </div>
             <div className="flex flex-col gap-2">
               <label className={field.label}>End Date</label>
-              <input type="date" value={exportEndDate} onChange={(e) => setExportEndDate(e.target.value)} className={field.input} />
+              <DateInput value={exportEndDate} onChange={(e) => setExportEndDate(e.target.value)} className={field.input} />
             </div>
           </div>
           <div className="flex flex-col gap-3">

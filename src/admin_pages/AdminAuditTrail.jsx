@@ -10,6 +10,7 @@ import { fetchAuditLogHistory, fetchAuditStaffOptions } from "../utils/audit-log
 import { isManager, isAccountant } from "../utils/auth";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
+import DateInput from "../components/shared/DateInput";
 // Maps a Phase-2 rich entry's entity_type to the deep link that opens it.
 // Two different existing conventions get reused here, each already built
 // for a different page: AdminFolios.jsx/AdminReservations.jsx read ?id=
@@ -25,6 +26,8 @@ const ENTITY_LINKS = {
     path: "/admin/rooms",
     state: { openRoomTypeId: entry.parent_entity_id, expandPhysicalRooms: true, highlightRoomInventoryId: entry.entity_id },
   }),
+  // The night audit's own entry for a run (the PMS's, 2026-09-18).
+  night_audit: () => ({ path: "/admin/night-audit" }),
 };
 
 const LINK_LABELS = {
@@ -33,6 +36,7 @@ const LINK_LABELS = {
   reservation: "View reservation →",
   room_type: "View room →",
   room_inventory: "View room →",
+  night_audit: "View night audit →",
 };
 
 // Every action code any controller currently records — see each
@@ -59,6 +63,10 @@ const ACTION_LABELS = {
   "reservation.checkin": "Check-in",
   "reservation.checkout": "Check-out",
   "reservation.extend": "Stay extended",
+  // Written by the PMS itself, not a person (2026-09-18).
+  "night_audit.charge": "Night audit charge",
+  "night_audit.credit_applied": "Night audit: credit applied (PB)",
+  "night_audit.run": "Night audit run",
 };
 
 // Every role whose actions can appear in a BRANCH audit trail. accountant
@@ -73,6 +81,9 @@ const ROLE_LABELS = {
   waitron: "Waitron",
   storekeeper: "Store Keeper",
   developer: "Developer",
+  // The PMS itself - the night audit's charges and the credit it settles
+  // (owner, 2026-09-18). Shown as staff "PMS".
+  auto: "Auto (PMS)",
 };
 
 // Explicit timeZone so this always shows the hotel's own local time
@@ -278,7 +289,9 @@ export default function AdminAuditTrail() {
             className={field.select}
           >
             <option value="">All staff</option>
-            {staffOptions.map((s) => (
+            {/* The PMS has no staff account; its empty value would read as
+                "All staff". The Role filter's "Auto (PMS)" singles it out. */}
+            {staffOptions.filter((s) => s.staff_account_id).map((s) => (
               <option key={s.staff_account_id} value={s.staff_account_id}>{s.username}</option>
             ))}
           </select>
@@ -314,8 +327,7 @@ export default function AdminAuditTrail() {
 
         <div className="flex flex-col gap-2">
           <label className={field.label}>From</label>
-          <input
-            type="date"
+          <DateInput
             value={filterFrom}
             onChange={(e) => applyFilters({ from: e.target.value })}
             className={field.input}
@@ -324,8 +336,7 @@ export default function AdminAuditTrail() {
 
         <div className="flex flex-col gap-2">
           <label className={field.label}>To</label>
-          <input
-            type="date"
+          <DateInput
             value={filterTo}
             onChange={(e) => applyFilters({ to: e.target.value })}
             className={field.input}

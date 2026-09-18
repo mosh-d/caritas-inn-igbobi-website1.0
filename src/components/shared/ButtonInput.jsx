@@ -1,4 +1,5 @@
 import Button from "./Button";
+import DateInput from "./DateInput";
 import { useRef } from "react";
 
 export default function ButtonInput({
@@ -13,18 +14,15 @@ export default function ButtonInput({
 
   const handleButtonClick = (e) => {
     e.preventDefault();
-    if (inputRef.current) {
-      // Focus and show picker if available, otherwise just focus
+    // A click on the date field itself has already opened the calendar
+    // (DateInput). This covers the rest of the button - its padding - so the
+    // whole button opens it, as it always has.
+    if (inputRef.current && e.target !== inputRef.current) {
       inputRef.current.focus();
-      if (typeof inputRef.current.showPicker === 'function') {
-        try {
-          inputRef.current.showPicker();
-        } catch (err) {
-          // If showPicker fails, the browser will handle the click naturally
-          inputRef.current.click();
-        }
-      } else {
-        inputRef.current.click();
+      try {
+        inputRef.current.showPicker?.();
+      } catch {
+        // The browser refused; focusing the field is all that is left to do.
       }
     }
     if (onClick) onClick();
@@ -33,9 +31,8 @@ export default function ButtonInput({
   return (
     <Button variant={variant} onClick={handleButtonClick} {...buttonProps}>
       <div className="relative w-full">
-        <input
+        <DateInput
           ref={inputRef}
-          type="date"
           min={new Date().toISOString().split('T')[0]}
           style={{ 
             position: 'absolute',

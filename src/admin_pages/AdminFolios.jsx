@@ -17,6 +17,7 @@ import { canRefund, getStoredStaffRole } from "../utils/auth";
 import { markOtaSettlementPaid, createOtaSettlement, updateOtaSettlement, previewOtaAmount } from "../utils/ota-api";
 import { fetchInHouse } from "../utils/front-office-api";
 import { formatPaymentMethod } from "../utils/report-format";
+import DateInput from "../components/shared/DateInput";
 import {
   fetchFolios,
   fetchPendingFolios,
@@ -987,8 +988,7 @@ export default function AdminFoliosPage() {
                     <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>OTA covers from</label>
-                        <input
-                          type="date"
+                        <DateInput
                           value={otaForm.start}
                           min={otaMin}
                           max={otaMax}
@@ -998,8 +998,7 @@ export default function AdminFoliosPage() {
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Until</label>
-                        <input
-                          type="date"
+                        <DateInput
                           value={otaForm.end}
                           min={otaMin}
                           max={otaMax}

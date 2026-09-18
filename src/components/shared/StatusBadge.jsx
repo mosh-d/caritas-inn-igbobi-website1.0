@@ -29,6 +29,8 @@ const STYLES = {
   // (menu item create/update/delete), so this needs a colour for the same
   // reason accountant did — otherwise it falls back to plain gray.
   storekeeper: "bg-orange-100 text-orange-700",
+  // The PMS acting on its own - the night audit (Audit Trail, 2026-09-18).
+  auto: "bg-slate-100 text-slate-700",
   // Payment status (Accommodation Report)
   paid: "bg-green-100 text-green-700",
   owing: "bg-red-100 text-red-700",

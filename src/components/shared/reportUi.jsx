@@ -5,7 +5,9 @@ import { canViewAuditTrail } from "./adminNavItems";
 // Small render pieces shared by every report tab in AdminReports.jsx —
 // kept in one place so each report looks and behaves identically.
 
-export function ReportSection({ title, subtitle, children }) {
+// `footer` sits outside the horizontal scroll area, so a total put there
+// stays in view however far a wide table is scrolled (owner, 2026-09-18).
+export function ReportSection({ title, subtitle, children, footer }) {
   return (
     <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 overflow-hidden w-full">
       <div className="px-6 py-5 border-b border-[color:var(--text-color)]/10">
@@ -13,6 +15,7 @@ export function ReportSection({ title, subtitle, children }) {
         {subtitle && <p className="text-xl text-[color:var(--text-color)]/68 mt-1">{subtitle}</p>}
       </div>
       <div className="overflow-x-auto">{children}</div>
+      {footer}
     </div>
   );
 }

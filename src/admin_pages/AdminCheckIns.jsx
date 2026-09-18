@@ -29,6 +29,7 @@ import {
 import { createOtaSettlement, previewOtaAmount } from "../utils/ota-api";
 import { fetchFolios, recordPayment, addFolioItem } from "../utils/folios-api";
 
+import DateInput from "../components/shared/DateInput";
 const BRANCH_ID = 3;
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
@@ -618,8 +619,7 @@ export default function AdminCheckInsPage() {
         {tab === "arrivals" && (
           <>
             <div className="w-auto flex justify-end">
-              <input
-                type="date"
+              <DateInput
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className={`${field.input} w-auto text-xl!`}
@@ -706,8 +706,7 @@ export default function AdminCheckInsPage() {
                     <label className={field.label}>
                       Check-Out Date <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="date"
+                    <DateInput
                       min={minWalkInCheckOutISO()}
                       value={walkIn.checkOut}
                       onChange={(e) => {
@@ -1296,8 +1295,7 @@ function OtaNightsFields({ value, onChange, minDate, maxDate }) {
       <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
         <div className="flex flex-col gap-2">
           <label className={field.label}>OTA covers from</label>
-          <input
-            type="date"
+          <DateInput
             value={value.start}
             min={minDate}
             max={maxDate}
@@ -1307,8 +1305,7 @@ function OtaNightsFields({ value, onChange, minDate, maxDate }) {
         </div>
         <div className="flex flex-col gap-2">
           <label className={field.label}>Until</label>
-          <input
-            type="date"
+          <DateInput
             value={value.end}
             min={minDate}
             max={maxDate}
@@ -1584,12 +1581,12 @@ function FutureBookingForm() {
         <div className="flex gap-4 flex-wrap">
           <div className="flex flex-col gap-2 flex-1 min-w-48">
             <label className={field.label}>Check In <span className="text-red-500">*</span></label>
-            <input type="date" value={form.checkIn} min={minCheckIn} className={field.input}
+            <DateInput value={form.checkIn} min={minCheckIn} className={field.input}
               onChange={(e) => setForm((p) => ({ ...p, checkIn: e.target.value, roomTypeId: "" }))} />
           </div>
           <div className="flex flex-col gap-2 flex-1 min-w-48">
             <label className={field.label}>Check Out <span className="text-red-500">*</span></label>
-            <input type="date" value={form.checkOut} min={form.checkIn || minCheckIn} className={field.input}
+            <DateInput value={form.checkOut} min={form.checkIn || minCheckIn} className={field.input}
               onChange={(e) => setForm((p) => ({ ...p, checkOut: e.target.value, roomTypeId: "" }))} />
           </div>
           <div className="flex flex-col gap-2 flex-1 min-w-48">

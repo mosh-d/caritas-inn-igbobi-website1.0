@@ -57,3 +57,52 @@
 [data-component="AdminReports"] table tfoot tr::before {
   content: "";
 }
+
+/* S/N and the first column stay put while a wide report table scrolls
+   sideways, so it is always clear which row - which guest - the figures on the
+   right belong to (owner's ask, 2026-09-18). The S/N cell gets a fixed width
+   so the first column knows exactly where to stop. Both need a solid
+   background, or the columns scrolling underneath would show through them. A
+   first cell spanning several columns (Analysis's Net Total) is left alone: it
+   would slide across and cover the figures beside it. */
+[data-component="AdminReports"] table tr::before {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 5.5rem;
+  min-width: 5.5rem;
+  background-color: #fff;
+}
+[data-component="AdminReports"] table tr > :first-child:not([colspan]) {
+  position: sticky;
+  left: 5.5rem;
+  z-index: 2;
+  background-color: #fff;
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--text-color) 12%, transparent);
+}
+[data-component="AdminReports"] table tfoot tr::before,
+[data-component="AdminReports"] table tfoot tr > :first-child:not([colspan]) {
+  background-color: color-mix(in srgb, var(--text-color) 3%, #fff);
+}
+/* The hovered row's grey (below) reaches the pinned cells too; the first
+   column keeps its dividing line on top of it. */
+[data-component="AdminReports"] table tbody tr:hover::before {
+  box-shadow: inset 0 0 0 100vmax rgb(128 128 128 / 14%);
+}
+[data-component="AdminReports"] table tbody tr:hover > :first-child:not([colspan]) {
+  box-shadow:
+    inset -1px 0 0 color-mix(in srgb, var(--text-color) 12%, transparent),
+    inset 0 0 0 100vmax rgb(128 128 128 / 14%);
+}
+
+/* Every table, on the guest site and in the PMS: the row under the pointer
+   turns grey, so it is always clear which row is being read (owner's ask,
+   2026-09-18). Drawn as an inset shade over each cell rather than as the
+   row's background, so a row with a colour of its own keeps it underneath.
+   Mid-grey at low strength darkens a light row and lightens a dark one - the
+   guest site's rooms table is dark. */
+tbody tr:hover > td,
+tbody tr:hover > th {
+  box-shadow: inset 0 0 0 100vmax rgb(128 128 128 / 14%);
+}

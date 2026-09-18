@@ -7,6 +7,7 @@ import { table } from "../components/shared/ui";
 import { runNightAudit, fetchNightAuditHistory } from "../utils/night-audit-api";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
+import DateInput from "../components/shared/DateInput";
 const money = (v) =>
   `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -104,8 +105,7 @@ export default function AdminNightAudit() {
         <div className="flex flex-wrap items-end gap-6">
           <div className="flex flex-col gap-2">
             <label className="text-xl font-semibold text-[color:var(--text-color)]/84">Business Date</label>
-            <input
-              type="date"
+            <DateInput
               value={auditDate}
               max={yesterday()}
               onChange={(e) => { setAuditDate(e.target.value); setResult(null); setRunError(null); }}

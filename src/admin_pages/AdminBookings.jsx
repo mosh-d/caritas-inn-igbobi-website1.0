@@ -8,6 +8,7 @@ import { formatPhone } from "../utils/phone-format";
 import { SERVER_BASE_URL } from "../utils/server-config";
 import { getAuthHeaders } from "../utils/auth";
 
+import DateInput from "../components/shared/DateInput";
 let API_BASE_URL = SERVER_BASE_URL;
 
 export default function AdminBookingsPage() {
@@ -264,7 +265,7 @@ export default function AdminBookingsPage() {
             <tbody>
               {loading ? (<tr><td colSpan="4" className="px-8 py-8 text-center text-xl">Loading bookings...</td></tr>) : error ? (<tr><td colSpan="4" className="px-8 py-8 text-center text-red-600 text-xl">{error}</td></tr>) : currentBookings.length === 0 ? (<tr><td colSpan="4" className="px-8 py-8 text-center text-xl">No bookings match filter.</td></tr>) : (
                 currentBookings.map((b) => (
-                  <tr key={b.booking_id} className="border-b border-[color:var(--text-color)]/25 transition-colors hover:bg-black/[0.02]">
+                  <tr key={b.booking_id} className="border-b border-[color:var(--text-color)]/25 transition-colors">
                     <td className="px-8 py-4 text-left font-medium">{b.guest_name}</td>
                     <td className="px-8 py-4 text-left hidden md:table-cell">{b.guest_email || "N/A"}</td>
                     <td className="px-8 py-4 text-left hidden md:table-cell">{b.booking_id}</td>
@@ -346,8 +347,8 @@ export default function AdminBookingsPage() {
             </div>
             <div className="bg-[var(--text-color)] text-[var(--white)] p-8 flex flex-col gap-8 tracking-[0.1em] text-sm font-primary">
               <div className="flex gap-4 max-sm:flex-col">
-                <div className="w-full"><label className="block text-2xl font-semibold mb-2 text-[var(--emphasis)]">Start Date</label><input type="date" value={exportStartDate} onChange={(e) => setExportStartDate(e.target.value)} className="w-full p-3 rounded-md bg-gray-800 text-white text-xl focus:outline-none border-2 border-[color:var(--emphasis)]/30 focus:border-[var(--emphasis)]" style={{ colorScheme: 'dark' }} /></div>
-                <div className="w-full"><label className="block text-2xl font-semibold mb-2 text-[var(--emphasis)]">End Date</label><input type="date" value={exportEndDate} onChange={(e) => setExportEndDate(e.target.value)} className="w-full p-3 rounded-md bg-gray-800 text-white text-xl focus:outline-none border-2 border-[color:var(--emphasis)]/30 focus:border-[var(--emphasis)]" style={{ colorScheme: 'dark' }} /></div>
+                <div className="w-full"><label className="block text-2xl font-semibold mb-2 text-[var(--emphasis)]">Start Date</label><DateInput value={exportStartDate} onChange={(e) => setExportStartDate(e.target.value)} className="w-full p-3 rounded-md bg-gray-800 text-white text-xl focus:outline-none border-2 border-[color:var(--emphasis)]/30 focus:border-[var(--emphasis)]" style={{ colorScheme: 'dark' }} /></div>
+                <div className="w-full"><label className="block text-2xl font-semibold mb-2 text-[var(--emphasis)]">End Date</label><DateInput value={exportEndDate} onChange={(e) => setExportEndDate(e.target.value)} className="w-full p-3 rounded-md bg-gray-800 text-white text-xl focus:outline-none border-2 border-[color:var(--emphasis)]/30 focus:border-[var(--emphasis)]" style={{ colorScheme: 'dark' }} /></div>
               </div>
               <div>
                 <label className="block text-xl font-semibold mb-4 text-[var(--emphasis)]">Booking Status</label>

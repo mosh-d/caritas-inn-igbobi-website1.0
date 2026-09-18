@@ -40,6 +40,7 @@ import { canViewAuditTrail } from "../components/shared/adminNavItems";
 import { AuditLink, ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge, StaffActivitySection } from "../components/shared/reportUi";
 import { formatPaymentMethod } from "../utils/report-format";
 
+import DateInput from "../components/shared/DateInput";
 function currentMonthRange() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -272,8 +273,7 @@ function DashboardTab() {
       <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
         <div className="flex flex-col gap-2">
           <label className="text-xl font-semibold text-[color:var(--text-color)]/76">From</label>
-          <input
-            type="date"
+          <DateInput
             value={from}
             onChange={(e) => {
               const newFrom = e.target.value;
@@ -286,8 +286,7 @@ function DashboardTab() {
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-xl font-semibold text-[color:var(--text-color)]/76">To</label>
-          <input
-            type="date"
+          <DateInput
             value={to}
             min={from || undefined}
             onChange={(e) => setTo(e.target.value)}
@@ -412,7 +411,7 @@ function DashboardTab() {
                     </thead>
                     <tbody>
                       {revenueByRoomType.map((row, i) => (
-                        <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                        <tr key={i} className="border-b border-[color:var(--text-color)]/10 transition-colors">
                           <td className="px-6 py-4 font-medium text-[color:var(--black)]">{row.room_type_name}</td>
                           <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.total_stays}</td>
                           <td className="px-6 py-4 text-right font-semibold text-[color:var(--black)]">{money(row.total_revenue)}</td>
@@ -446,7 +445,7 @@ function DashboardTab() {
                     </thead>
                     <tbody>
                       {paymentMethods.map((row, i) => (
-                        <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                        <tr key={i} className="border-b border-[color:var(--text-color)]/10 transition-colors">
                           <td className="px-6 py-4 font-medium text-[color:var(--black)]">{formatPaymentMethod(row.payment_method)}</td>
                           <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.count}</td>
                           <td className="px-6 py-4 text-right font-semibold text-[color:var(--black)]">{money(row.total)}</td>
@@ -494,7 +493,7 @@ function DashboardTab() {
                   </thead>
                   <tbody>
                     {occupancy.map((row, i) => (
-                      <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                      <tr key={i} className="border-b border-[color:var(--text-color)]/10 transition-colors">
                         <td className="px-6 py-4 font-medium text-[color:var(--black)]">{row.room_type_name}</td>
                         <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.max_capacity}</td>
                         <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.available_room_nights}</td>
@@ -524,15 +523,17 @@ function DashboardTab() {
 }
 
 // A labelled figure at the foot of a report section, with an optional
-// one-line note underneath saying what it counts.
+// one-line note underneath saying what it counts. Left-justified, so a wide
+// table's total is in view without scrolling to its far edge (owner,
+// 2026-09-18).
 function TotalLine({ label, amount, note, emphasis = false }) {
   return (
-    <div className="flex flex-col items-end gap-1 px-6 py-4 border-t border-[color:var(--text-color)]/10">
+    <div className="flex flex-col items-start gap-1 px-6 py-4 border-t border-[color:var(--text-color)]/10">
       <p className="text-xl">
         <span className="text-[color:var(--text-color)]/68 uppercase tracking-wide font-semibold">{label}</span>{" "}
         <span className={`font-bold ml-3 ${emphasis ? "text-[color:var(--emphasis)]" : "text-[color:var(--black)]"}`}>{money(amount)}</span>
       </p>
-      {note && <p className="text-lg text-[color:var(--text-color)]/60 text-right">{note}</p>}
+      {note && <p className="text-lg text-[color:var(--text-color)]/60">{note}</p>}
     </div>
   );
 }
@@ -584,7 +585,7 @@ function ManifestTab() {
   };
 
   const renderRow = (r) => (
-    <tr key={r.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+    <tr key={r.id} className="border-b border-[color:var(--text-color)]/10 transition-colors">
       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_numbers || "Unassigned"}</td>
       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(r.room_price)}</td>
@@ -607,8 +608,7 @@ function ManifestTab() {
       <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
         <div className="flex flex-col gap-2">
           <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
-          <input
-            type="date"
+          <DateInput
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
@@ -636,7 +636,11 @@ function ManifestTab() {
             </div>
           </div>
 
-          <ReportSection title="Check-Ins" subtitle="Everyone due to arrive this business day">
+          <ReportSection
+            title="Check-Ins"
+            subtitle="Everyone due to arrive this business day"
+            footer={<RoomRevenueTotal amount={data.check_ins_room_total} />}
+          >
             {data.check_ins.length === 0 ? (
               <EmptyRow />
             ) : (
@@ -645,10 +649,13 @@ function ManifestTab() {
                 <tbody>{data.check_ins.map(renderRow)}</tbody>
               </table>
             )}
-            <RoomRevenueTotal amount={data.check_ins_room_total} />
           </ReportSection>
 
-          <ReportSection title="Check-Outs" subtitle="Everyone due to depart this business day">
+          <ReportSection
+            title="Check-Outs"
+            subtitle="Everyone due to depart this business day"
+            footer={<RoomRevenueTotal amount={data.check_outs_room_total} />}
+          >
             {data.check_outs.length === 0 ? (
               <EmptyRow />
             ) : (
@@ -657,7 +664,6 @@ function ManifestTab() {
                 <tbody>{data.check_outs.map(renderRow)}</tbody>
               </table>
             )}
-            <RoomRevenueTotal amount={data.check_outs_room_total} />
           </ReportSection>
 
           <StaffActivitySection activity={data.staff_activity} money={money} />
@@ -734,7 +740,11 @@ function AnalysisTab() {
             <SummaryCard label="Net Total" value={money(data.net_total)} sub="collected minus refunded" />
           </div>
 
-          <ReportSection title="All Payments" subtitle={`${data.payments.length} transaction(s)`}>
+          <ReportSection
+            title="All Payments"
+            subtitle={`${data.payments.length} transaction(s)`}
+            footer={data.payments.length > 0 && <TotalLine label="Net Total" amount={data.net_total} />}
+          >
             {data.payments.length === 0 ? (
               <EmptyRow />
             ) : (
@@ -742,7 +752,7 @@ function AnalysisTab() {
                 <TableHead cells={["Room", "Receipt No.", "Reference", "Guest", "Method", "Date", "Amount", ...(showAudit ? ["Action"] : [])]} rightAlign={["Amount"]} />
                 <tbody>
                   {data.payments.map((p) => (
-                    <tr key={p.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                    <tr key={p.id} className="border-b border-[color:var(--text-color)]/10 transition-colors">
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{p.room_numbers || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{p.receipt_number || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/68 font-mono text-lg">{p.payment_reference}</td>
@@ -756,13 +766,6 @@ function AnalysisTab() {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="border-t border-[color:var(--text-color)]/15">
-                  <tr className="bg-[color:var(--text-color)]/3">
-                    <td colSpan="6" className="px-6 py-4 font-bold text-[color:var(--black)] text-right">Net Total</td>
-                    <td className="px-6 py-4 text-right font-bold text-[color:var(--black)]">{money(data.net_total)}</td>
-                    {showAudit && <td />}
-                  </tr>
-                </tfoot>
               </table>
             )}
           </ReportSection>
@@ -824,8 +827,7 @@ function PmsReportTab() {
       <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
         <div className="flex flex-col gap-2">
           <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
-          <input
-            type="date"
+          <DateInput
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
@@ -1012,8 +1014,7 @@ function AccommodationReportTab({ shift }) {
       <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
         <div className="flex flex-col gap-2">
           <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
-          <input
-            type="date"
+          <DateInput
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
@@ -1047,25 +1048,44 @@ function AccommodationReportTab({ shift }) {
             </div>
           </div>
 
-          <ReportSection title="Rooms in Use">
+          {/* The Manifest Total is what guests actually paid for their ROOMS
+              today - partial or in full - not what the rooms cost. Breakfast is
+              left out, and so is PB: that money is counted under Reservation
+              (Credit) on the day it was paid, and counting it again here would
+              count it twice (owner, 2026-09-18). */}
+          <ReportSection
+            title="Rooms in Use"
+            footer={
+              <TotalLine
+                label="Manifest Total (excluding breakfast)"
+                amount={data.manifest_total}
+                note="The sum of Counted in Total: room money guests paid today. Paid Before (PB) is counted under Reservation (Credit), on the day it was paid."
+              />
+            }
+          >
             {data.rows.length === 0 ? (
               <EmptyRow />
             ) : (
               <table className="w-full text-xl">
-                <TableHead cells={["Date", "Guest", "Room Type", "Room No.", "Arrival", "Check-Out", "Room Price", "Breakfast Price", "Payment Mode", "Payment Status", "Receipt No.", "Paid Today", "Refund", "Guest Status", "Remarks", ...(showAudit ? ["Action"] : [])]} />
+                {/* No Date column (it is always the date chosen above) and no
+                    Breakfast Price: the Manifest Total leaves breakfast out.
+                    Arrival and checkout each give a date and a time from the same
+                    real moment; Checkout Time is blank until the guest has left
+                    (owner, 2026-09-18). */}
+                <TableHead cells={["Guest", "Room Type", "Room No.", "Arrival Date", "Arrival Time", "Checkout Date", "Checkout Time", "Room Tariff", "Payment Mode", "Payment Status", "Receipt No.", "Paid Today", "Counted in Total", "Refund", "Guest Status", "Remarks", ...(showAudit ? ["Action"] : [])]} />
                 <tbody>
                   {data.rows.map((r, i) => (
                     <tr key={`${r.reservation_id}-${r.room_number}-${i}`} className="border-b border-[color:var(--text-color)]/10">
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(data.report_date)}</td>
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_type_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_number}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84 whitespace-nowrap">{formatDate(r.arrival_date)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 whitespace-nowrap">{r.arrival_time || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84 whitespace-nowrap">{formatDate(r.checkout_date)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84 whitespace-nowrap">{r.checkout_time || "—"}</td>
                       {/* Complementary rooms are listed under Non-Revenue Rooms below, so
                           every row here is a room that was sold. */}
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.room_price)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.breakfast_price)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(r.payment_mode)}</td>
                       <td className="px-6 py-4">
                         <StatusBadge status={r.payment_status} />
@@ -1074,6 +1094,11 @@ function AccommodationReportTab({ shift }) {
                           NIL while it is still owing. */}
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.receipt_number || "NIL"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{money(r.amount_paid)}</td>
+                      {/* Counted in Total: what this room adds to the Manifest Total -
+                          its room money paid fresh today. A paid room adds its tariff,
+                          an owing one the lesser of Paid Today and its tariff, a PB
+                          one nothing. The column sums to the total below. */}
+                      <td className="px-6 py-4 font-semibold text-[color:var(--black)]">{money(r.manifest_amount)}</td>
                       {/* Refund: money handed back to the guest that day, shown as what it
                           did to the drawer. NIL when nothing went back. */}
                       <td className={`px-6 py-4 whitespace-nowrap ${r.refund_amount ? "text-red-600 font-semibold" : "text-[color:var(--text-color)]/84"}`}>
@@ -1095,16 +1120,6 @@ function AccommodationReportTab({ shift }) {
                 </tbody>
               </table>
             )}
-            {/* What guests actually paid for their ROOMS today - partial or in
-                full - not what the rooms cost. Breakfast is left out, and so is
-                PB: that money is counted under Reservation (Credit) on the day
-                it was paid, and counting it again here would count it twice
-                (owner, 2026-09-18). */}
-            <TotalLine
-              label="Manifest Total (excluding breakfast)"
-              amount={data.manifest_total}
-              note="Room money guests paid today. Paid Before (PB) is counted under Reservation (Credit), on the day it was paid."
-            />
           </ReportSection>
 
           {/* Rooms someone stayed in that bring in no money: complementary guests,
@@ -1150,7 +1165,7 @@ function AccommodationReportTab({ shift }) {
                   <TableHead cells={["Guest", "Room", "Amount", "Receipt No.", "Time", ...(showAudit ? ["Action"] : [])]} rightAlign={["Amount"]} />
                   <tbody>
                     {group.payments.map((pmt) => (
-                      <tr key={pmt.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                      <tr key={pmt.id} className="border-b border-[color:var(--text-color)]/10 transition-colors">
                         {/* No Status column: its only values were "completed" (money in)
                             and "refunded" (money out). A refund now reads as what it did to
                             the drawer: a negative amount, tagged. */}
@@ -1177,7 +1192,18 @@ function AccommodationReportTab({ shift }) {
             ))
           )}
 
-          <ReportSection title="Reservation (Credit)" subtitle="Advance payments recorded this business day">
+          {/* Both totals show even on a day with no advance payments, so the
+              combined figure is always there to read off. */}
+          <ReportSection
+            title="Reservation (Credit)"
+            subtitle="Advance payments recorded this business day"
+            footer={
+              <>
+                <TotalLine label="Reservation Total" amount={data.reservation_total} />
+                <TotalLine label="Manifest Total plus Reservation" amount={data.manifest_plus_reservation_total} emphasis />
+              </>
+            }
+          >
             {data.paid_before.length === 0 ? (
               <EmptyRow />
             ) : (
@@ -1185,7 +1211,7 @@ function AccommodationReportTab({ shift }) {
                 <TableHead cells={["Guest", "Room", "Amount", "Method", "Status", "Receipt No.", ...(showAudit ? ["Action"] : [])]} rightAlign={["Amount"]} />
                 <tbody>
                   {data.paid_before.map((d) => (
-                    <tr key={d.id} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                    <tr key={d.id} className="border-b border-[color:var(--text-color)]/10 transition-colors">
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.amount)}</td>
@@ -1198,13 +1224,13 @@ function AccommodationReportTab({ shift }) {
                 </tbody>
               </table>
             )}
-            {/* Shown even on a day with no advance payments, so the combined
-                figure is always there to read off. */}
-            <TotalLine label="Reservation Total" amount={data.reservation_total} />
-            <TotalLine label="Manifest Total plus Reservation" amount={data.manifest_plus_reservation_total} emphasis />
           </ReportSection>
 
-          <ReportSection title="Debt Recovery" subtitle="Old debt cleared by a payment received this business day">
+          <ReportSection
+            title="Debt Recovery"
+            subtitle="Old debt cleared by a payment received this business day"
+            footer={<TotalLine label="Debt Recovery Total" amount={data.debt_recovery_total} />}
+          >
             {data.debt_recovery.length === 0 ? (
               <EmptyRow />
             ) : (
@@ -1212,7 +1238,7 @@ function AccommodationReportTab({ shift }) {
                 <TableHead cells={["Guest", "Room", "Date Owed", "Total Owed", "Total Paid", "Method", "Reference", ...(showAudit ? ["Action"] : [])]} rightAlign={["Total Owed", "Total Paid"]} />
                 <tbody>
                   {data.debt_recovery.map((d, i) => (
-                    <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                    <tr key={i} className="border-b border-[color:var(--text-color)]/10 transition-colors">
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(d.debt_date)}</td>
@@ -1226,6 +1252,13 @@ function AccommodationReportTab({ shift }) {
                 </tbody>
               </table>
             )}
+          </ReportSection>
+
+          {/* One figure: the Manifest Total, advance money taken today
+              (Reservation) and old debt paid off today (Debt Recovery),
+              added together (owner, 2026-09-18). */}
+          <ReportSection title="Grand Total" subtitle="Manifest Total + Reservation Total + Debt Recovery Total">
+            <TotalLine label="Manifest + Reservation + Debt Recovery" amount={data.grand_total} emphasis />
           </ReportSection>
 
           {/* Notes: everything charged today that is neither a room night nor
@@ -1420,8 +1453,7 @@ function FoodSalesReportTab({ shift }) {
       <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
         <div className="flex flex-col gap-2">
           <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
-          <input
-            type="date"
+          <DateInput
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
@@ -1539,8 +1571,7 @@ function DrinkSalesReportTab({ shift }) {
       <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
         <div className="flex flex-col gap-2">
           <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
-          <input
-            type="date"
+          <DateInput
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
@@ -1661,8 +1692,7 @@ function BarStockReportTab({ shift }) {
       <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
         <div className="flex flex-col gap-2">
           <label className="text-xl font-semibold text-[color:var(--text-color)]/76">Date</label>
-          <input
-            type="date"
+          <DateInput
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 text-2xl focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)]"
@@ -1775,8 +1805,7 @@ function RangePicker({ from, to, setFrom, setTo, onGenerate, loading }) {
     <div className="bg-white rounded-xl border border-[color:var(--text-color)]/10 p-6 flex flex-wrap gap-4 items-end w-full">
       <div className="flex flex-col gap-2">
         <label className="text-xl font-semibold text-[color:var(--text-color)]/76">From</label>
-        <input
-          type="date"
+        <DateInput
           value={from}
           onChange={(e) => {
             const newFrom = e.target.value;
@@ -1788,8 +1817,7 @@ function RangePicker({ from, to, setFrom, setTo, onGenerate, loading }) {
       </div>
       <div className="flex flex-col gap-2">
         <label className="text-xl font-semibold text-[color:var(--text-color)]/76">To</label>
-        <input
-          type="date"
+        <DateInput
           value={to}
           min={from || undefined}
           onChange={(e) => setTo(e.target.value)}

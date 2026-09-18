@@ -11,6 +11,7 @@ import { fetchFolios } from "../utils/folios-api";
 import { adminTodayISO, hasPassedNoonCutoff } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
+import DateInput from "../components/shared/DateInput";
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const todayISO = () => adminTodayISO();
@@ -138,8 +139,7 @@ export default function AdminCheckOutsPage() {
       <div data-component="AdminCheckOuts" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
         <div className="flex flex-col justify-between items-start gap-4">
           <PageHeading icon={IoLogOutOutline}>Check-Out List</PageHeading>
-          <input
-            type="date"
+          <DateInput
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className={`border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 bg-white text-[color:var(--text-color)] placeholder:text-[color:var(--text-color)]/30 focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] focus:border-transparent transition-shadow text-xl!`}
