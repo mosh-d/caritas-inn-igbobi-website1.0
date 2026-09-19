@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
 import { FiMenu, FiX } from "react-icons/fi";
 import MobileMenu from "./MobileMenu";
@@ -32,14 +33,23 @@ export default function MainNavBar() {
         className="px-4 md:px-8">
         <div className="border-b border-[var(--text-color)]/20 py-4">
           <div className="flex justify-between items-center w-full">
-            {/* Mobile Menu Button - Only shows on mobile */}
-            <button
-              onClick={toggleMenu}
-              className="md:hidden text-2xl text-[color:var(--text-color)] flex-shrink-0"
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? <FiX size={28} /> : <FiMenu size={28} />}
-            </button>
+            {/* Mobile Menu Button - Only shows on mobile. The placeholder holds
+                its place in this row; the button itself is fixed to the top-left
+                corner so it stays in reach at any scroll depth, and portalled to
+                <body> - this navbar is its own stacking context, and a transformed
+                ancestor while it animates in, either of which would pin a fixed
+                child inside it. z-40 keeps it under every full-screen overlay. */}
+            <div className="md:hidden w-[28px] h-[28px] flex-shrink-0" aria-hidden="true" />
+            {createPortal(
+              <button
+                onClick={toggleMenu}
+                className="md:hidden fixed top-[12px] left-[12px] z-40 flex items-center justify-center w-[44px] h-[44px] rounded-[12px] bg-[color:var(--emphasis)] text-white shadow-lg shadow-black/25 cursor-pointer transition-transform active:scale-95"
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+              </button>,
+              document.body,
+            )}
 
             {/* Invisible spacer to balance the menu button on the left */}
             <div className="md:hidden w-8 flex-shrink-0"></div>

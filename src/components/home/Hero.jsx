@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useScroll, useTransform, useReducedMotion } from "motion/react";
+import { createPortal } from "react-dom";
+import { animate, useScroll, useTransform, useReducedMotion } from "motion/react";
 import { MotionDiv, EASE_OUT } from "../shared/motion";
 import { Words } from "../shared/guestMotion";
 import { NavLink, useOutletContext } from "react-router-dom";
@@ -52,6 +53,38 @@ export default function HeroSection() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const photoY = useTransform(scrollYProgress, [0, 1], ["0%", reduceMotion ? "0%" : "25%"]);
 
+  // "View Rooms" glides down to the rooms instead of jumping (2026-09-19):
+  // ease-in-out, over a duration that grows with the distance, so a long trip
+  // doesn't feel abrupt and a short one doesn't drag. Any wheel, touch or key
+  // from the visitor takes over at once rather than fighting them. Reduced
+  // motion jumps straight there. On small screens it stops short of the
+  // heading by the fixed burger's height, so the burger doesn't cover it.
+  const glideToRooms = (event) => {
+    const target = document.getElementById("available-rooms");
+    if (!target) return; // still loading - let the plain anchor handle it
+    event.preventDefault();
+    const clearance = window.innerWidth < 768 ? 72 : 0;
+    const to = target.getBoundingClientRect().top + window.scrollY - clearance;
+    if (reduceMotion) {
+      window.scrollTo(0, to);
+      return;
+    }
+    const from = window.scrollY;
+    const controls = animate(from, to, {
+      duration: Math.min(1.6, Math.max(0.7, Math.abs(to - from) / 1400)),
+      ease: [0.65, 0, 0.35, 1],
+      onUpdate: (y) => window.scrollTo(0, y),
+    });
+    const takeOver = ["wheel", "touchstart", "keydown"];
+    const release = () => takeOver.forEach((type) => window.removeEventListener(type, stop));
+    const stop = () => {
+      controls.stop();
+      release();
+    };
+    takeOver.forEach((type) => window.addEventListener(type, stop, { passive: true }));
+    controls.then(release);
+  };
+
   // Access shared state from Outlet context
   const {
     checkInDate,
@@ -97,14 +130,23 @@ export default function HeroSection() {
           className="relative z-10 border-b border-[var(--emphasis)]/30 py-4 px-4 md:px-8"
         >
           <div className="flex justify-between items-center w-full">
-            {/* Mobile Menu Button - Only shows on mobile */}
-            <button
-              onClick={toggleMenu}
-              className="md:hidden text-2xl text-white flex-shrink-0 cursor-pointer"
-              aria-label="Toggle menu"
-            >
-              {isMenuOpen ? <FiX size={28} /> : <FiMenu size={28} />}
-            </button>
+            {/* Mobile Menu Button - Only shows on mobile. The placeholder holds
+                its place in this row; the button itself is fixed to the top-left
+                corner so it stays in reach at any scroll depth, and portalled to
+                <body> - this navbar is its own stacking context, and a transformed
+                ancestor while it animates in, either of which would pin a fixed
+                child inside it. z-40 keeps it under every full-screen overlay. */}
+            <div className="md:hidden w-[28px] h-[28px] flex-shrink-0" aria-hidden="true" />
+            {createPortal(
+              <button
+                onClick={toggleMenu}
+                className="md:hidden fixed top-[12px] left-[12px] z-40 flex items-center justify-center w-[44px] h-[44px] rounded-[12px] bg-[color:var(--emphasis)] text-white shadow-lg shadow-black/25 cursor-pointer transition-transform active:scale-95"
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+              </button>,
+              document.body,
+            )}
 
             {/* Invisible spacer to balance the menu button on the left */}
             <div className="md:hidden w-8 flex-shrink-0"></div>
@@ -198,7 +240,7 @@ export default function HeroSection() {
             </ButtonInput>
           </MotionDiv>
           <MotionDiv initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE_OUT, delay: 1.0 }} data-component="ViewRoomsButton">
-            <a href="#available-rooms">
+            <a href="#available-rooms" onClick={glideToRooms}>
               <Button
                 variant="emphasis"
                 className="text-3xl font-black w-[100%] p-[2.5rem_2rem_2rem_2rem]"
