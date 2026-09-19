@@ -30,6 +30,7 @@ import { createOtaSettlement, previewOtaAmount } from "../utils/ota-api";
 import { fetchFolios, recordPayment, addFolioItem } from "../utils/folios-api";
 
 import DateInput from "../components/shared/DateInput";
+import { MotionDiv, tabEnter } from "../components/shared/motion";
 const BRANCH_ID = 3;
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
@@ -586,8 +587,9 @@ export default function AdminCheckInsPage() {
       <div data-component="AdminCheckIns" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
         <PageHeading icon={IoLogInOutline}>Check-Ins</PageHeading>
 
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-[color:var(--text-color)]/20 w-full">
+        {/* Tabs - the same wrapping pills as Reports' tabs. Underlined in
+            one row, their labels broke mid-word on a phone ("Walk- / In"). */}
+        <div className="flex flex-wrap gap-3 w-full">
           {[
             { key: "arrivals", label: "Expected Arrivals" },
             { key: "walkin", label: "Walk-In" },
@@ -598,10 +600,10 @@ export default function AdminCheckInsPage() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`px-8 py-3 text-xl font-bold transition-colors border-b-2 -mb-px cursor-pointer ${
+              className={`px-6 py-3 rounded-lg text-xl font-bold whitespace-nowrap cursor-pointer transition-all ${
                 tab === key
-                  ? "border-[color:var(--emphasis)] text-[color:var(--emphasis)]"
-                  : "border-transparent text-[color:var(--text-color)]/76 hover:text-[color:var(--text-color)]"
+                  ? "bg-[color:var(--emphasis)] text-white"
+                  : "bg-black/4 text-[color:var(--text-color)] hover:bg-black/8"
               }`}
             >
               {label}
@@ -615,6 +617,7 @@ export default function AdminCheckInsPage() {
             : "Register a guest who arrives without an existing reservation."}
         </p>
 
+        <MotionDiv key={tab} className="w-full flex flex-col items-start gap-[3rem]" {...tabEnter}>
         {/* EXPECTED ARRIVALS */}
         {tab === "arrivals" && (
           <>
@@ -630,7 +633,7 @@ export default function AdminCheckInsPage() {
                 <table className={table.el}>
                   <thead>
                     <tr className={table.headRow}>
-                      <th className={table.th}>Guest</th>
+                      <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                       <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
                       <th className={`${table.th} hidden md:table-cell`}>Check-Out</th>
                       <th className={table.th}>Status</th>
@@ -647,7 +650,7 @@ export default function AdminCheckInsPage() {
                     ) : (
                       reservations.map((r) => (
                         <tr key={r.id} className={table.row}>
-                          <td className={`${table.td} font-medium`}>{r.guest_name}</td>
+                          <td className={`${table.td} ${table.stickyTd} font-medium`}>{r.guest_name}</td>
                           <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                           <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.check_out)}</td>
                           <td className={table.td}><StatusBadge status={r.status} /></td>
@@ -1170,6 +1173,7 @@ export default function AdminCheckInsPage() {
         )}
 
         {tab === "future" && <FutureBookingForm />}
+        </MotionDiv>
       </div>
 
       {walkInReceipt && (

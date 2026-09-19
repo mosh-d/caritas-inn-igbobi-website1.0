@@ -48,10 +48,48 @@ export const table = {
   el: "min-w-full border-collapse text-2xl",
   headRow: "border-b border-[color:var(--text-color)]/15 bg-[color:var(--text-color)]/3",
   th: "px-8 py-4 text-left whitespace-nowrap text-xl font-semibold uppercase tracking-wide text-[color:var(--text-color)]/76",
-  row: "border-b border-[color:var(--text-color)]/10 last:border-b-0 transition-colors hover:bg-black/2",
-  td: "px-8 py-4 text-left",
+  // `group` lets the identification column below track the row's own hover
+  // tint via group-hover, instead of sitting static while everything else
+  // visibly dims/tints on hover.
+  row: "group border-b border-[color:var(--text-color)]/10 last:border-b-0 transition-colors hover:bg-black/2",
+  td: "px-8 py-4 text-left whitespace-nowrap",
   // Horizontal action group inside a row — never stacks vertically
   actions: "flex items-center gap-2 flex-nowrap",
+  // The column that identifies which row this is (2026-09-19) - a guest,
+  // customer, staff member, room type or whatever else a table's rows are
+  // actually rows OF - pinned to the left so it stays in view while a wide
+  // table scrolls sideways. Compose with the table's own padding/typography
+  // classes (table.th/table.td, or a page's own px-*/py-*), not in place of
+  // them: `` `${table.th} ${table.stickyTh}` ``. Position-based (works
+  // whichever column it's applied to), not `:first-child`-based, since the
+  // identifying column isn't always the first one in the markup.
+  //
+  // stickyTh's background MUST be opaque (fixed 2026-09-19): a translucent
+  // one - table.headRow's own bg-[...]/3 tint, tried first - is only 3%
+  // opaque, nowhere near enough to hide the next column's header text once
+  // the table is actually scrolled ("GUESFTOLIO #"). color-mix against a
+  // real opaque colour keeps the same visual tint while genuinely covering
+  // what scrolls underneath - the same formula Reports' own sticky columns
+  // already use (index.css).
+  //
+  // The divider is a box-shadow, never a real `border` (fixed 2026-09-19,
+  // second pass: the border rendered fine at rest and then vanished once
+  // scrolled). table.el sets border-collapse: collapse, and a COLLAPSED
+  // border is resolved against the table's true, un-scrolled grid geometry -
+  // a separate pass from a sticky element's own compositing - so it can
+  // visually decouple from the cell once scrolling moves it. A box-shadow is
+  // pure paint on the element's own box; it has no part in border-collapse
+  // resolution, so there is nothing for it to decouple from. Same fix
+  // Reports' sticky columns already use, for the same reason.
+  //
+  // table.td never wraps, but below `lg` the pinned column does - at word
+  // breaks, inside a minimum width - so a long name takes two lines rather
+  // than a phone's whole width (2026-09-19). Without the minimum, an
+  // overflowing table shrinks it to its longest single word. Important (!)
+  // because it composes with table.td's whitespace-nowrap, and between two
+  // same-property utilities Tailwind's stylesheet order wins, not class order.
+  stickyTh: `sticky left-0 z-10 bg-[color-mix(in_srgb,var(--text-color)_3%,white)] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]`,
+  stickyTd: `sticky left-0 z-10 max-lg:whitespace-normal! max-lg:min-w-[18rem] bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]`,
 };
 
 // Full-width section heading used inside modals

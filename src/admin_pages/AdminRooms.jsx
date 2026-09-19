@@ -1308,7 +1308,7 @@ export default function AdminRoomsPage() {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
-                  <th className={table.th}>Room Type</th>
+                  <th className={`${table.th} ${table.stickyTh}`}>Room Type</th>
                   <th className={`${table.th} hidden md:table-cell`}>Price (₦)</th>
                   <th className={table.th}>Actions</th>
                 </tr>
@@ -1329,7 +1329,7 @@ export default function AdminRoomsPage() {
                   rooms.map((room) => (
                     <tr key={room.room_type_id} className={table.row}>
                       {/* Room Type Name */}
-                      <td className={`${table.td} font-medium`}>
+                      <td className={`${table.td} ${table.stickyTd} font-medium`}>
                         {room.room_type_name}
                       </td>
 

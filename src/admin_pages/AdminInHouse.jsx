@@ -394,7 +394,7 @@ export default function AdminInHousePage() {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
-                  <th className={table.th}>Guest</th>
+                  <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                   <th className={`${table.th} hidden md:table-cell`}>Room(s)</th>
                   <th className={`${table.th} hidden md:table-cell`}>Checked In</th>
                   <th className={table.th}>Expected Check-Out</th>
@@ -413,7 +413,7 @@ export default function AdminInHousePage() {
                 ) : (
                   filteredReservations.map((r) => (
                     <tr key={r.id} className={table.row}>
-                      <td className={`${table.td} align-top font-medium`}>{r.guest_name}</td>
+                      <td className={`${table.td} ${table.stickyTd} align-top font-medium`}>{r.guest_name}</td>
                       <td className={`${table.td} align-top hidden md:table-cell`}>
                         {(r.room_assignments || []).length === 0 ? (
                           "Unassigned"

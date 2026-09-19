@@ -1,6 +1,7 @@
 import { useWebSocketContext } from '../context/WebSocketContext';
 import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
+import { AnimatePresence, MotionConfig, MotionDiv, pageEnter } from "../components/shared/motion";
 import { IoClose } from 'react-icons/io5';
 import { verifyToken, getDefaultAdminRoute, getStoredStaffRole } from "../utils/auth";
 import { canAccessNavItem } from "../components/shared/adminNavItems";
@@ -184,8 +185,15 @@ export default function AdminRootLayout() {
     return (
       <div className="flex justify-center items-center min-h-screen">
       {/* ── New Reservation Notification ── */}
+      <AnimatePresence>
       {hasNewReservation && (
-        <div className="fixed top-34 right-6 z-[200] animate-notification">
+        <MotionDiv
+          className="fixed top-34 right-6 z-[200]"
+          initial={{ opacity: 0, x: 80, scale: 0.96 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 80, transition: { duration: 0.2 } }}
+          transition={{ type: "spring", stiffness: 380, damping: 28 }}
+        >
           <div
             onClick={openNewReservation}
             className="bg-white border-l-4 border-[var(--emphasis)] shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-6 rounded-lg flex items-center gap-6 min-w-[320px] backdrop-blur-sm animate-bounce-subtle cursor-pointer hover:shadow-[0_25px_60px_rgba(0,0,0,0.2)] transition-shadow"
@@ -204,8 +212,9 @@ export default function AdminRootLayout() {
               <IoClose size={24} />
             </button>
           </div>
-        </div>
+        </MotionDiv>
       )}
+      </AnimatePresence>
 
         <LoadingSpinner size="lg" />
       </div>
@@ -227,10 +236,18 @@ export default function AdminRootLayout() {
   // h-screen + overflow-hidden pins the shell to the viewport so the sidebar
   // and the main body scroll independently (each gets its own overflow-y-auto).
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-100">
+    <MotionConfig reducedMotion="user">
+    <div data-component="AdminRoot" className="h-screen flex flex-col overflow-hidden bg-gray-100">
       {/* ── New Reservation Notification ── */}
+      <AnimatePresence>
       {hasNewReservation && (
-        <div className="fixed top-34 right-6 z-[200] animate-notification">
+        <MotionDiv
+          className="fixed top-34 right-6 z-[200]"
+          initial={{ opacity: 0, x: 80, scale: 0.96 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 80, transition: { duration: 0.2 } }}
+          transition={{ type: "spring", stiffness: 380, damping: 28 }}
+        >
           <div
             onClick={openNewReservation}
             className="bg-white border-l-4 border-[var(--emphasis)] shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-6 rounded-lg flex items-center gap-6 min-w-[320px] backdrop-blur-sm animate-bounce-subtle cursor-pointer hover:shadow-[0_25px_60px_rgba(0,0,0,0.2)] transition-shadow"
@@ -249,8 +266,9 @@ export default function AdminRootLayout() {
               <IoClose size={24} />
             </button>
           </div>
-        </div>
+        </MotionDiv>
       )}
+      </AnimatePresence>
 
       {/* The dates on screen are already correct — they follow the server,
           not this machine. This tells whoever is on the desk that the PC
@@ -271,7 +289,9 @@ export default function AdminRootLayout() {
       <div className="flex flex-1 overflow-hidden">
         <AdminNavBar />
         <main className="flex-1 overflow-y-auto p-0 md:p-6">
-          <Outlet />
+          <MotionDiv key={location.pathname} {...pageEnter}>
+            <Outlet />
+          </MotionDiv>
         </main>
       </div>
 
@@ -296,5 +316,6 @@ export default function AdminRootLayout() {
         />
       )}
     </div>
+    </MotionConfig>
   );
 }

@@ -757,8 +757,8 @@ export default function AdminFoliosPage() {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
+                  <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                   <th className={table.th}>Folio #</th>
-                  <th className={table.th}>Guest</th>
                   {showGuestStatusColumn && <th className={table.th}>Guest Status</th>}
                   {showCheckOutDateColumn && <th className={`${table.th} hidden md:table-cell`}>Check-Out Date</th>}
                   <th className={table.th}>Total</th>
@@ -778,14 +778,14 @@ export default function AdminFoliosPage() {
                 ) : (
                   folios.map((f) => (
                     <tr key={f.id} className={table.row}>
-                      <td className={`${table.td} font-medium`}>{f.folio_number}</td>
-                      <td className={`${table.td} font-medium text-[color:var(--black)]`}>
+                      <td className={`${table.td} ${table.stickyTd} font-medium text-[color:var(--black)]`}>
                         {/* The name THIS booking was made under comes first: a
                             repeat guest's account can carry an older spelling,
                             which used to show here while the reservation showed
                             the new one (owner, 2026-09-16). */}
                         {f.reservation?.guest_name || (f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : "N/A")}
                       </td>
+                      <td className={`${table.td} font-medium`}>{f.folio_number}</td>
                       {showGuestStatusColumn && (
                         <td className={table.td}>
                           {/* Outside a search, this tab's own query is

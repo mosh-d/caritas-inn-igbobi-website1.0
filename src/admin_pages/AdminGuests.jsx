@@ -347,7 +347,7 @@ export default function AdminGuestsPage() {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
-                  <th className={table.th}>Name</th>
+                  <th className={`${table.th} ${table.stickyTh}`}>Name</th>
                   <th className={`${table.th} hidden md:table-cell`}>Email</th>
                   <th className={`${table.th} hidden md:table-cell`}>Phone</th>
                   <th className={`${table.th} hidden md:table-cell`}>Type</th>
@@ -388,7 +388,7 @@ export default function AdminGuestsPage() {
                       key={g.id}
                       className={table.row}
                     >
-                      <td className={`${table.td} font-medium`}>
+                      <td className={`${table.td} ${table.stickyTd} font-medium`}>
                         <div className='flex items-center gap-3 flex-wrap'>
                           {g.first_name} {g.last_name}
                           {g.is_blacklisted && (

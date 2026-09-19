@@ -145,7 +145,7 @@ export default function AdminNightAudit() {
                 <table className={table.el}>
                   <thead>
                     <tr className={table.headRow}>
-                      <th className={table.th}>Guest</th>
+                      <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                       <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
                       <th className={`${table.th} hidden md:table-cell`}>Folio</th>
                       <th className={`${table.th} text-right!`}>Charge</th>
@@ -155,7 +155,7 @@ export default function AdminNightAudit() {
                   <tbody>
                     {result.details.map((d, i) => (
                       <tr key={i} className={table.row}>
-                        <td className="px-6 py-3 font-medium">
+                        <td className="px-6 py-3 font-medium sticky left-0 z-10 bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]">
                           <div>{d.guest_name}</div>
                           {d.booking_reference && (
                             <div className="text-base text-[color:var(--text-color)]/68">{d.booking_reference}</div>
@@ -205,7 +205,7 @@ export default function AdminNightAudit() {
               <table className={table.el}>
                 <thead>
                   <tr className={table.headRow}>
-                    <th className={table.th}>Business Date</th>
+                    <th className={`${table.th} ${table.stickyTh}`}>Business Date</th>
                     <th className={`${table.th} text-right! hidden md:table-cell`}>Guests Charged</th>
                     <th className={`${table.th} text-right! hidden md:table-cell`}>Skipped</th>
                     <th className={`${table.th} text-right!`}>Total Posted</th>
@@ -216,7 +216,7 @@ export default function AdminNightAudit() {
                 <tbody>
                   {history.map((a) => (
                     <tr key={a.id} className={table.row}>
-                      <td className="px-6 py-4 font-bold">{formatDate(a.audit_date)}</td>
+                      <td className="px-6 py-4 font-bold sticky left-0 z-10 bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]">{formatDate(a.audit_date)}</td>
                       <td className="px-6 py-4 text-right hidden md:table-cell">{a.rooms_charged}</td>
                       <td className="px-6 py-4 text-right hidden md:table-cell text-[color:var(--text-color)]/76">{a.skipped}</td>
                       <td className="px-6 py-4 text-right font-bold text-green-700">{money(a.total_posted)}</td>

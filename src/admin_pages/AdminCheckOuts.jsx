@@ -151,7 +151,7 @@ export default function AdminCheckOutsPage() {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
-                  <th className={table.th}>Guest</th>
+                  <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                   <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
                   <th className={`${table.th} hidden md:table-cell`}>Checked In</th>
                   <th className={table.th}>Actions</th>
@@ -167,7 +167,7 @@ export default function AdminCheckOutsPage() {
                 ) : (
                   reservations.map((r) => (
                     <tr key={r.id} className={table.row}>
-                      <td className={`${table.td} font-medium`}>{r.guest_name}</td>
+                      <td className={`${table.td} ${table.stickyTd} font-medium`}>{r.guest_name}</td>
                       <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                       <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.actual_check_in)}</td>
                       <td className={table.td}>

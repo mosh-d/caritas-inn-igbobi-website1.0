@@ -41,6 +41,7 @@ import { AuditLink, ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBa
 import { formatPaymentMethod } from "../utils/report-format";
 
 import DateInput from "../components/shared/DateInput";
+import { MotionDiv, tabEnter } from "../components/shared/motion";
 function currentMonthRange() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -179,6 +180,7 @@ export default function AdminReportsPage() {
         </div>
       )}
 
+      <MotionDiv key={activeTab} className="w-full flex flex-col items-start gap-[3rem]" {...tabEnter}>
       {activeTab === "dashboard" && <DashboardTab />}
       {activeTab === "manifest" && <ManifestTab />}
       {activeTab === "analysis" && <AnalysisTab />}
@@ -187,6 +189,7 @@ export default function AdminReportsPage() {
       {activeTab === "food-sales" && <FoodSalesReportTab shift={shift} />}
       {activeTab === "drink-sales" && <DrinkSalesReportTab shift={shift} />}
       {activeTab === "bar-stock" && <BarStockReportTab shift={shift} />}
+      </MotionDiv>
     </div>
   );
 }

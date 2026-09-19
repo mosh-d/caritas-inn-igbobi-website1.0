@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { btn, field } from "./ui";
 import LoadingSpinner from "./LoadingSpinner";
+import { MotionDiv, panelEnter } from "./motion";
 import { fetchStaffAccounts } from "../../utils/staff-accounts-api";
 import { selectCurrentShift } from "../../utils/shifts-api";
 
@@ -63,7 +64,7 @@ export default function ShiftGate({ role, businessDate, currentName, onSelected,
       aria-modal="true"
       aria-label="Record the shift"
     >
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl font-primary p-8 flex flex-col gap-6">
+      <MotionDiv {...panelEnter} className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl font-primary p-8 flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h2 className="text-3xl font-bold text-[color:var(--black)]">Whose shift is this?</h2>
           <p className="text-xl text-[color:var(--text-color)]/76">
@@ -136,7 +137,7 @@ export default function ShiftGate({ role, businessDate, currentName, onSelected,
             </>
           )}
         </div>
-      </div>
+      </MotionDiv>
     </div>
   );
 }

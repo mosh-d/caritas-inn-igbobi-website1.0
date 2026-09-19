@@ -281,7 +281,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
           <table className={table.el}>
             <thead>
               <tr className={table.headRow}>
-                <th className={table.th}>Name</th>
+                <th className={`${table.th} ${table.stickyTh}`}>Name</th>
                 <th className={table.th}>Price (₦)</th>
                 <th className={table.th}>Service Charge (₦)</th>
                 {recordStock && <th className={table.th}>Stock</th>}
@@ -328,7 +328,7 @@ function MenuSection({ label, fetchItems, createItem, updateItem, deleteItem, re
                         </>
                       ) : (
                         <>
-                          <td className={`${table.td} font-medium`}>{item.name}</td>
+                          <td className={`${table.td} ${table.stickyTd} font-medium`}>{item.name}</td>
                           <td className={table.td}>{money(item.price)}</td>
                           <td className={table.td}>{money(item.service_charge)}</td>
                           {recordStock && (
@@ -526,7 +526,7 @@ function LaundrySection({ canEdit }) {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
-                  <th className={table.th}>Clothes</th>
+                  <th className={`${table.th} ${table.stickyTh}`}>Clothes</th>
                   <th className={table.th}>Wash and Iron</th>
                   <th className={table.th}>Ironing Only</th>
                   <th className={table.th}>Status</th>
@@ -562,7 +562,7 @@ function LaundrySection({ canEdit }) {
                       </tr>
                     ) : (
                       <tr key={item.id} className={table.row}>
-                        <td className={`${table.td} font-medium`}>{item.name}</td>
+                        <td className={`${table.td} ${table.stickyTd} font-medium`}>{item.name}</td>
                         <td className={table.td}>{money(item.wash_and_iron_price)}</td>
                         <td className={table.td}>{money(item.ironing_only_price)}</td>
                         <td className={table.td}><StatusBadge status={item.is_active ? "active" : "inactive"} /></td>

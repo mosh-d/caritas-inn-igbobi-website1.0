@@ -20,6 +20,7 @@ import {
 
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
+import { MotionDiv, MotionButton, staggerParent, staggerChild } from "../components/shared/motion";
 import { table } from "../components/shared/ui";
 import { fetchCheckInList, fetchCheckOutList, fetchInHouse } from "../utils/front-office-api";
 import { fetchRoomStatusList, fetchHouseStatus } from "../utils/reservations-pms-api";
@@ -354,7 +355,7 @@ export default function AdminOverviewPage() {
         )}
 
         {/* ── Today at a glance ── */}
-        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MotionDiv className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" variants={staggerParent} initial="hidden" animate="shown">
           <GlanceCard
             icon={IoLogInOutline}
             label="Arrivals Today"
@@ -383,11 +384,11 @@ export default function AdminOverviewPage() {
             sub={`of ${totalRooms} rooms · ${occupancyPct}% occupied`}
             onClick={() => navigate("/admin/rooms")}
           />
-        </div>
+        </MotionDiv>
 
         {/* ── Month to date ── */}
         {reportSummary && (
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <MotionDiv className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" variants={staggerParent} initial="hidden" animate="shown">
             <GlanceCard
               icon={IoCashOutline}
               label="Collected This Month"
@@ -411,7 +412,7 @@ export default function AdminOverviewPage() {
               sub={`${reportTotals.completed_stays ?? 0} completed`}
               onClick={() => navigate("/admin/reports")}
             />
-          </div>
+          </MotionDiv>
         )}
 
         {/* ── House Status ── */}
@@ -422,7 +423,7 @@ export default function AdminOverviewPage() {
               <table className={table.el}>
                 <thead>
                   <tr className={table.headRow}>
-                    <th className={table.th}>Room Type</th>
+                    <th className={`${table.th} ${table.stickyTh}`}>Room Type</th>
                     <th className={`${table.th} text-right!`}>Total Rooms</th>
                     <th className={`${table.th} text-right!`}>Occupied / Held</th>
                     <th className={`${table.th} text-right!`}>Available</th>
@@ -446,7 +447,7 @@ export default function AdminOverviewPage() {
                       const pct = total > 0 ? Math.round((occupied / total) * 100) : 0;
                       return (
                         <tr key={rt.room_type_id} className={table.row}>
-                          <td className={`${table.td} font-medium`}>{rt.room_type_name}</td>
+                          <td className={`${table.td} ${table.stickyTd} font-medium`}>{rt.room_type_name}</td>
                           <td className={`${table.td} text-right!`}>{total}</td>
                           <td className={`${table.td} text-right!`}>{occupied}</td>
                           <td className={`${table.td} text-right! font-bold ${available === 0 ? "text-red-600" : "text-green-700"}`}>{available}</td>
@@ -487,7 +488,7 @@ export default function AdminOverviewPage() {
               <table className={table.el}>
                 <thead>
                   <tr className={table.headRow}>
-                    <th className={table.th}>Guest</th>
+                    <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                     <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
                     <th className={`${table.th} hidden md:table-cell`}>Check-In</th>
                     <th className={`${table.th} hidden md:table-cell`}>Check-Out</th>
@@ -500,7 +501,7 @@ export default function AdminOverviewPage() {
                   ) : (
                     recentBookings.map((r) => (
                       <tr key={r.id} className={table.row}>
-                        <td className={`${table.td} font-medium`}>
+                        <td className={`${table.td} ${table.stickyTd} font-medium`}>
                           <div>{r.guest_name}</div>
                           <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                         </td>
@@ -566,9 +567,11 @@ export default function AdminOverviewPage() {
 // eslint-disable-next-line no-unused-vars
 function GlanceCard({ icon: Icon, label, value, sub, onClick, accent, warn }) {
   return (
-    <button
+    <MotionButton
+      variants={staggerChild}
+      whileHover={{ y: -2 }}
       onClick={onClick}
-      className={`text-left rounded-xl border p-6 cursor-pointer transition-all hover:shadow-md active:scale-[0.99] ${
+      className={`text-left rounded-xl border p-6 cursor-pointer transition-[box-shadow,scale] hover:shadow-md active:scale-[0.99] ${
         accent
           ? "bg-[color:var(--emphasis)] border-transparent text-white"
           : warn
@@ -592,7 +595,7 @@ function GlanceCard({ icon: Icon, label, value, sub, onClick, accent, warn }) {
       {sub && (
         <p className={`text-lg mt-1 ${accent ? "text-white/60" : "text-[color:var(--text-color)]/60"}`}>{sub}</p>
       )}
-    </button>
+    </MotionButton>
   );
 }
 

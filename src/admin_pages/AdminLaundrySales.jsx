@@ -253,8 +253,8 @@ export default function AdminLaundrySalesPage() {
               <table className={table.el}>
                 <thead>
                   <tr className={table.headRow}>
+                    <th className={`${table.th} ${table.stickyTh}`}>Customer</th>
                     <th className={table.th}>Folio #</th>
-                    <th className={table.th}>Customer</th>
                     <th className={table.th}>Total</th>
                     <th className={table.th}>Paid</th>
                     <th className={table.th}>Balance</th>
@@ -268,14 +268,14 @@ export default function AdminLaundrySalesPage() {
                   ) : (
                     folios.map((f) => (
                       <tr key={f.id} className={table.row}>
-                        <td className={`${table.td} font-medium`}>{f.folio_number}</td>
                         {/* Same bill-number fallback the F&B list uses — most
                             of these are recorded without a name. */}
-                        <td className={table.td}>
+                        <td className={`${table.td} ${table.stickyTd}`}>
                           {f.guest_name
                             || (f.bill_no && <span className="text-[color:var(--text-color)]/68">Bill No {f.bill_no}</span>)
                             || <span className="text-[color:var(--text-color)]/40">—</span>}
                         </td>
+                        <td className={`${table.td} font-medium`}>{f.folio_number}</td>
                         <td className={table.td}>{money(f.total_amount)}</td>
                         <td className={table.td}>{money(f.amount_paid)}</td>
                         <td className={`${table.td} font-bold ${Number(f.balance) > 0 ? "text-red-500" : ""}`}>{money(f.balance)}</td>

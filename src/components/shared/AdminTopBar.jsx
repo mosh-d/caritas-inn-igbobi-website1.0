@@ -80,11 +80,23 @@ export default function AdminTopBar({ shifts = [] }) {
   if (isLogin) return null;
 
   return (
+    // relative: the logo block below is `md:absolute`, and needs an actual
+    // positioned ancestor to centre against, not whatever happens to be
+    // further up the tree. Stacked (flex-col) below `md`, with extra right
+    // padding to clear AdminNavBar's own fixed hamburger button in that
+    // corner - row + absolute-centred only from `md:` up, where the left
+    // column is never wide enough to reach the middle of the screen
+    // (2026-09-19: was unconditionally absolute-centred, so a phone-width
+    // "Developer (all access)" dropdown and the centred logo were guaranteed
+    // to overlap at some point, not just look cramped).
     <div
       data-component='AdminTopBar'
-      className='w-full min-h-50 flex justify-between items-center bg-[color:var(--text-color)] px-6 py-4 shadow-md'
+      className='relative w-full min-h-50 flex flex-col md:flex-row md:justify-between md:items-center gap-6 md:gap-0 bg-[color:var(--text-color)] px-6 py-4 max-md:pr-24 shadow-md'
     >
-      <div className='flex flex-col items-start gap-8'>
+      {/* Below md, the identity, shift, role and logout controls flow in
+          wrapped rows rather than a tall stack - stacked, they took ~255px of
+          a phone screen before any page content (2026-09-19). */}
+      <div className='flex flex-row flex-wrap items-center gap-x-6 gap-y-3 md:flex-col md:items-start md:gap-8'>
         {staffRole && (
           <NavLink
             to='/admin/account'
@@ -142,7 +154,7 @@ export default function AdminTopBar({ shifts = [] }) {
           Logout
         </button>
       </div>
-      <div className='w-48 flex-shrink-0 absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center'>
+      <div className='w-48 flex-shrink-0 mx-auto md:mx-0 md:absolute md:left-1/2 md:transform md:-translate-x-1/2 flex flex-col items-center'>
         <NavLink
           to={getDefaultAdminRoute()}
           className='block'

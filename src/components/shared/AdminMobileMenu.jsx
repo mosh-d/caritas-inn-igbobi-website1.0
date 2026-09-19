@@ -3,6 +3,17 @@ import { NavLink } from "react-router-dom";
 import { FiX } from "react-icons/fi";
 import { visibleAdminNavItems } from "./adminNavItems";
 import { useWebSocketContext } from "../../context/WebSocketContext";
+import { MotionUl, MotionLi } from "./motion";
+
+// Items stagger in as the drawer opens, and drop back out as it closes.
+const MENU_LIST = {
+  open: { transition: { staggerChildren: 0.03, delayChildren: 0.08 } },
+  closed: {},
+};
+const MENU_ITEM = {
+  open: { opacity: 1, x: 0 },
+  closed: { opacity: 0, x: -20 },
+};
 
 export default function AdminMobileMenu({ isOpen, onClose }) {
   const { alertCount } = useWebSocketContext();
@@ -48,12 +59,12 @@ export default function AdminMobileMenu({ isOpen, onClose }) {
         </button>
 
         <nav className="w-full max-w-sm overflow-y-auto max-h-full py-8">
-          <ul className="flex flex-col gap-3 text-2xl">
+          <MotionUl className="flex flex-col gap-3 text-2xl" initial={false} animate={isOpen ? "open" : "closed"} variants={MENU_LIST}>
             {/* `Icon` is used below as the JSX tag <Icon .../>; ESLint's no-unused-vars doesn't
                 detect JSX-only usage of a destructured function-parameter binding. */}
             {/* eslint-disable-next-line no-unused-vars */}
             {visibleAdminNavItems().map(({ to, label, icon: Icon, end, showAlertBadge }) => (
-              <li key={to}>
+              <MotionLi key={to} variants={MENU_ITEM}>
                 <NavLink
                   to={to}
                   end={end}
@@ -82,9 +93,9 @@ export default function AdminMobileMenu({ isOpen, onClose }) {
                     </>
                   )}
                 </NavLink>
-              </li>
+              </MotionLi>
             ))}
-          </ul>
+          </MotionUl>
         </nav>
       </div>
     </div>

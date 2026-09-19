@@ -106,3 +106,41 @@ tbody tr:hover > td,
 tbody tr:hover > th {
   box-shadow: inset 0 0 0 100vmax rgb(128 128 128 / 14%);
 }
+/* A pinned identifying column (ui.js's table.stickyTd, and the pages that
+   hand-roll it) draws its dividing line as a box-shadow, which the rule above
+   replaces outright - so the line vanished on whichever row the pointer was
+   over. Same fix as Reports' own first column above: both shadows together. */
+tbody tr:hover > td.sticky {
+  box-shadow:
+    inset -1px 0 0 color-mix(in srgb, var(--text-color) 12%, transparent),
+    inset 0 0 0 100vmax rgb(128 128 128 / 14%);
+}
+
+/* Motion in the admin (2026-09-19). Table rows fade in as they're inserted -
+   a new arrival, a freshly loaded page of results - but never on a mere
+   re-render, since a CSS animation only runs when its element enters the
+   page. Room Chart bars grow in from their start date the same way. Plain
+   keyframes rather than the motion library, since these are bulk elements
+   (components/shared/motion.js has the component-level animations). Fill
+   mode is `backwards`, not `both`: an animation still in effect after it ends
+   would keep each row a stacking context of its own for good, trapping
+   anything that overflows a row beneath the next one. */
+[data-component="AdminRoot"] tbody > tr {
+  animation: admin-row-in 0.3s ease-out backwards;
+}
+@keyframes admin-row-in {
+  from { opacity: 0; }
+}
+.admin-bar-in {
+  transform-origin: left center;
+  animation: admin-bar-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes admin-bar-in {
+  from { opacity: 0; transform: scaleX(0.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-component="AdminRoot"] tbody > tr,
+  .admin-bar-in {
+    animation: none;
+  }
+}

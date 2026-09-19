@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IoAppsOutline,
@@ -39,10 +39,14 @@ const isoDate = (d) => {
 const dayIndexOf = (date, windowStart) =>
   Math.round((startOfDay(new Date(date)) - windowStart) / DAY_MS);
 
+// 'completed' (checked out) is included alongside hold/confirmed/active
+// (2026-09-19) - without it, any window that has fully passed shows almost
+// nothing, since nothing sits in "hold" a month after its dates.
 const BAR_STYLES = {
   hold: 'bg-amber-400 text-amber-950',
   confirmed: 'bg-blue-500 text-white',
   active: 'bg-green-600 text-white',
+  completed: 'bg-slate-400 text-white',
 };
 
 const dateLabel = (d) =>
@@ -94,6 +98,31 @@ export default function AdminRoomChartPage() {
       Array.from({ length: DAYS_VISIBLE }, (_, i) => addDays(windowStart, i)),
     [windowStart],
   );
+
+  // Real height of the sticky date-header row, so each room-type section
+  // header (also sticky) knows exactly where to sit below it. Measured, not
+  // guessed: this app's root font-size is itself responsive (see
+  // design-system.css's html{font-size} breakpoints), and the date labels
+  // wrap to 2 or 3 lines depending on how narrow the real day columns render
+  // - so the row's true height isn't a fixed constant at all, and a
+  // hardcoded offset drifts out of alignment the moment either changes
+  // (2026-09-19: "look at how the date row looks when we scroll... fix it" -
+  // it was overlapping). useLayoutEffect + ResizeObserver reads the actual
+  // rendered height instead, and stays correct through any resize. (Placed
+  // after `days` on purpose - it was above `days`'s own declaration at
+  // first, which threw "Cannot access 'days' before initialization" on
+  // every render.)
+  const cornerCellRef = useRef(null);
+  const [dateRowHeight, setDateRowHeight] = useState(44);
+  useLayoutEffect(() => {
+    const el = cornerCellRef.current;
+    if (!el) return undefined;
+    const measure = () => setDateRowHeight(el.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [days]);
 
   const load = useCallback(async () => {
     try {
@@ -162,7 +191,12 @@ export default function AdminRoomChartPage() {
     return out;
   }, [chart]);
 
-  const gridTemplateColumns = `10rem repeat(${DAYS_VISIBLE}, minmax(4.5rem, 1fr))`;
+  // The room column is never narrower than its widest status tag - 10rem is
+  // only 80px at a phone's root font-size, and "Complementary" overflowed
+  // onto the day cells (2026-09-19). min-content is the MINIMUM on purpose:
+  // as the maximum it only grows into spare room, and on a phone the day
+  // columns leave none, so the column stayed at 80px.
+  const gridTemplateColumns = `minmax(min-content, 10rem) repeat(${DAYS_VISIBLE}, minmax(4.5rem, 1fr))`;
 
   // Hold → the guest hasn't paid yet, so the detail view (with its Confirm
   // button right there) is the useful destination. Confirmed → nothing
@@ -241,6 +275,12 @@ export default function AdminRoomChartPage() {
           <span className='w-4 h-4 rounded bg-green-600 inline-block' />{' '}
           In-House
         </span>
+        {/* "Completed" (2026-09-19), not a separate "Past Stay" term - it's
+            the same reservation status shown everywhere else in the app. */}
+        <span className='flex items-center gap-2'>
+          <span className='w-4 h-4 rounded bg-slate-400 inline-block' />{' '}
+          Completed
+        </span>
       </div>
 
       {loading ?
@@ -263,7 +303,7 @@ export default function AdminRoomChartPage() {
             }}
           >
             {/* Date header row — sticky so it stays visible while the body scrolls vertically */}
-            <div className='sticky top-0 left-0 z-30 bg-white border-b border-r border-[color:var(--text-color)]/10 px-3 py-2' />
+            <div ref={cornerCellRef} className='sticky top-0 left-0 z-30 bg-white border-b border-r border-[color:var(--text-color)]/10 px-3 py-2' />
             {days.map((d, i) => (
               <div
                 key={isoDate(d)}
@@ -282,9 +322,15 @@ export default function AdminRoomChartPage() {
             {/* Body rows */}
             {rows.map((row) =>
               row.kind === 'header' ?
+                // Sticky under the date row (2026-09-19) - unsticky, it scrolls
+                // out of view like any other row, so a long room list reads as
+                // an unlabeled sequence of numbers once you've scrolled past
+                // which type section they belong to. `top` is the date row's
+                // MEASURED height (see dateRowHeight above), not a guess.
                 <div
                   key={row.key}
-                  className='col-span-full bg-[color:var(--text-color)]/5 px-3 py-3 text-2xl font-bold text-[color:var(--black)] border-b border-[color:var(--text-color)]/10'
+                  className='col-span-full sticky z-20 bg-[color-mix(in_srgb,var(--text-color)_5%,white)] px-3 py-3 text-2xl font-bold text-[color:var(--black)] border-b border-[color:var(--text-color)]/10'
+                  style={{ top: dateRowHeight }}
                 >
                   {row.label}{' '}
                   <span className='text-lg font-normal text-[color:var(--text-color)]/68'>
@@ -331,8 +377,13 @@ function RoomRow({
 
   return (
     <>
+      {/* min-w-0 on both levels (2026-09-19): a grid/flex item's default
+          min-width is its CONTENT's size, not its track's, so a room number
+          plus a wide tag like "Out of Order" simply overflowed past this
+          fixed 10rem column and sat on top of the day cells to its right
+          instead of wrapping, even with flex-wrap already set below. */}
       <div
-        className={`sticky left-0 z-10 border-b border-r border-[color:var(--text-color)]/10 px-3 py-3 text-xl font-medium flex items-start ${
+        className={`sticky left-0 z-10 min-w-0 border-b border-r border-[color:var(--text-color)]/10 px-3 py-3 text-xl font-medium flex items-start ${
           isUnassigned ?
             'bg-gray-50 text-[color:var(--text-color)]/68 italic'
           : 'bg-white text-[color:var(--black)]'
@@ -343,7 +394,7 @@ function RoomRow({
           : undefined
         }
       >
-        <span className='flex items-center gap-2 flex-wrap'>
+        <span className='flex items-center gap-2 flex-wrap min-w-0'>
           {label}
           <RoomStatusTag
             status={roomStatus === 'available' ? null : roomStatus}
@@ -372,7 +423,7 @@ function RoomRow({
                 key={`${bar.reservation_id}-${i}`}
                 onClick={() => onSelectBar(bar)}
                 title={`${bar.guest_name} · ${new Date(bar.check_in).toLocaleDateString(undefined, { timeZone: 'Africa/Lagos' })} → ${new Date(bar.check_out).toLocaleDateString(undefined, { timeZone: 'Africa/Lagos' })}${bar.rooms_needed ? ` · ${bar.rooms_needed} room(s) needed` : ''}`}
-                className={`m-1 px-3 py-1 rounded-md text-lg font-semibold truncate text-left cursor-pointer transition-opacity hover:opacity-80 ${BAR_STYLES[bar.status] || 'bg-gray-400 text-white'}`}
+                className={`admin-bar-in m-1 px-3 py-1 rounded-md text-lg font-semibold truncate text-left cursor-pointer transition-opacity hover:opacity-80 ${BAR_STYLES[bar.status] || 'bg-gray-400 text-white'}`}
                 style={{ gridColumn: `${startCol + 1} / ${endCol + 1}` }}
               >
                 {bar.guest_name}

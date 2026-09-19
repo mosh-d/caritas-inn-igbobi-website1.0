@@ -878,7 +878,7 @@ export default function AdminReservationsPage() {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
-                  <th className={table.th}>Guest</th>
+                  <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                   <th className={`${table.th} hidden md:table-cell`}>Check-In</th>
                   <th className={`${table.th} hidden md:table-cell`}>Check-Out</th>
                   <th className={table.th}>Status</th>
@@ -896,7 +896,7 @@ export default function AdminReservationsPage() {
                 ) : (
                   reservations.map((r) => (
                     <tr key={r.id} className={table.row}>
-                      <td className={`${table.td} font-medium`}>
+                      <td className={`${table.td} ${table.stickyTd} font-medium`}>
                         <div className="flex items-center gap-3">
                           {r.guest_name}
                           {r.is_no_show && (

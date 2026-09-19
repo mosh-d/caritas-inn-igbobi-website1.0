@@ -344,8 +344,8 @@ export default function AdminGuestSalesPage() {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
+                  <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                   <th className={table.th}>Room</th>
-                  <th className={table.th}>Guest</th>
                   <th className={table.th}>Folio #</th>
                   <th className={table.th}>Status</th>
                   <th className={table.th}>Actions</th>
@@ -367,8 +367,13 @@ export default function AdminGuestSalesPage() {
                       const balance = Number(r.folio?.balance || 0);
                       return (
                         <tr key={r.id} className={`${table.row} ${isSelected ? "bg-[color:var(--emphasis)]/5" : ""}`}>
+                          {/* Selected-row tint matched explicitly (2026-09-16
+                              -style inline conditional, same as the row's own):
+                              the sticky cell's own opaque background would
+                              otherwise sit plain white over an already-tinted
+                              selected row. */}
+                          <td className={`${table.td} sticky left-0 z-10 max-lg:whitespace-normal! max-lg:min-w-[18rem] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)] ${isSelected ? "bg-[color-mix(in_srgb,var(--emphasis)_5%,white)]" : "bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)]"}`}>{r.guest_name}</td>
                           <td className={table.td}>{r.room_assignments?.[0]?.room_number || "—"}</td>
-                          <td className={table.td}>{r.guest_name}</td>
                           <td className={table.td}>{r.folio.folio_number}</td>
                           <td className={table.td}>
                             <StatusBadge status={balance > 0 ? "owing" : "paid"} />
@@ -393,7 +398,7 @@ export default function AdminGuestSalesPage() {
             <table className={table.el}>
               <thead>
                 <tr className={table.headRow}>
-                  <th className={table.th}>Guest</th>
+                  <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                   <th className={table.th}>Folio #</th>
                   <th className={table.th}>Checked Out</th>
                   <th className={table.th}>Balance</th>

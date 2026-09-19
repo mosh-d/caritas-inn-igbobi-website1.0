@@ -364,8 +364,8 @@ export default function AdminAuditTrail() {
                 <table className={table.el}>
                   <thead>
                     <tr className={table.headRow}>
+                      <th className={`${table.th} ${table.stickyTh}`}>Staff</th>
                       <th className={table.th}>When</th>
-                      <th className={table.th}>Staff</th>
                       <th className={`${table.th} hidden md:table-cell`}>Role</th>
                       <th className={table.th}>Action</th>
                     </tr>
@@ -377,12 +377,12 @@ export default function AdminAuditTrail() {
                         : null;
                       return (
                         <tr key={entry.id} className={table.row}>
-                          <td className="px-8 py-4 text-xl text-[color:var(--text-color)]/84">{formatWhen(entry.created_at)}</td>
-                          <td className="px-8 py-4 font-semibold">{entry.username}</td>
+                          <td className="px-8 py-4 font-semibold sticky left-0 z-10 bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]">{entry.username}</td>
+                          <td className="px-8 py-4 text-xl whitespace-nowrap text-[color:var(--text-color)]/84">{formatWhen(entry.created_at)}</td>
                           <td className="px-8 py-4 hidden md:table-cell">
                             <StatusBadge status={entry.role} />
                           </td>
-                          <td className="px-8 py-4 text-xl">
+                          <td className="px-8 py-4 text-xl min-w-[32rem]">
                             {entry.label ? (
                               <span className="flex flex-wrap items-center gap-3">
                                 {entry.label}

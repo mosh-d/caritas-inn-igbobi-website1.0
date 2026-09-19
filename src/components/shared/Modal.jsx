@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { IoClose } from "react-icons/io5";
+import { MotionDiv, backdropEnter, panelEnter } from "./motion";
 
 const WIDTHS = {
   sm: "max-w-xl",
@@ -36,7 +37,8 @@ export default function Modal({
   }, [onClose]);
 
   return (
-    <div
+    <MotionDiv
+      {...backdropEnter}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       style={{ zIndex }}
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
@@ -44,7 +46,10 @@ export default function Modal({
       aria-modal="true"
       aria-label={typeof title === "string" ? title : "Dialog"}
     >
-      <div className={`bg-white rounded-2xl w-full ${WIDTHS[size] || WIDTHS.lg} max-h-[90vh] flex flex-col shadow-2xl font-primary overflow-hidden`}>
+      <MotionDiv
+        {...panelEnter}
+        className={`bg-white rounded-2xl w-full ${WIDTHS[size] || WIDTHS.lg} max-h-[90vh] flex flex-col shadow-2xl font-primary overflow-hidden`}
+      >
         {loading ? (
           <div className="p-20 flex justify-center">{children}</div>
         ) : (
@@ -77,7 +82,7 @@ export default function Modal({
             )}
           </>
         )}
-      </div>
-    </div>
+      </MotionDiv>
+    </MotionDiv>
   );
 }

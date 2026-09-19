@@ -9,6 +9,7 @@ import { btn, table } from "../components/shared/ui";
 import { fetchAlerts } from "../utils/alerts-api";
 import { markNoShow } from "../utils/reservations-pms-api";
 import { useWebSocketContext } from "../context/WebSocketContext";
+import { MotionDiv, tabEnter } from "../components/shared/motion";
 
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
@@ -198,7 +199,10 @@ export default function AdminAlertsPage() {
         </PageHeading>
 
         {/* Tabs. A row of five doesn't fit a phone, so that width gets a
-            menu of the same tabs instead, opening on the current one. */}
+            menu of the same tabs instead, opening on the current one. From
+            `sm` up they're the same wrapping pills as Reports' tabs - as one
+            underlined row they needed ~1000px, and overflowed the page by
+            52px at tablet width (2026-09-19). */}
         <div className="w-full">
           <div className="sm:hidden relative" ref={tabMenuRef}>
             <button
@@ -239,21 +243,21 @@ export default function AdminAlertsPage() {
             )}
           </div>
 
-          <div className="hidden sm:flex gap-0 border-b border-[color:var(--text-color)]/20 w-full">
+          <div className="hidden sm:flex flex-wrap gap-3 w-full">
             {tabs.map(({ key, label, count }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`px-8 py-3 text-xl font-bold transition-colors border-b-2 -mb-px flex items-center gap-2 cursor-pointer ${
+                className={`px-6 py-3 rounded-lg text-xl font-bold whitespace-nowrap flex items-center gap-2 cursor-pointer transition-all ${
                   tab === key
-                    ? "border-[color:var(--emphasis)] text-[color:var(--emphasis)]"
-                    : "border-transparent text-[color:var(--text-color)]/76 hover:text-[color:var(--text-color)]"
+                    ? "bg-[color:var(--emphasis)] text-white"
+                    : "bg-black/4 text-[color:var(--text-color)] hover:bg-black/8"
                 }`}
               >
                 {label}
                 {count > 0 && (
                   <span className={`text-xl font-bold rounded-full pl-3 pr-3.5 pt-1 pb-1.5 sm:pr-2 md:pt-2 min-w-[1.4rem] text-center leading-tight ${
-                    tab === key ? "bg-[color:var(--emphasis)] text-white" : "bg-red-600 text-white"
+                    tab === key ? "bg-white text-[color:var(--emphasis)]" : "bg-red-600 text-white"
                   }`}>
                     {count}
                   </span>
@@ -268,7 +272,7 @@ export default function AdminAlertsPage() {
         ) : error ? (
           <p className="text-red-600 text-xl">{error}</p>
         ) : (
-          <>
+          <MotionDiv key={tab} className="w-full" {...tabEnter}>
             {/* Missed Check-Ins */}
             {tab === "missed" && (
               missed.length === 0 ? (
@@ -283,7 +287,7 @@ export default function AdminAlertsPage() {
                       <table className={table.el}>
                         <thead>
                           <tr className={table.headRow}>
-                            <th className={table.th}>Guest</th>
+                            <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                             <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
                             <th className={`${table.th} hidden md:table-cell`}>Check-In Was</th>
                             <th className={`${table.th} hidden md:table-cell`}>Status</th>
@@ -293,7 +297,7 @@ export default function AdminAlertsPage() {
                         <tbody>
                           {paginate(missed, "missed").map((r) => (
                             <tr key={r.id} className={table.row}>
-                              <td className={`${table.td} font-medium`}>
+                              <td className={`${table.td} ${table.stickyTd} font-medium`}>
                                 <div>{r.guest_name}</div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
@@ -346,7 +350,7 @@ export default function AdminAlertsPage() {
                       <table className={table.el}>
                         <thead>
                           <tr className={table.headRow}>
-                            <th className={table.th}>Guest</th>
+                            <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                             <th className={table.th}>Credit</th>
                             <th className={`${table.th} hidden md:table-cell`}>Taken</th>
                             <th className={`${table.th} hidden md:table-cell`}>Checked Out</th>
@@ -356,7 +360,7 @@ export default function AdminAlertsPage() {
                         <tbody>
                           {paginate(guestCredits, "credits").map((c) => (
                             <tr key={c.id} className={table.row}>
-                              <td className={`${table.td} font-medium`}>
+                              <td className={`${table.td} ${table.stickyTd} font-medium`}>
                                 <div>{c.guest_name}</div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{c.booking_reference}</div>
                               </td>
@@ -399,7 +403,7 @@ export default function AdminAlertsPage() {
                       <table className={table.el}>
                         <thead>
                           <tr className={table.headRow}>
-                            <th className={table.th}>Guest</th>
+                            <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                             <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
                             <th className={`${table.th} hidden md:table-cell`}>Booked</th>
                             <th className={table.th}>Hold Expires</th>
@@ -409,7 +413,7 @@ export default function AdminAlertsPage() {
                         <tbody>
                           {paginate(unconfirmed, "unconfirmed").map((r) => (
                             <tr key={r.id} className={table.row}>
-                              <td className={`${table.td} font-medium`}>
+                              <td className={`${table.td} ${table.stickyTd} font-medium`}>
                                 <div>{r.guest_name}</div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
@@ -454,7 +458,7 @@ export default function AdminAlertsPage() {
                       <table className={table.el}>
                         <thead>
                           <tr className={table.headRow}>
-                            <th className={table.th}>Guest</th>
+                            <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                             <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
                             <th className={`${table.th} hidden md:table-cell`}>Was Due Out</th>
                             <th className={table.th}>Actions</th>
@@ -463,7 +467,7 @@ export default function AdminAlertsPage() {
                         <tbody>
                           {paginate(overdue, "overdue").map((r) => (
                             <tr key={r.id} className={table.row}>
-                              <td className={`${table.td} font-medium`}>
+                              <td className={`${table.td} ${table.stickyTd} font-medium`}>
                                 <div>{r.guest_name}</div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
@@ -504,7 +508,7 @@ export default function AdminAlertsPage() {
                       <table className={table.el}>
                         <thead>
                           <tr className={table.headRow}>
-                            <th className={table.th}>Guest</th>
+                            <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                             <th className={`${table.th} hidden md:table-cell`}>Folio #</th>
                             <th className={`${table.th} hidden md:table-cell`}>Checked Out</th>
                             <th className={table.th}>Balance Due</th>
@@ -514,7 +518,7 @@ export default function AdminAlertsPage() {
                         <tbody>
                           {paginate(balances, "balances").map((f) => (
                             <tr key={f.id} className={table.row}>
-                              <td className={`${table.td} font-medium`}>
+                              <td className={`${table.td} ${table.stickyTd} font-medium`}>
                                 <div>{f.reservation?.guest_name || "N/A"}</div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{f.reservation?.booking_reference}</div>
                               </td>
@@ -538,7 +542,7 @@ export default function AdminAlertsPage() {
                 </div>
               )
             )}
-          </>
+          </MotionDiv>
         )}
       </div>
     </>

@@ -256,7 +256,7 @@ export default function AdminBookingsPage() {
           <table className="min-w-full border-collapse text-2xl">
             <thead>
               <tr className="border-b border-[color:var(--text-color)]/25">
-                <th className="px-8 py-4 text-left whitespace-nowrap">Name</th>
+                <th className="px-8 py-4 text-left whitespace-nowrap sticky left-0 z-10 bg-[color-mix(in_srgb,var(--text-color)_3%,white)] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]">Name</th>
                 <th className="px-8 py-4 text-left whitespace-nowrap hidden md:table-cell">Email</th>
                 <th className="px-8 py-4 text-left whitespace-nowrap hidden md:table-cell">ID</th>
                 <th className="px-8 py-4 text-left whitespace-nowrap">Action</th>
@@ -266,7 +266,7 @@ export default function AdminBookingsPage() {
               {loading ? (<tr><td colSpan="4" className="px-8 py-8 text-center text-xl">Loading bookings...</td></tr>) : error ? (<tr><td colSpan="4" className="px-8 py-8 text-center text-red-600 text-xl">{error}</td></tr>) : currentBookings.length === 0 ? (<tr><td colSpan="4" className="px-8 py-8 text-center text-xl">No bookings match filter.</td></tr>) : (
                 currentBookings.map((b) => (
                   <tr key={b.booking_id} className="border-b border-[color:var(--text-color)]/25 transition-colors">
-                    <td className="px-8 py-4 text-left font-medium">{b.guest_name}</td>
+                    <td className="px-8 py-4 text-left font-medium sticky left-0 z-10 bg-white [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]">{b.guest_name}</td>
                     <td className="px-8 py-4 text-left hidden md:table-cell">{b.guest_email || "N/A"}</td>
                     <td className="px-8 py-4 text-left hidden md:table-cell">{b.booking_id}</td>
                     <td className="px-8 py-4 text-left">{renderActionButtons(b)}</td>
