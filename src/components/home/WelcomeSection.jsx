@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { FaMapMarkerAlt } from "react-icons/fa";
 
 import { fetchBranchContact } from "../../utils/room-data";
+import { EASE_OUT, MotionDiv } from "../shared/motion";
+import { Reveal, Words } from "../shared/guestMotion";
 
 // What this section shows until the server answers, and if it never does.
 // The branches table is the source of truth (owner, 2026-09-17); this copy
@@ -48,8 +50,12 @@ export default function WelcomeSection() {
       data-component="Welcome Component"
       className="p-[12rem] max-sm:px-[2rem] flex flex-col gap-[4.8rem] max-sm:gap-[2.4rem]"
     >
-      <h2 className="text-6xl font-secondary font-bold">Locate Us</h2>
-      <div
+      <Words text="Locate Us" className="text-6xl font-secondary font-bold" />
+      <MotionDiv
+        initial={{ clipPath: "inset(18% 18% 18% 18%)", opacity: 0 }}
+        whileInView={{ clipPath: "inset(0% 0% 0% 0%)", opacity: 1 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 1.2, ease: EASE_OUT }}
         data-component="Google Map"
         className="w-full h-[400px] max-sm:h-[200px] overflow-hidden"
       >
@@ -66,9 +72,9 @@ export default function WelcomeSection() {
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
         ></iframe>
-      </div>
+      </MotionDiv>
 
-      <div className="flex max-sm:flex-col gap-[2rem]">
+      <Reveal delay={0.2} className="flex max-sm:flex-col gap-[2rem]">
         <p className="font-secondary text-3xl mx-[1rem] font-bold">
           {contact.address}
         </p>
@@ -87,7 +93,7 @@ export default function WelcomeSection() {
             View on Google Maps
           </div>
         </a>
-      </div>
+      </Reveal>
     </div>
   );
 }

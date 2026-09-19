@@ -1,4 +1,5 @@
 import Logo from "../shared/Logo";
+import { Reveal } from "./guestMotion";
 import CustomInput from "../shared/CustomInput";
 import { NavLink } from "react-router-dom";
 import Button from "../shared/Button";
@@ -15,7 +16,7 @@ import {
 export default function Footer() {
   return (
     <>
-      <div
+      <Reveal y={24} amount={0.1}
         data-component="Footer"
         className="text-[color:var(--footer-text-color)] bg-[color:var(--background-color-2)] px-24 md:px-12 lg:px-[12rem] py-12 md:py-[6rem] flex flex-col gap-[6rem] md:gap-[6rem] justify-center items-center"
       >
@@ -340,7 +341,7 @@ export default function Footer() {
           &copy; {new Date().getFullYear()} Five Clover Hotel Groups. All rights
           reserved.
         </div>
-      </div>
+      </Reveal>
     </>
   );
 }

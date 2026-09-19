@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { FiMenu, FiX } from "react-icons/fi";
 import MobileMenu from "./MobileMenu";
+import { MotionDiv, EASE_OUT } from "./motion";
 import logo from "../../assets/caritas-logo.png";
 
 export default function MainNavBar() {
@@ -24,7 +25,11 @@ export default function MainNavBar() {
 
   return (
     <>
-      <div className="px-4 md:px-8">
+      <MotionDiv
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: EASE_OUT }}
+        className="px-4 md:px-8">
         <div className="border-b border-[var(--text-color)]/20 py-4">
           <div className="flex justify-between items-center w-full">
             {/* Mobile Menu Button - Only shows on mobile */}
@@ -95,7 +100,7 @@ export default function MainNavBar() {
             <div className="md:w-[20vw] w-[18vw]"></div>
           </div>
         </div>
-      </div>
+      </MotionDiv>
 
       {/* Mobile Menu */}
       <MobileMenu

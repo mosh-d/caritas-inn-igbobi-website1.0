@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import GalleryModal from "../shared/GalleryModal";
+import { EASE_OUT } from "../shared/motion";
+import { RevealGroup, RevealItem } from "../shared/guestMotion";
 
 // Desktop gallery images (landscape)
 import Gallery1 from "../../assets/gallery/gallery-1.jpg";
@@ -54,6 +56,60 @@ import MobileGallery22 from "../../assets/mobile-gallery/gallery-22.jpg";
 import MobileGallery23 from "../../assets/mobile-gallery/gallery-23.jpg";
 import MobileGallery24 from "../../assets/mobile-gallery/gallery-24.jpg";
 import MobileGallery25 from "../../assets/mobile-gallery/gallery-25.jpg";
+
+// Each photo is uncovered from its bottom edge while the image itself
+// settles back from a slight zoom inside its frame, one after another in
+// reading order (the RevealGroup in GallerySection) - so the grid assembles
+// as it scrolls in rather than popping in as one block. Under the pointer the
+// image eases in a little, beneath the existing overlay.
+//
+// Defined here, not inside GallerySection (2026-09-19): a component defined
+// during render is a new type on every render, so opening the modal
+// remounted every photo - which would have replayed the reveal behind it.
+const PHOTO_FRAME = {
+  hidden: { clipPath: "inset(100% 0% 0% 0%)" },
+  shown: { clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 1.1, ease: EASE_OUT } },
+};
+const PHOTO_IMAGE = {
+  hidden: { scale: 1.25 },
+  shown: { scale: 1, transition: { duration: 1.6, ease: EASE_OUT } },
+};
+
+function ImageWithOverlay({ src, alt, index, className, onOpen }) {
+  return (
+    <RevealItem
+      variants={PHOTO_FRAME}
+      className={`relative group cursor-pointer overflow-hidden ${className}`}
+      onClick={() => onOpen(index)}
+    >
+      <RevealItem
+        as="img"
+        variants={PHOTO_IMAGE}
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover transition-[scale] duration-700 group-hover:scale-105"
+      />
+      {/* Dark overlay on hover */}
+      <div
+        className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center"
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.backgroundColor = "hsla(21, 90%, 10%, 0.7)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.backgroundColor = "transparent")
+        }
+      >
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="p-[1rem]">
+            <span className="text-[color:var(--white)] font-semibold text-xl">
+              View More Images
+            </span>
+          </div>
+        </div>
+      </div>
+    </RevealItem>
+  );
+}
 
 export default function GallerySection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -144,40 +200,9 @@ export default function GallerySection() {
     setIsModalOpen(false);
   };
 
-  const ImageWithOverlay = ({ src, alt, index, className }) => (
-    <div
-      className={`relative group cursor-pointer ${className}`}
-      onClick={() => openModal(index)}
-    >
-      <img
-        src={src}
-        alt={alt}
-        className="w-full h-full object-cover transition-all duration-300"
-      />
-      {/* Dark overlay on hover */}
-      <div
-        className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center"
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.backgroundColor = "hsla(21, 90%, 10%, 0.7)")
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.backgroundColor = "transparent")
-        }
-      >
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="p-[1rem]">
-            <span className="text-[color:var(--white)] font-semibold text-xl">
-              View More Images
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <>
-      <div
+      <RevealGroup stagger={0.12}
         data-component="Gallery Container"
         className="py-[12rem] px-[18vw] max-lg:px[6rem] max-md:px-[2rem] max-sm:px-[.5rem] max-md:py-[12rem] w-full h-[80rem] flex flex-col gap-[.8rem]"
       >
@@ -186,12 +211,14 @@ export default function GallerySection() {
           className="flex gap-[.8rem] h-[50%] w-full"
         >
           <ImageWithOverlay
+            onOpen={openModal}
             src={galleryImages[0].src}
             alt="Gallery 1"
             index={0}
             className="w-[60%] h-full"
           />
           <ImageWithOverlay
+            onOpen={openModal}
             src={galleryImages[1].src}
             alt="Gallery 2"
             index={1}
@@ -203,18 +230,21 @@ export default function GallerySection() {
           className="flex gap-[.8rem] h-[50%] w-full"
         >
           <ImageWithOverlay
+            onOpen={openModal}
             src={galleryImages[2].src}
             alt="Gallery 3"
             index={2}
             className="w-[40%] h-full"
           />
           <ImageWithOverlay
+            onOpen={openModal}
             src={galleryImages[3].src}
             alt="Gallery 4"
             index={3}
             className="w-[25%] h-full"
           />
           <ImageWithOverlay
+            onOpen={openModal}
             src={galleryImages[4].src}
             alt="Gallery 5"
             index={4}
@@ -231,7 +261,7 @@ export default function GallerySection() {
             View More Images
           </button>
         </div>
-      </div>
+      </RevealGroup>
 
       <GalleryModal
         isOpen={isModalOpen}

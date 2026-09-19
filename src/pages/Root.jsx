@@ -10,6 +10,7 @@ import { generateHotelSchema } from "../utils/seoUtils";
 import SEO from "../components/seo/SEO";
 import SafeHelmet from "../components/seo/SafeHelmet";
 import SchemaMarkup from "../components/shared/SchemaMarkup";
+import { MotionConfig, MotionDiv } from "../components/shared/motion";
 import { SERVER_BASE_URL } from "../utils/server-config";
 
 const API_BASE_URL = SERVER_BASE_URL;
@@ -280,6 +281,7 @@ export default function RootLayout() {
   const metadata = getPageMetadata();
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="min-h-screen flex flex-col">
       {/* SEO Component */}
       <SafeHelmet>
@@ -296,8 +298,19 @@ export default function RootLayout() {
       <SchemaMarkup branchId={branchId} />
       <header>{!isHome && <MainNavBar />}</header>
       <main>
-        <Outlet context={contextValue} />
+        {/* Route changes cross-fade. Opacity only: a transform here would
+            re-anchor every position:fixed element on the page (menus,
+            modals) to this wrapper instead of the viewport. */}
+        <MotionDiv
+          key={location.pathname}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.45 }}
+        >
+          <Outlet context={contextValue} />
+        </MotionDiv>
       </main>
     </div>
+    </MotionConfig>
   );
 }

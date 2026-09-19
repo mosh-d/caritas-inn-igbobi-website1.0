@@ -1,6 +1,7 @@
 import { useOutletContext } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
+import { Reveal, RevealGroup, RevealItem, Words } from "../shared/guestMotion";
 import DatePicker from "../shared/DatePicker";
 import Button from "../shared/Button";
 import GalleryModal from "../shared/GalleryModal";
@@ -315,10 +316,10 @@ export default function AvailableRoomsSection() {
       className="py-[12rem] max-sm:py-[0] px-[2rem] lg:px-[12rem] w-full flex flex-col gap-[4.8rem]"
     >
       <div className="flex max-sm:flex-col max-sm:gap-[2.4rem] justify-between items-center max-sm:items-start">
-        <h2 className="text-6xl font-secondary font-bold">Available Rooms</h2>
+        <Words text="Available Rooms" className="text-6xl font-secondary font-bold" />
       </div>
 
-      <div className="flex w-full max-sm:flex-col max-sm:gap-[2.4rem] gap-[6rem] justify-between">
+      <Reveal delay={0.15} className="flex w-full max-sm:flex-col max-sm:gap-[2.4rem] gap-[6rem] justify-between">
         <div className="flex gap-[4.8rem] max-sm:flex-col max-sm:gap-[2.4rem]">
           <DatePicker
             label="Check in"
@@ -335,7 +336,7 @@ export default function AvailableRoomsSection() {
             placeholder="Select check-out"
           />
         </div>
-      </div>
+      </Reveal>
 
       {/* Desktop Table View */}
       <div className="hidden md:block">
@@ -351,9 +352,9 @@ export default function AvailableRoomsSection() {
               <th className="text-xl font-bold p-4 text-left">Action</th>
             </tr>
           </thead>
-          <tbody className="text-[color:var(--light-gray)]">
+          <RevealGroup as="tbody" stagger={0.12} className="text-[color:var(--light-gray)]">
             {roomTypes.map((room) => (
-              <tr key={`desktop-${room.room_type_id}`}>
+              <RevealItem as="tr" y={32} key={`desktop-${room.room_type_id}`}>
                 <td
                   className="flex flex-col p-4 border-[color:var(--background-color)] border-1 bg-cover bg-center relative"
                   style={{
@@ -450,16 +451,16 @@ export default function AvailableRoomsSection() {
                       : "Select rooms first"}
                   </Button>
                 </td>
-              </tr>
+              </RevealItem>
             ))}
-          </tbody>
+          </RevealGroup>
         </table>
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-6">
+      <RevealGroup stagger={0.1} className="md:hidden space-y-6">
         {roomTypes.map((room) => (
-          <div
+          <RevealItem y={32}
             key={`mobile-${room.room_type_id}`}
             className="bg-cover bg-center relative text-[color:var(--white)] border border-[color:var(--white)] rounded-lg overflow-hidden"
             style={{
@@ -580,9 +581,9 @@ export default function AvailableRoomsSection() {
                 </Button>
               </div>
             </div>
-          </div>
+          </RevealItem>
         ))}
-      </div>
+      </RevealGroup>
 
       <GalleryModal
         isOpen={isGalleryOpen}

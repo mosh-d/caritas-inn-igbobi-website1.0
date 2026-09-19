@@ -8,6 +8,7 @@ import {
   RiWhatsappLine,
   RiMailLine,
 } from "react-icons/ri";
+import { Reveal, RevealGroup, RevealItem, Words } from "../shared/guestMotion";
 
 export default function ContactMainSection() {
   return (
@@ -16,20 +17,20 @@ export default function ContactMainSection() {
         data-component="TopSection"
         className="flex flex-col bg-[color:var(--background-color-2)] text-[var(--text-color)] font-secondary p-[12rem] max-sm:p-[4rem] gap-[1.8rem]"
       >
-        <h1 className="text-6xl font-bold">Get In Touch</h1>
-        <p className="text-3xl font-semibold">
+        <Words as="h1" onLoad delay={0.15} text="Get In Touch" className="text-6xl font-bold" />
+        <Reveal as="p" delay={0.4} className="text-3xl font-semibold">
           Got a question before you book, or need help during your stay? The Caritas Inn Igbobi team is on hand and glad to help - reach out any time.
-        </p>
+        </Reveal>
       </div>
       <div
         data-component="BottomSection"
         className="flex max-md:flex-col px-[12rem] max-sm:px-[4rem] py-[6rem] gap-[6rem] w-full"
       >
-        <div
+        <RevealGroup stagger={0.08}
           data-component="ContactInfo"
           className="w-[50%] max-md:w-[100%] max-md:max-w-[100%] gap-[1.2rem] flex flex-col"
         >
-          <div className="flex flex-col gap-[1.8rem] mb-[.6rem]">
+          <RevealItem className="flex flex-col gap-[1.8rem] mb-[.6rem]">
             <h2 className="text-6xl font-bold font-secondary">
               Contact Information
             </h2>
@@ -37,8 +38,8 @@ export default function ContactMainSection() {
               Get in touch with us through our contact details below and follow
               our social media pages
             </p>
-          </div>
-          <div
+          </RevealItem>
+          <RevealItem x={-24} y={0}
             data-component="ContactItem"
             className="flex gap-[1.2rem] items-center"
           >
@@ -49,8 +50,8 @@ export default function ContactMainSection() {
             >
               +234 812 695 5544
             </a>
-          </div>
-          <div
+          </RevealItem>
+          <RevealItem x={-24} y={0}
             data-component="ContactItem"
             className="flex gap-[1.2rem] items-center"
           >
@@ -61,8 +62,8 @@ export default function ContactMainSection() {
             >
               info@caritasinnigbobihotel.com
             </a>
-          </div>
-          <div
+          </RevealItem>
+          <RevealItem x={-24} y={0}
             data-component="ContactItem"
             className="flex gap-[1.2rem] items-center"
           >
@@ -75,8 +76,8 @@ export default function ContactMainSection() {
             >
               Caritas Inn
             </a>
-          </div>
-          <div
+          </RevealItem>
+          <RevealItem x={-24} y={0}
             data-component="ContactItem"
             className="flex gap-[1.2rem] items-center"
           >
@@ -89,8 +90,8 @@ export default function ContactMainSection() {
             >
               @caritas.inn
             </a>
-          </div>
-          <div
+          </RevealItem>
+          <RevealItem x={-24} y={0}
             data-component="ContactItem"
             className="flex gap-[1.2rem] items-center"
           >
@@ -103,8 +104,8 @@ export default function ContactMainSection() {
             >
               @caritasinnlagos
             </a>
-          </div>
-        </div>
+          </RevealItem>
+        </RevealGroup>
 
         {/* contact form commented out till I implement email messaging */}
         {/* <div
