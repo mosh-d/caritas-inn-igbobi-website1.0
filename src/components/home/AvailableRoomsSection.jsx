@@ -320,7 +320,10 @@ export default function AvailableRoomsSection() {
       </div>
 
       <Reveal delay={0.15} className="flex w-full max-sm:flex-col max-sm:gap-[2.4rem] gap-[6rem] justify-between">
-        <div className="flex gap-[4.8rem] max-sm:flex-col max-sm:gap-[2.4rem]">
+        {/* Two real columns, not a row sized to its content: in a content-
+            sized row each picker collapsed to its narrowest width, and
+            "Select check-out" broke at its hyphen (2026-09-19). */}
+        <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-[4.8rem] max-sm:gap-[2.4rem] w-full max-w-[64rem]">
           <DatePicker
             label="Check in"
             value={checkInDate}
