@@ -230,11 +230,16 @@ export default function AdminOverviewPage() {
   const occupancyPct = totalRooms > 0 ? Math.round((totalOccupiedOrHeld / totalRooms) * 100) : 0;
 
   const alertTotal = alertsSummary?.total ?? 0;
+  // Every category the total counts is named, in the Alerts page's tab
+  // order, so the parts add up to the total (2026-09-21: unconfirmed bookings
+  // and credits to guests were counted but never listed).
   const alertParts = alertsSummary
     ? [
         { count: alertsSummary.missed_check_ins?.length ?? 0, label: "missed check-in" },
+        { count: alertsSummary.unconfirmed?.length ?? 0, label: "unconfirmed booking" },
         { count: alertsSummary.overdue_checkouts?.length ?? 0, label: "overdue checkout" },
         { count: alertsSummary.overdue_balances?.length ?? 0, label: "unpaid balance" },
+        { count: alertsSummary.guest_credits?.length ?? 0, label: "credit to guest", plural: "credits to guests" },
       ].filter((p) => p.count > 0)
     : [];
 
@@ -288,7 +293,7 @@ export default function AdminOverviewPage() {
                   {alertParts.map((p, i) => (
                     <span key={p.label}>
                       {i > 0 && " · "}
-                      {p.count} {p.label}{p.count !== 1 ? "s" : ""}
+                      {p.count} {p.count !== 1 ? p.plural || `${p.label}s` : p.label}
                     </span>
                   ))}
                 </span>
