@@ -15,6 +15,10 @@ import {
   MdDesk,
   MdOutlineCoffeeMaker,
   MdOutlineEmojiFoodBeverage,
+  MdOutlineLiving,
+  MdOutlineLuggage,
+  MdOutlineMicrowave,
+  MdOutlineTableBar,
 } from "react-icons/md";
 import { RxRulerSquare } from "react-icons/rx";
 import { BiDish } from "react-icons/bi";
@@ -25,8 +29,10 @@ import {
   IoPersonOutline,
 } from "react-icons/io5";
 import { FaTv } from "react-icons/fa";
-import { LuBath } from "react-icons/lu";
-import { TbAirConditioning, TbFridge } from "react-icons/tb";
+import { LuArmchair, LuBath, LuFan, LuPhone, LuSofa } from "react-icons/lu";
+import { TbAirConditioning, TbFridge, TbToolsKitchen2 } from "react-icons/tb";
+import { PiBathtub, PiHairDryer } from "react-icons/pi";
+import { GiRobe, GiSlippers } from "react-icons/gi";
 
 // Desktop room images (landscape)
 import standardRoomImage from "../../assets/room-images/standard/standard.jpg";
@@ -157,6 +163,39 @@ const amenityIcons = {
   coffee_maker: <MdOutlineCoffeeMaker size="2.5rem" />,
   electric_key: <IoCardOutline size="2.5rem" />,
   complimentary_drinks: <MdOutlineEmojiFoodBeverage size="2.5rem" />,
+  // Every other amenity name the branches' room types use (2026-09-21, read
+  // from each branch's rooms), so none shows as bare text.
+  telephone: <LuPhone size="2.5rem" />,
+  refrigerator: <TbFridge size="2.5rem" />,
+  regfigerator: <TbFridge size="2.5rem" />, // a room type's own spelling of refrigerator
+  microwaves: <MdOutlineMicrowave size="2.5rem" />,
+  private_kitchen: <TbToolsKitchen2 size="2.5rem" />,
+  complimentary_beverage_and_water: <MdOutlineEmojiFoodBeverage size="2.5rem" />,
+  bed: <IoBedOutline size="2.5rem" />,
+  queen_size_bed: <IoBedOutline size="2.5rem" />,
+  medium_size_bed: <IoBedOutline size="2.5rem" />,
+  bathtub: <PiBathtub size="2.5rem" />,
+  bathrobes: <GiRobe size="2.5rem" />,
+  bathroom_slippers: <GiSlippers size="2.5rem" />,
+  hair_dryer: <PiHairDryer size="2.5rem" />,
+  centre_table: <MdOutlineTableBar size="2.5rem" />,
+  double_sofa: <LuSofa size="2.5rem" />,
+  lounge: <LuArmchair size="2.5rem" />,
+  sitting_room: <MdOutlineLiving size="2.5rem" />,
+  luggage_racks: <MdOutlineLuggage size="2.5rem" />,
+  fan: <LuFan size="2.5rem" />,
+  flat_screen_tv: <FaTv size="2.5rem" />,
+  electronic_card_key_lock: <IoCardOutline size="2.5rem" />,
+  work_station: <MdDesk size="2.5rem" />,
+  room_size: <RxRulerSquare size="2.5rem" />,
+};
+
+// Names match case-insensitively (a room type saved with "Smart_tV" still
+// finds smart_tv), and a room size - stored with its figure, e.g.
+// room_size(13.1sqm) - matches on its prefix.
+const amenityIcon = (amenity) => {
+  const key = amenity.trim().toLowerCase();
+  return amenityIcons[key.startsWith("room_size") ? "room_size" : key] || null;
 };
 
 const getAmenityDisplayName = (amenity) => {
@@ -273,7 +312,7 @@ export default function AvailableRoomsSection() {
     if (!amenities) return null;
 
     return amenities.split(", ").map((amenity, index) => {
-      const icon = amenityIcons[amenity] || null;
+      const icon = amenityIcon(amenity);
       return (
         <div
           key={index}
