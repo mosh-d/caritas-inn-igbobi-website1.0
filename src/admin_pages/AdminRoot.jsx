@@ -227,9 +227,15 @@ export default function AdminRootLayout() {
     return <Navigate to={getDefaultAdminRoute()} replace />;
   }
 
-  // Don't show layout for login page
+  // Don't show layout for login page. The wrapper only marks it as part of
+  // the PMS for its typeface (design-system.css); display:contents keeps it
+  // out of the layout.
   if (isLoginPage) {
-    return <Outlet />;
+    return (
+      <div data-app="pms" className="contents">
+        <Outlet />
+      </div>
+    );
   }
 
   // Show protected layout for authenticated users.
@@ -237,7 +243,7 @@ export default function AdminRootLayout() {
   // and the main body scroll independently (each gets its own overflow-y-auto).
   return (
     <MotionConfig reducedMotion="user">
-    <div data-component="AdminRoot" className="h-screen flex flex-col overflow-hidden bg-gray-100">
+    <div data-component="AdminRoot" data-app="pms" className="h-screen flex flex-col overflow-hidden bg-gray-100">
       {/* ── New Reservation Notification ── */}
       <AnimatePresence>
       {hasNewReservation && (
