@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IoAppsOutline,
@@ -108,21 +108,27 @@ export default function AdminRoomChartPage() {
   // hardcoded offset drifts out of alignment the moment either changes
   // (2026-09-19: "look at how the date row looks when we scroll... fix it" -
   // it was overlapping). useLayoutEffect + ResizeObserver reads the actual
-  // rendered height instead, and stays correct through any resize. (Placed
-  // after `days` on purpose - it was above `days`'s own declaration at
-  // first, which threw "Cannot access 'days' before initialization" on
-  // every render.)
-  const cornerCellRef = useRef(null);
+  // rendered height instead, and stays correct through any resize.
+  //
+  // Attached through a callback ref, not an effect (2026-09-21: the rows
+  // "started overlapping after changing dates"). Every reload swaps the grid
+  // for a spinner, so an effect-held observer ended up watching the old,
+  // detached header cell - which measures 0 - and never saw the new one; the
+  // room-type rows then stuck at top: 0, right over the dates. The ref
+  // re-attaches to each new cell (React 19 runs the returned cleanup when it
+  // goes), and a 0 reading - a cell on its way out - is ignored.
   const [dateRowHeight, setDateRowHeight] = useState(44);
-  useLayoutEffect(() => {
-    const el = cornerCellRef.current;
+  const cornerCellRef = useCallback((el) => {
     if (!el) return undefined;
-    const measure = () => setDateRowHeight(el.getBoundingClientRect().height);
+    const measure = () => {
+      const height = el.getBoundingClientRect().height;
+      if (height > 0) setDateRowHeight(height);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [days]);
+  }, []);
 
   const load = useCallback(async () => {
     try {
