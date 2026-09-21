@@ -54,15 +54,24 @@ export function Reveal({ as = "div", delay = 0, x = 0, y = 28, duration = 0.8, a
   );
 }
 
+// A group arrives as soon as its top edge is a tenth of the way up the
+// screen - not once some share of its own height is on screen. A share of a
+// long list (every room type stacked on a phone, say) can be taller than the
+// screen itself, so the first rooms sat fully in view but still invisible
+// until the visitor scrolled further - including right where "View Rooms"
+// lands (2026-09-21). Pass `amount` only for a short group that should wait
+// until more of it is showing.
+const GROUP_VIEWPORT = { once: true, amount: "some", margin: "0px 0px -10% 0px" };
+
 // A set of siblings arriving one after another - cards, list items, rows.
 // Its RevealItems (at any depth below it) take their cue from it.
-export function RevealGroup({ as = "div", stagger = 0.08, delay = 0, amount = 0.15, children, ...rest }) {
+export function RevealGroup({ as = "div", stagger = 0.08, delay = 0, amount, children, ...rest }) {
   const Tag = TAGS[as];
   return (
     <Tag
       initial="hidden"
       whileInView="shown"
-      viewport={{ ...VIEWPORT, amount }}
+      viewport={amount === undefined ? GROUP_VIEWPORT : { ...VIEWPORT, amount }}
       variants={{ hidden: {}, shown: { transition: { staggerChildren: stagger, delayChildren: delay } } }}
       {...rest}
     >

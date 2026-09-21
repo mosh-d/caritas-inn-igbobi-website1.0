@@ -165,7 +165,7 @@ export default function FacilitiesSection() {
             ))}
           </RevealGroup>
         </div>
-        <RevealGroup stagger={0.07} amount={0.1}
+        <RevealGroup stagger={0.07}
           data-component="FacilitiesContentWrapper"
           className="flex flex-wrap gap-[4.8rem] w-full justify-center"
         >
