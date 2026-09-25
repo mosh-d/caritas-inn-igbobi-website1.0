@@ -5,6 +5,7 @@ import Button from "../components/shared/Button";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
+import { CHARGE_TYPE_LABELS, settlementByCharge } from "../components/shared/folioCharges";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
@@ -35,16 +36,7 @@ import {
 } from "../utils/folios-api";
 
 const CHARGE_TYPES = ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
-const CHARGE_TYPE_LABELS = {
-  room_charge: "Room Charge",
-  laundry_charge: "Laundry Charge",
-  penalty: "Penalty",
-  adjustment: "Adjustment",
-  // For fixing an accommodation charge after the fact. Kept distinct from
-  // Room Charge so a correction stops being reported as an extra night of
-  // its own on the Accommodation and Debt Recovery reports.
-  correction: "Correction",
-};
+
 // Food/drink moved to the dedicated Guest Sales page (AdminGuestSales.jsx —
 // a guest picker plus the printed receipt, instead of hunting for a folio
 // here first) — waitron has nothing left to post on this page, so
@@ -643,6 +635,12 @@ export default function AdminFoliosPage() {
     selectedFolio &&
     Number(selectedFolio.balance) <= 0 &&
     (Boolean(selectedFolio.reservation?.actual_check_out) || Boolean(selectedFolio.reservation?.is_no_show));
+  // What the money received has settled, charge by charge (display only -
+  // see settlementByCharge).
+  const chargeSettlement = settlementByCharge(
+    selectedFolio?.items || [],
+    selectedFolio?.total_received ?? selectedFolio?.amount_paid ?? 0,
+  );
   const hasOutstandingBalance = selectedFolio && Number(selectedFolio.balance) > 0;
   const hasCreditBalance = selectedFolio && Number(selectedFolio.balance) < 0;
   // Guest Status (Guest Ledger / City Ledger) is shown on every tab now,
@@ -1245,7 +1243,10 @@ export default function AdminFoliosPage() {
                             <span className="ml-2"><StatusBadge status={item.is_manager ? "manager" : "complementary"} /></span>
                           )}
                         </span>
-                        <span className="font-bold whitespace-nowrap shrink-0">{money(item.total)}</span>
+                        <span className="flex items-center gap-3 shrink-0">
+                          <StatusBadge status={chargeSettlement.get(item.id)} />
+                          <span className="font-bold whitespace-nowrap">{money(item.total)}</span>
+                        </span>
                       </div>
                     ))}
                   </div>

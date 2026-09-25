@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { loginStaff, getDefaultAdminRoute } from "../utils/auth";
+import { loginStaff } from "../utils/auth";
+import { canAccessNavItem, defaultAdminPath } from "../components/shared/adminNavItems";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
 
@@ -39,9 +40,10 @@ export default function AdminLoginPage() {
 
     try {
       await loginStaff(username.trim(), password);
-      // Redirect to the intended page, or this role's default landing page
-      const from = location.state?.from?.pathname || getDefaultAdminRoute();
-      navigate(from, { replace: true });
+      // Back to the page they were sent away from - but only if this role
+      // may open it at all; otherwise their own first page.
+      const from = location.state?.from?.pathname;
+      navigate(from && canAccessNavItem(from) ? from : defaultAdminPath(), { replace: true });
     } catch (err) {
       setError(err.message || "Invalid password. Please try again.");
     } finally {

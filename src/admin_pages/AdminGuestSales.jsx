@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { IoFastFoodOutline } from "react-icons/io5";
-import PageHeading from "../components/shared/PageHeading";
+import PageOrSection from "../components/shared/PageOrSection";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
-import Modal from "../components/shared/Modal";
 import StatusBadge from "../components/shared/StatusBadge";
 import PrintReceiptModal from "../components/shared/PrintReceiptModal";
+import FolioBalanceModal from "../components/shared/FolioBalanceModal";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
-import PaymentSplitRows from "../components/shared/PaymentSplitRows";
-import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import OrderItemRows from "../components/shared/OrderItemRows";
 import { btn, field, table } from "../components/shared/ui";
+import { formatDateTime } from "../utils/report-format";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import { fetchInHouse } from "../utils/front-office-api";
@@ -33,7 +32,9 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { timeZone
 // from a dropdown (resolves straight to their room folio via
 // front-office/in-house, which now includes it), build the order the same
 // way Non-Guest Sales does, submit as one batch, print the receipt.
-export default function AdminGuestSalesPage() {
+// Renders as its own page, or as one section of a combined page - see
+// PageOrSection and AdminFnbSales (2026-09-24).
+export default function AdminGuestSalesPage({ asSection = false, hideTitle = false }) {
   // A receptionist can post everything else to a guest folio EXCEPT
   // food/drink (see FoliosService.addFolioItemsBatch's own role check) — a
   // page that's exclusively food/drink has nothing they could actually
@@ -237,17 +238,16 @@ export default function AdminGuestSalesPage() {
 
   if (!canAccess) {
     return (
-      <div data-component="AdminGuestSales" className="px-[4rem] max-sm:px-[1rem] py-[4rem]">
+      <PageOrSection asSection={asSection} hideTitle={hideTitle} icon={IoFastFoodOutline} title="Guest Sales" dataComponent="AdminGuestSales">
         <p className="text-2xl text-[color:var(--text-color)]/68">
           You don't have permission to view this page.
         </p>
-      </div>
+      </PageOrSection>
     );
   }
 
   return (
-    <div data-component="AdminGuestSales" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
-      <PageHeading icon={IoFastFoodOutline}>Guest Sales</PageHeading>
+    <PageOrSection asSection={asSection} hideTitle={hideTitle} icon={IoFastFoodOutline} title="Guest Sales" dataComponent="AdminGuestSales">
       <p className="text-xl text-[color:var(--text-color)]/76">
         Post a food/drink order to an in-house guest's room folio and print the receipt.
       </p>
@@ -347,15 +347,16 @@ export default function AdminGuestSalesPage() {
                   <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                   <th className={table.th}>Room</th>
                   <th className={table.th}>Folio #</th>
+                  <th className={table.th}>Date &amp; Time</th>
                   <th className={table.th}>Status</th>
                   <th className={table.th}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loadingGuests ? (
-                  <tr><td colSpan={5} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
+                  <tr><td colSpan={6} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
                 ) : inHouse.length === 0 ? (
-                  <tr><td colSpan={5} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest folios right now.</td></tr>
+                  <tr><td colSpan={6} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest folios right now.</td></tr>
                 ) : (
                   // Owing folios first (highest balance first) — that's who
                   // staff actually need to chase down and take a payment
@@ -375,6 +376,8 @@ export default function AdminGuestSalesPage() {
                           <td className={`${table.td} sticky left-0 z-10 max-lg:whitespace-normal! max-lg:min-w-[18rem] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)] ${isSelected ? "bg-[color-mix(in_srgb,var(--emphasis)_5%,white)]" : "bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)]"}`}>{r.guest_name}</td>
                           <td className={table.td}>{r.room_assignments?.[0]?.room_number || "—"}</td>
                           <td className={table.td}>{r.folio.folio_number}</td>
+                          {/* When this guest's bill was opened. */}
+                          <td className={`${table.td} whitespace-nowrap`}>{formatDateTime(r.folio.created_at)}</td>
                           <td className={table.td}>
                             <StatusBadge status={balance > 0 ? "owing" : "paid"} />
                           </td>
@@ -478,118 +481,6 @@ export default function AdminGuestSalesPage() {
           onClose={() => setTransactionReceipt(null)}
         />
       )}
-    </div>
-  );
-}
-
-// Compact — a balance summary + payment form, not the full Folio Detail
-// experience (no tax/discount, refunds, or closing here; that stays
-// Folios-page-only). A modal rather than an inline card: it used to render
-// below the guest-folio list, which meant clicking "View / Pay" produced no
-// visible feedback above the fold — easy to mistake for the button not
-// working at all. Every other "View" action on a folio list in this app
-// (Non-Guest Sales, Folios) already opens a modal — this now matches that.
-// Page-local rather than under components/shared/: it's driven entirely by
-// this page's own state/refetch timing, with exactly one consumer, same as
-// MenuSection (AdminMenu.jsx) and SummaryStat (AdminFolios.jsx) are already
-// page-local in this codebase.
-function FolioBalanceModal({ meta, folioDetail, loading, error, paymentForm, setPaymentForm, hasValidPaymentSplits, recordingPayment, paymentError, onRecordPayment, onClose }) {
-  const balance = folioDetail ? Number(folioDetail.balance) : 0;
-  const isOutstanding = folioDetail && balance > 0;
-  const isCredit = folioDetail && balance < 0;
-
-  return (
-    <Modal
-      onClose={onClose}
-      title={folioDetail?.folio_number || "Folio"}
-      subtitle={meta.roomNumber ? `Room ${meta.roomNumber} — ${meta.guestName}` : meta.guestName}
-      size="lg"
-      loading={loading}
-    >
-      {loading ? (
-        <LoadingSpinner size="lg" />
-      ) : error ? (
-        <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{error}</p>
-      ) : folioDetail && (
-        <>
-          <div className="grid grid-cols-3 gap-4 max-sm:grid-cols-1">
-            <FolioStat label="Balance" value={isOutstanding ? money(folioDetail.balance) : isCredit ? `Credit: ${money(Math.abs(balance))}` : "Settled"} tone={isOutstanding ? "danger" : isCredit ? "success" : "default"} />
-            <FolioStat label="Total Charged" value={money(folioDetail.total_amount)} />
-            <FolioStat label="Total Paid" value={money(folioDetail.total_received ?? folioDetail.amount_paid)} />
-          </div>
-
-          {/* The full charge list, same treatment as AdminNonGuestSales'
-              Charges section. It was previously the three most recent lines
-              only, which hid most of a stay's food and drink and left the
-              visible rows unable to account for the Total Charged above. */}
-          <div className="flex flex-col gap-3 pt-4 border-t border-[color:var(--text-color)]/10">
-            <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Charges</p>
-            {!folioDetail.items?.length ? (
-              <p className="text-xl text-[color:var(--text-color)]/76">No charges yet.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {folioDetail.items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-start gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl">
-                    <span className="capitalize min-w-0 break-words">
-                      {/* Unlike a non-guest folio line, an F&B charge here
-                          stores its quantity separately and prices the row at
-                          price x quantity — so "Jollof Rice - N4,000" reads
-                          as a single N4,000 portion unless the count is shown. */}
-                      {Number(item.quantity) > 1 && <span className="font-semibold">{item.quantity} &times; </span>}
-                      {item.description}
-                      {item.bill_no && <span className="text-[color:var(--text-color)]/68 ml-2">&middot; Bill No {item.bill_no}</span>}
-                      {Number(item.service_charge) > 0 && <span className="text-[color:var(--text-color)]/68 ml-2">&middot; Service Charge {money(item.service_charge)}</span>}
-                      {(item.is_manager || item.is_complementary) && (
-                        <span className="ml-2"><StatusBadge status={item.is_manager ? "manager" : "complementary"} /></span>
-                      )}
-                    </span>
-                    <span className="font-bold whitespace-nowrap shrink-0">{money(Number(item.amount) + Number(item.service_charge))}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-4 pt-4 border-t border-[color:var(--text-color)]/10">
-            <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68">Record Payment</p>
-            {paymentError && <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{paymentError}</p>}
-            <PaymentSplitRows splits={paymentForm.splits} setSplits={(splits) => setPaymentForm({ ...paymentForm, splits })} />
-            <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-              <div className="flex flex-col gap-2">
-                <label className={field.label}>Receipt Number (optional)</label>
-                <input
-                  type="text"
-                  placeholder="Leave blank to have the system generate one"
-                  value={paymentForm.receipt_number}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, receipt_number: e.target.value })}
-                  className={field.input}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className={field.label}>Notes (optional)</label>
-                <AutoGrowTextarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} className={field.textarea} />
-              </div>
-            </div>
-            <button
-              onClick={onRecordPayment}
-              disabled={recordingPayment || !hasValidPaymentSplits}
-              className={`${btn.primary} self-start`}
-            >
-              {recordingPayment ? "Recording..." : "Record Payment"}
-            </button>
-          </div>
-        </>
-      )}
-    </Modal>
-  );
-}
-
-function FolioStat({ label, value, tone }) {
-  const valueColor = tone === "danger" ? "text-red-600" : tone === "success" ? "text-green-700" : "text-[color:var(--black)]";
-  return (
-    <div className="bg-[color:var(--text-color)]/5 border-1 border-gray-200 rounded-lg px-5 py-4">
-      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${valueColor} truncate`}>{value}</p>
-    </div>
+    </PageOrSection>
   );
 }

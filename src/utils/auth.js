@@ -278,7 +278,7 @@ export const setDevRoleOverride = (role) => {
 };
 
 // The role every gating check in the app reads (isManager, isAccountant,
-// isWaitstaff, isReceptionist, visibleAdminNavItems, getDefaultAdminRoute,
+// isWaitstaff, isReceptionist, visibleAdminNavItems,
 // every page-level "you don't have permission" check, ...) — deliberately
 // the one function all of them already called before the role-simulator
 // existed, so simulating a role needed no changes anywhere else. Only a
@@ -390,22 +390,9 @@ export const canRefund = () => {
 // same reasoning above.
 export const isWaitron = () => getStoredStaffRole() === "waitron";
 
-// Where a session should land right after login, or when visiting the bare
-// /admin URL while already authenticated. An accountant's nav (see
-// visibleAdminNavItems()) has no link back to Overview at all, so landing
-// there by default is a dead end — send them to Reports, which is where
-// their work now happens: reports carry their own per-staff attribution, so
-// an accountant generates them directly rather than waiting for the front
-// office to send a snapshot over (the old Accountant Reports page). Same
-// reasoning for waitron, whose primary page is Guest Sales (posting
-// food/drink to a guest folio — see adminNavItems.js).
-// Checked against the raw stored role, not isAccountant()/isWaitstaff()
-// above: a developer session should still default to the normal Overview,
-// not a role-specific landing page, since developer sees everything.
-export const getDefaultAdminRoute = () => {
-  const role = getStoredStaffRole();
-  if (role === "accountant") return "/admin/reports";
-  if (role === "waitron") return "/admin/guest-sales";
-  return "/admin/overview";
-};
+// Where a session lands after signing in now comes from the role's own
+// sidebar - see defaultAdminPath() in components/shared/adminNavItems.js.
+// The list that used to live here had to be kept in step with the sidebar by
+// hand, and had fallen out of step: a storekeeper was sent to Overview, a
+// page that role cannot open (2026-09-24).
 

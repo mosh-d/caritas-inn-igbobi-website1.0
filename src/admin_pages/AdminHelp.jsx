@@ -15,11 +15,12 @@ import {
   IoDocumentTextOutline,
   IoKeyOutline,
   IoRestaurantOutline,
-  IoCartOutline,
+  IoFastFoodOutline,
   IoShirtOutline,
 } from "react-icons/io5";
 import PageHeading from "../components/shared/PageHeading";
-import { isManager, isAccountant, getStoredStaffRole } from "../utils/auth";
+import { isAccountant } from "../utils/auth";
+import { canAccessNavItem } from "../components/shared/adminNavItems";
 
 // Mirrors ADMIN_NAV_ITEMS' order (adminNavItems.js) so the quick-jump chips
 // and section order match the sidebar exactly — this page exists so a new
@@ -115,29 +116,31 @@ const SECTIONS = [
     id: "laundry-sales",
     icon: IoShirtOutline,
     label: "Laundry Sales",
-    waitstaffVisible: true,
-    summary: "Laundry for someone who isn't staying in the house — same folio and payment flow as Non-Guest Sales, against the laundry catalogue.",
+    summary: "Laundry in one place — a Guest Sales section that charges an in-house guest's own folio, and a Non-Guest Sales section for a walk-in customer.",
     workflow: [
+      "Guest Sales is for someone in the house: pick the guest, pick the garment and whether it is Wash & Iron or Ironing Only, then Post to Folio. The price comes from the laundry catalogue, not from anything typed here, and it settles with the rest of their stay at check-out.",
       "Pick the clothing item, choose Wash & Iron or Ironing Only, then enter how many items. The price comes from whichever of the two prices that item carries for the chosen service.",
       "Customer name and phone are optional — for a bill that might go unpaid a while, they are worth recording. The folio list falls back to the bill number when there is no name.",
       "Payment can be recorded now or later, in parts, and across more than one method. The folio closes out once the balance is settled.",
-      "An in-house guest's laundry does NOT belong here — charge it to their own folio on Guest Folios, so it settles with the rest of their bill at checkout.",
-      "The catalogue itself (Clothes / Wash and Iron / Ironing Only) is on the Menu page's Laundry tab, and is manager, accountant and store keeper only, same as food and drink pricing.",
+      "Unclaimed Credit at the bottom lists every overpayment still on file, whichever bill it came off. A credit can always be applied back to the bill that produced it, even when that sale was rung up without a name.",
+      "The catalogue itself (Clothes / Wash and Iron / Ironing Only) is on the Menu page's Laundry tab, same as food and drink pricing.",
     ],
   },
   {
-    id: "non-guest-sales",
-    icon: IoCartOutline,
-    label: "Non-Guest Sales",
-    waitstaffVisible: true,
-    summary: "Record a food/drink order for someone who isn't a hotel guest — payment can be recorded now or later, and it closes out automatically once the balance is settled.",
+    id: "fnb-sales",
+    icon: IoFastFoodOutline,
+    label: "F&B Sales",
+    summary: "Food and drink in one place — a Guest Sales section for someone staying in the house, and a Non-Guest Sales section for someone who isn't.",
     workflow: [
-      "Guest name is optional — a non-guest customer shouldn't have to give their name just to order food. Opening a sale and posting its first charge happen together in one step: pick one or more items (Food or Drink, from the same menu Guest Folios' charge picker uses) and a quantity each, then Open Folio. More charges can be added afterward from that sale's own page, as long as it's still open.",
+      "Guest Sales posts the order to an in-house guest's room folio: pick the guest, build the order, Post Order. It settles with the rest of their stay at check-out, so no money changes hands at the table.",
+      "The guest folio list underneath has two tabs — In-House, and Checked-Out (Owing) for a guest who has left with an F&B balance still open. View / Pay on either one opens that folio's balance, its charges, and a payment form.",
+      "Each charge line shows what it was (Room Charge, F&B, Laundry Charge...), when it was rung up, and whether the money received so far has settled it — paid, part paid, or owing. A bill is settled oldest charge first, which is what those tags read off.",
+      "Non-Guest Sales opens a folio of its own instead. Guest name is optional — a non-guest customer shouldn't have to give their name just to order food. Opening a sale and posting its first charge happen together in one step: pick one or more items (Food or Drink, from the same menu Guest Folios' charge picker uses) and a quantity each, then Open Folio. More charges can be added afterward from that sale's own page, as long as it's still open.",
       "Bill No (from the F&B docket/bill book) is required for every food item — unlike a guest folio, where it's optional, since there guest name/room already identify the folio. Drinks don't have one, same as on a guest folio. That's how a nameless sale is found again later, via the list's search.",
       "Guest Name/Phone can be added or changed at any time, open or closed — worth doing once it's clear it needs to be traced back to a person: an unpaid balance, or a credit from an overpayment.",
-      "Available to waitrons, receptionists, and managers — not accountants.",
+      "The F&B floor's page: waitrons and developers. A receptionist cannot post food or drink to a guest folio at all — the server refuses it, so that charge stays attributed to whoever actually rang it in.",
       "Payment is a separate step from opening the sale — Record Payment supports splitting across methods, same as a guest folio. It auto-closes the instant its balance reaches zero; there's no separate \"close\" step for the normal case.",
-      "If a guest overpays and there's no change to give back, enter the full amount received anyway — the excess is kept on file automatically as credit, surfaced as Credit on File (with an Apply Credit button) the next time a sale is opened with that same guest name. Matching is by name, so a credit is only findable this way once a name has been added.",
+      "If a customer overpays and there's no change to give back, enter the full amount received anyway — the excess is kept on file as credit. It shows as Credit on File, with an Apply Credit button, on the bill it came off (no name needed) and on any other open sale under the same name. Everything still on file is listed under Unclaimed Credit at the bottom of the page.",
       "Payment Status on the list is Owing (balance still due), Paid (settled by a fresh payment), or PB — Paid Before (settled at least partly by applying an existing credit). In practice PB/Owing are rare here — a non-guest sale is almost always paid in full on the spot; Guest Folios (room-based stays) is where those statuses mostly come from.",
       "Shows up automatically in the Reports → Dashboard tab's Payments Received / Payments by Method totals, and in Food Sales / Drink Sales — there's no separate non-guest-sales report to check.",
     ],
@@ -274,21 +277,14 @@ const SECTIONS = [
 ];
 
 export default function AdminHelpPage() {
-  const manager = isManager();
-  const role = getStoredStaffRole();
-  const isWaitstaffRole = role === "waitron";
-  const isStorekeeperRole = role === "storekeeper";
-  // Same shape as visibleAdminNavItems() (adminNavItems.js) — an accountant
-  // session sees only accountantOnly + alwaysVisible sections, and a
-  // waitron session sees only alwaysVisible + waitstaffVisible ones,
-  // since none of the other front-desk pages apply to either.
+  // A section describes a page, so it is shown exactly when this role can
+  // open that page (2026-09-24). This used to be a second copy of the
+  // sidebar's role rules, kept in step by hand — the guide could, and did,
+  // drift into describing pages the sidebar refuses. `path` is only needed
+  // where a section's id isn't its own route.
   const visibleSections = SECTIONS.filter((s) => {
     if (s.accountantOnly) return isAccountant();
-    if (role === "accountant") return s.alwaysVisible === true || s.accountantVisible === true;
-    if (isWaitstaffRole) return s.alwaysVisible === true || s.waitstaffVisible === true;
-    if (isStorekeeperRole) return s.alwaysVisible === true || s.storekeeperVisible === true;
-    if (s.managerOnly) return manager;
-    return true;
+    return canAccessNavItem(s.path || `/admin/${s.id}`);
   });
 
   const scrollToSection = (id) => {

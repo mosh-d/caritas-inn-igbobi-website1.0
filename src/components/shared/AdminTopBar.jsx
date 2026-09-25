@@ -4,12 +4,12 @@ import {
   logout,
   getStoredBranch,
   getStoredStaffUsername,
-  getDefaultAdminRoute,
   getRealStoredStaffRole,
   getDevRoleOverride,
   setDevRoleOverride,
 } from '../../utils/auth';
 import StatusBadge from './StatusBadge';
+import { defaultAdminPath } from './adminNavItems';
 
 // Roles a developer can "view as" to confirm what each one's UI actually
 // looks like, without needing a separate login per role.
@@ -156,7 +156,7 @@ export default function AdminTopBar({ shifts = [] }) {
       </div>
       <div className='w-48 flex-shrink-0 mx-auto md:mx-0 md:absolute md:left-1/2 md:transform md:-translate-x-1/2 flex flex-col items-center'>
         <NavLink
-          to={getDefaultAdminRoute()}
+          to={defaultAdminPath()}
           className='block'
         >
           <img

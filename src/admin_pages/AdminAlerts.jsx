@@ -309,7 +309,7 @@ export default function AdminAlertsPage() {
                               <td className={`${table.td} hidden md:table-cell`}><StatusBadge status={r.status} /></td>
                               <td className={table.td}>
                                 <div className={table.actions}>
-                                  <button onClick={() => navigate("/admin/reservations")} className={btn.rowPrimary}>
+                                  <button onClick={() => navigate(`/admin/reservations?reservation_id=${r.id}`)} className={btn.rowPrimary}>
                                     View
                                   </button>
                                   <button
@@ -428,7 +428,7 @@ export default function AdminAlertsPage() {
                               </td>
                               <td className={table.td}>
                                 <div className={table.actions}>
-                                  <button onClick={() => navigate("/admin/reservations")} className={btn.rowPrimary}>
+                                  <button onClick={() => navigate(`/admin/reservations?reservation_id=${r.id}`)} className={btn.rowPrimary}>
                                     View
                                   </button>
                                 </div>
@@ -478,7 +478,7 @@ export default function AdminAlertsPage() {
                               </td>
                               <td className={table.td}>
                                 <div className={table.actions}>
-                                  <button onClick={() => navigate("/admin/in-house")} className={btn.rowPrimary}>
+                                  <button onClick={() => navigate(`/admin/in-house?reservation_id=${r.id}`)} className={btn.rowPrimary}>
                                     Go to In-House
                                   </button>
                                 </div>

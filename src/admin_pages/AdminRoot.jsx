@@ -3,8 +3,9 @@ import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { AnimatePresence, MotionConfig, MotionDiv, pageEnter } from "../components/shared/motion";
 import { IoClose } from 'react-icons/io5';
-import { verifyToken, getDefaultAdminRoute, getStoredStaffRole } from "../utils/auth";
-import { canAccessNavItem } from "../components/shared/adminNavItems";
+import { verifyToken, getStoredStaffRole } from "../utils/auth";
+import { canAccessNavItem, defaultAdminPath, isAdminPage } from "../components/shared/adminNavItems";
+import Unauthorized from "../components/shared/Unauthorized";
 import AdminNavBar from "../components/shared/AdminNavBar";
 import AdminTopBar from "../components/shared/AdminTopBar";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
@@ -20,24 +21,36 @@ const SHIFT_ROLES = ["receptionist", "waitron"];
 const SHIFT_LABELS = { receptionist: "Front desk", waitron: "F&B" };
 
 export default function AdminRootLayout() {
-  const [hasNewReservation, setHasNewReservation] = useState(false);
+  // The booking the popup is about, not just that there is one: clicking it
+  // opens that reservation, the same way every other jump in the PMS carries
+  // the record it means (owner, 2026-09-24). It used to land on the
+  // Reservations list with nothing selected, leaving staff to find the
+  // booking they had just been told about.
+  const [newReservationId, setNewReservationId] = useState(null);
+  const hasNewReservation = newReservationId !== null;
   const { subscribe } = useWebSocketContext();
   const navigate = useNavigate();
 
-  const handleNewReservation = useCallback(() => {
-    setHasNewReservation(true);
+  // reservation_id is the numeric id; booking_id is the human reference,
+  // which is not what the Reservations page looks a booking up by. An older
+  // server that sends neither still raises the popup - it just lands on the
+  // list, as before.
+  const handleNewReservation = useCallback((data) => {
+    setNewReservationId(data?.reservation_id ?? "");
   }, []);
 
   const openNewReservation = () => {
-    setHasNewReservation(false);
-    navigate("/admin/reservations");
+    const id = newReservationId;
+    setNewReservationId(null);
+    navigate(id ? `/admin/reservations?reservation_id=${id}` : "/admin/reservations");
   };
 
-  // A role with no nav access to Reservations (accountant, waitron) has
-  // nowhere for this popup to usefully send them — clicking it used to
-  // dead-end them on a page they can't really use. Never subscribing means
-  // hasNewReservation can't become true for them, so the popup itself never
-  // appears.
+  // A role with no nav access to Reservations has nowhere for this popup to
+  // usefully send them — clicking it used to dead-end them on a page they
+  // can't open. Never subscribing means newReservationId stays null for
+  // them, so the popup itself never appears. Which roles those are is not
+  // listed here on purpose: it follows the sidebar (see ADMIN_NAV_ITEMS),
+  // so it stays right when the matrix changes.
   const canSeeReservations = canAccessNavItem("/admin/reservations");
 
   // 'new_reservation' is the guest-facing site's own bookings only — a
@@ -126,6 +139,12 @@ export default function AdminRootLayout() {
   const location = useLocation();
   const isLoginPage = location.pathname === "/admin";
 
+  // A page this role may not open is refused here, not merely hidden from
+  // the sidebar (2026-09-24): typing the URL, an old bookmark or a stale
+  // link all land on Unauthorized instead of the page itself. Unknown paths
+  // aren't ours to refuse - they fall through to the router's NotFound.
+  const blockedPage = isAdminPage(location.pathname) && !canAccessNavItem(location.pathname);
+
   useEffect(() => {
     let cancelled = false;
     let firstCheck = true;
@@ -206,7 +225,7 @@ export default function AdminRootLayout() {
               <p className="text-gray-600 text-lg">A guest just booked on the website</p>
             </div>
             <button
-              onClick={(e) => { e.stopPropagation(); setHasNewReservation(false); }}
+              onClick={(e) => { e.stopPropagation(); setNewReservationId(null); }}
               className="text-gray-400 hover:text-[var(--emphasis)] transition-colors p-1"
             >
               <IoClose size={24} />
@@ -222,9 +241,9 @@ export default function AdminRootLayout() {
   }
 
   // If on login page and already authenticated, redirect to this role's
-  // default landing page (see getDefaultAdminRoute)
+  // default landing page (see defaultAdminPath)
   if (isLoginPage && isAuthenticated) {
-    return <Navigate to={getDefaultAdminRoute()} replace />;
+    return <Navigate to={defaultAdminPath()} replace />;
   }
 
   // Don't show layout for login page. The wrapper only marks it as part of
@@ -266,7 +285,7 @@ export default function AdminRootLayout() {
               <p className="text-gray-600 text-lg">A guest just booked on the website</p>
             </div>
             <button
-              onClick={(e) => { e.stopPropagation(); setHasNewReservation(false); }}
+              onClick={(e) => { e.stopPropagation(); setNewReservationId(null); }}
               className="text-gray-400 hover:text-[var(--emphasis)] transition-colors p-1"
             >
               <IoClose size={24} />
@@ -296,7 +315,7 @@ export default function AdminRootLayout() {
         <AdminNavBar />
         <main className="flex-1 overflow-y-auto p-0 md:p-6">
           <MotionDiv key={location.pathname} {...pageEnter}>
-            <Outlet />
+            {blockedPage ? <Unauthorized path={location.pathname} /> : <Outlet />}
           </MotionDiv>
         </main>
       </div>

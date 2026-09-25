@@ -15,124 +15,121 @@ import {
   IoKeyOutline,
   IoHelpCircleOutline,
   IoRestaurantOutline,
-  IoCartOutline,
   IoFastFoodOutline,
   IoShirtOutline,
   IoBusinessOutline,
 } from "react-icons/io5";
 import { getStoredStaffRole } from "../../utils/auth";
 
-// Single source of truth for the admin sidebar + mobile menu.
+// Single source of truth for the admin sidebar + mobile menu, and for every
+// other control that leads into one of these pages.
+//
+// Each item lists the roles that may open it, verbatim from the owner's own
+// role/page matrix (2026-09-24). It used to be five overlapping flags
+// (managerOnly / alwaysVisible / waitstaffVisible / accountantVisible /
+// storekeeperVisible / receptionistHidden) whose combinations had to be
+// reasoned through per item to answer "can this role open this page?" — a
+// plain list answers it by reading, which is the only way a matrix like
+// this can be checked against the one the owner wrote.
+//
+// A developer session sees everything, the same override RolesGuard applies
+// on the server; it is never listed here.
+//
+// This governs the sidebar, the landing page, the refusal page and every
+// disabled link — it is not a security boundary on its own. Each endpoint
+// keeps its own @Roles guard, and several pages narrow themselves further
+// once opened (AdminMenu's canEdit, AdminReports' visibleTabs).
+export const ROLES = ["manager", "receptionist", "accountant", "waitron", "storekeeper"];
+const EVERY_ROLE = ROLES;
+const OVERSIGHT = ["manager", "receptionist"];
+const FRONT_DESK = ["receptionist"];
+
 // `showAlertBadge` marks the item that renders the live alert count.
-// `managerOnly` items are hidden from a receptionist session; `alwaysVisible`
-// items stay visible even in an accountant session, which otherwise sees
-// nothing at all — and, because the waitstaff branch honours it too, to a
-// waitron. `accountantVisible` is the narrower version for something an
-// accountant needs but a waitron must not have (AUDIT TRAIL): use it, not
-// alwaysVisible, whenever only one of those two roles should get the item. An accountant runs reports and browses the audit trail for
-// their own audits (REPORTS, AUDIT TRAIL, both alwaysVisible) — they never
-// run the front desk itself, so nothing else on this list applies to them.
-// (There used to be an ACCOUNTANT REPORTS page fed by a "Send to Accountant"
-// hand-off; reports now carry their own per-staff attribution, so an
-// accountant generates them directly and the hand-off is gone.)
-// `waitstaffVisible` is the same
-// idea for waitstaff, who otherwise see nothing but alwaysVisible items —
-// their whole job here is posting food/drink charges (GUEST SALES,
-// NON-GUEST SALES), not running the front desk either. `receptionistHidden`
-// hides an item from receptionist specifically while leaving every other
-// role's access alone — used where the backend itself restricts that one
-// role (see GUEST SALES below); developer still sees it, same as every
-// other restriction here. See visibleAdminNavItems() below, the one place
-// both consumers (AdminNavBar.jsx, AdminMobileMenu.jsx) get this filtered
-// list from, so they can never drift from each other.
 export const ADMIN_NAV_ITEMS = [
-  { to: "/admin/overview", label: "OVERVIEW", icon: IoGridOutline, end: true },
-  { to: "/admin/rooms", label: "ROOMS", icon: IoBedOutline },
-  { to: "/admin/room-chart", label: "ROOM CHART", icon: IoAppsOutline },
-  { to: "/admin/reservations", label: "RESERVATIONS", icon: IoCalendarOutline },
-  { to: "/admin/guests", label: "GUESTS", icon: IoPeopleOutline },
-  // GUEST FOLIOS no longer posts food/drink (that moved to GUEST SALES
-  // below) — a waitron has no reason to be here anymore, so this
-  // lost its waitstaffVisible flag; receptionist/manager still use it for
-  // everything else a folio needs (payments, room/laundry/other charges).
-  { to: "/admin/folios", label: "GUEST FOLIOS", icon: IoReceiptOutline },
-  // waitstaffVisible: this is now the only way to post a food/drink charge
-  // to a guest folio — an in-house-guest picker instead of hunting for a
-  // folio first, plus the printed receipt. Not shown to receptionist: the
-  // backend blocks that role from guest-folio food/drink specifically (see
-  // FoliosService.addFolioItemsBatch), so a page that's exclusively
-  // food/drink has nothing they could actually submit — same
-  // defense-in-depth reasoning AdminGuestSales.jsx's own canAccess check
-  // applies. No such restriction on non-guest sales (see below), so that
-  // one's still open to receptionist/manager pinch-hitting.
-  { to: "/admin/guest-sales", label: "GUEST SALES", icon: IoFastFoodOutline, waitstaffVisible: true, receptionistHidden: true },
-  // waitstaffVisible: waitrons record these directly; no
-  // managerOnly, so receptionist/manager see it too (they can also ring in
-  // a non-guest order, e.g. covering the bar when no waitstaff is on duty) —
-  // accountant is the only role that never sees it, same as GUEST FOLIOS.
-  { to: "/admin/non-guest-sales", label: "NON-GUEST SALES", icon: IoCartOutline, waitstaffVisible: true },
-  // Laundry for a walk-in customer. The front desk posts it, not the F&B floor
-  // (owner's call, 2026-09-14), so unlike NON-GUEST SALES above it is not
-  // waitstaffVisible — the server refuses a waitron's laundry charge as well.
-  { to: "/admin/laundry-sales", label: "LAUNDRY SALES", icon: IoShirtOutline },
-  { to: "/admin/check-ins", label: "CHECK-INS", icon: IoLogInOutline },
-  { to: "/admin/check-outs", label: "CHECK-OUTS", icon: IoLogOutOutline },
-  { to: "/admin/in-house", label: "IN-HOUSE", icon: IoHomeOutline },
-  // alwaysVisible: an accountant runs their own reports for audits too, not
-  // just the front-office-sent snapshots on ACCOUNTANT REPORTS.
-  { to: "/admin/reports", label: "REPORTS", icon: IoBarChartOutline, alwaysVisible: true },
-  { to: "/admin/night-audit", label: "NIGHT AUDIT", icon: IoMoonOutline },
-  { to: "/admin/alerts", label: "ALERTS", icon: IoNotificationsOutline, showAlertBadge: true },
-  // Money owed by OTAs rather than by guests. Front desk and managers only —
-  // taken off the accountant's view (owner's call, 2026-09-14).
-  { to: "/admin/ota-payments", label: "OTA PAYMENTS", icon: IoBusinessOutline },
-  // managerOnly hides this from receptionist; accountantVisible additionally
-  // shows it to an accountant (the two flags don't conflict — see
-  // visibleAdminNavItems()'s accountant branch, which never even reaches
-  // managerOnly). Deliberately NOT alwaysVisible: that flag also lets the
-  // waitstaff branch through, which put a link to the whole branch's staff
-  // activity log in a waitron's sidebar. The API itself has always been
-  // @Roles('manager', 'accountant'), so the link only ever led to a 403 —
-  // but a waitron has no business being offered it in the first place.
-  { to: "/admin/audit-trail", label: "AUDIT TRAIL", icon: IoDocumentTextOutline, managerOnly: true, accountantVisible: true },
-  // managerOnly still keeps pricing/items add-edit-delete out of a
-  // receptionist's reach; waitstaffVisible (2026-08-31) lets a waitron view
-  // the menu and adjust drink stock here too, now that this page can render
-  // for them — see AdminMenu.jsx's own canEdit split for what stays
-  // manager-only within the page itself.
-  { to: "/admin/menu", label: "MENU", icon: IoRestaurantOutline, managerOnly: true, waitstaffVisible: true, accountantVisible: true, storekeeperVisible: true },
-  { to: "/admin/account", label: "ACCOUNT", icon: IoKeyOutline, alwaysVisible: true },
-  { to: "/admin/help", label: "HELP", icon: IoHelpCircleOutline, alwaysVisible: true },
+  { to: "/admin/overview", label: "OVERVIEW", icon: IoGridOutline, end: true, roles: OVERSIGHT },
+  { to: "/admin/rooms", label: "ROOMS", icon: IoBedOutline, roles: OVERSIGHT },
+  { to: "/admin/room-chart", label: "ROOM CHART", icon: IoAppsOutline, roles: FRONT_DESK },
+  { to: "/admin/reservations", label: "RESERVATIONS", icon: IoCalendarOutline, roles: FRONT_DESK },
+  { to: "/admin/guests", label: "GUESTS", icon: IoPeopleOutline, roles: OVERSIGHT },
+  { to: "/admin/folios", label: "GUEST FOLIOS", icon: IoReceiptOutline, roles: OVERSIGHT },
+  // The F&B floor's own page: a guest's order goes on their room folio, a
+  // walk-in's opens a non-guest folio, both from here. The server refuses a
+  // receptionist's guest-folio food/drink charge outright (see
+  // FoliosService.addFolioItemsBatch), so there is nothing here they could
+  // submit anyway.
+  { to: "/admin/fnb-sales", label: "F&B SALES", icon: IoFastFoodOutline, roles: ["waitron"] },
+  // Laundry is front-desk work, not F&B floor work (owner, 2026-09-14) —
+  // the server refuses a waitron's laundry charge as well.
+  { to: "/admin/laundry-sales", label: "LAUNDRY SALES", icon: IoShirtOutline, roles: FRONT_DESK },
+  { to: "/admin/check-ins", label: "CHECK-INS", icon: IoLogInOutline, roles: FRONT_DESK },
+  { to: "/admin/check-outs", label: "CHECK-OUTS", icon: IoLogOutOutline, roles: FRONT_DESK },
+  { to: "/admin/in-house", label: "IN-HOUSE", icon: IoHomeOutline, roles: OVERSIGHT },
+  // Every role runs reports, but not the same ones — a waitron and a store
+  // keeper see only Food Sales, Drink Sales and Bar Stock, a receptionist
+  // sees everything except those. That split lives in AdminReports'
+  // visibleTabs(), not here: this page is theirs, its tabs are not all
+  // theirs.
+  { to: "/admin/reports", label: "REPORTS", icon: IoBarChartOutline, roles: EVERY_ROLE },
+  { to: "/admin/night-audit", label: "NIGHT AUDIT", icon: IoMoonOutline, roles: FRONT_DESK },
+  { to: "/admin/alerts", label: "ALERTS", icon: IoNotificationsOutline, showAlertBadge: true, roles: OVERSIGHT },
+  // Money owed by OTAs rather than by guests.
+  { to: "/admin/ota-payments", label: "OTA PAYMENTS", icon: IoBusinessOutline, roles: FRONT_DESK },
+  // The whole branch's staff activity log. The API has always been
+  // @Roles('manager', 'accountant').
+  { to: "/admin/audit-trail", label: "AUDIT TRAIL", icon: IoDocumentTextOutline, roles: ["manager", "accountant"] },
+  // The store keeper's remit: the food/drink/laundry catalogue and its
+  // pricing, plus drink stock. Their backend permissions already match
+  // (@Roles('manager', 'accountant', 'storekeeper') across menu CRUD), so
+  // this page is fully theirs, not read-only.
+  { to: "/admin/menu", label: "MENU", icon: IoRestaurantOutline, roles: ["storekeeper"] },
+  { to: "/admin/account", label: "ACCOUNT", icon: IoKeyOutline, roles: EVERY_ROLE },
+  { to: "/admin/help", label: "HELP", icon: IoHelpCircleOutline, roles: EVERY_ROLE },
 ];
 
 export function visibleAdminNavItems() {
   const role = getStoredStaffRole();
-  const isDeveloper = role === "developer";
-  const isManagerRole = role === "manager" || isDeveloper;
-  const isWaitstaffRole = role === "waitron";
-  // The store keeper's whole remit is the store: menu pricing and drink
-  // stock. Like accountant and waitron, they see nothing else on this list
-  // beyond the alwaysVisible items every role gets.
-  const isStorekeeperRole = role === "storekeeper";
-
-  return ADMIN_NAV_ITEMS.filter((item) => {
-    if (role === "accountant") return item.alwaysVisible === true || item.accountantVisible === true;
-    if (isWaitstaffRole) return item.alwaysVisible === true || item.waitstaffVisible === true;
-    if (isStorekeeperRole) return item.alwaysVisible === true || item.storekeeperVisible === true;
-    if (item.managerOnly) return isManagerRole;
-    // Developer still sees everything, same as it overrides every other
-    // role restriction on this list.
-    if (item.receptionistHidden && role === "receptionist") return false;
-    return true;
-  });
+  if (role === "developer") return ADMIN_NAV_ITEMS;
+  return ADMIN_NAV_ITEMS.filter((item) => item.roles.includes(role));
 }
+
+// A destination's own path, without the query or hash a deep link carries
+// (e.g. /admin/folios?folio_id=12 -> /admin/folios).
+const pathOnly = (to) => String(to || "").split("?")[0].split("#")[0].replace(/\/+$/, "");
 
 // Whether the current role can reach a given nav destination at all — same
 // filter visibleAdminNavItems() already applies, just queryable for one
-// path instead of returning the whole list. Used to gate things that act
-// like a shortcut INTO a page (e.g. AdminRoot's new-reservation popup)
-// without duplicating the role logic a third time.
-export const canAccessNavItem = (to) => visibleAdminNavItems().some((item) => item.to === to);
+// path instead of returning the whole list. Used to gate anything that acts
+// like a shortcut INTO a page (a deep link, a disabled button's tooltip,
+// AdminRoot's new-reservation popup) without duplicating the role logic.
+export const canAccessNavItem = (to) => visibleAdminNavItems().some((item) => item.to === pathOnly(to));
+
+// Whether a path is one of the admin pages at all. Anything else (a typo, a
+// dead link) belongs to the router's own NotFound, not to a refusal.
+export const isAdminPage = (to) => ADMIN_NAV_ITEMS.some((item) => item.to === pathOnly(to));
+
+// The sidebar label written as a page name, for messages about it:
+// "GUEST FOLIOS" -> "Guest Folios", "OTA PAYMENTS" -> "OTA Payments".
+const KEEP_UPPERCASE = ["OTA", "PMS"];
+export const adminPageTitle = (to) => {
+  const item = ADMIN_NAV_ITEMS.find((i) => i.to === pathOnly(to));
+  if (!item) return "that page";
+  return item.label
+    .split(/([ -])/)
+    .map((part) => (KEEP_UPPERCASE.includes(part) ? part : part.charAt(0) + part.slice(1).toLowerCase()))
+    .join("");
+};
+
+// Why this role may not open a destination, or null when it may — the one
+// wording used by every control that leads somewhere out of reach (a
+// disabled link's tooltip, the refusal page).
+export const accessDenial = (to) =>
+  canAccessNavItem(to) ? null : `Your role isn't authorized to open ${adminPageTitle(to)}.`;
+
+// Where a session lands after signing in, or on the bare /admin URL: the
+// first page of its own sidebar. Derived rather than listed per role
+// (2026-09-24), so a role can never land on a page it may not open — which
+// is what sent a storekeeper to Overview.
+export const defaultAdminPath = () => visibleAdminNavItems()[0]?.to || "/admin/account";
 
 // The report Action columns link into the audit trail, so they are shown only
 // to roles that can open it (manager, accountant, developer). For anyone else

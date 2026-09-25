@@ -34,6 +34,9 @@ const STYLES = {
   // Payment status (Accommodation Report)
   paid: "bg-green-100 text-green-700",
   owing: "bg-red-100 text-red-700",
+  // The one charge a folio's money ran out on (see settlementByCharge in
+  // folioCharges.js) - part settled, part still owed.
+  "part paid": "bg-amber-100 text-amber-800",
   // Settled by drawing on an existing credit (an applied deposit from a
   // previous "Reservation" advance payment) rather than a fresh payment.
   pb: "bg-blue-100 text-blue-700",

@@ -1,6 +1,6 @@
 import { pct } from "../../utils/report-format";
 import { Link } from "react-router-dom";
-import { canViewAuditTrail } from "./adminNavItems";
+import { accessDenial, canViewAuditTrail } from "./adminNavItems";
 
 // Small render pieces shared by every report tab in AdminReports.jsx —
 // kept in one place so each report looks and behaves identically.
@@ -95,6 +95,17 @@ export function OccupancyBadge({ value }) {
 // nothing to trace shows a dash.
 export function AuditLink({ audit }) {
   if (!audit) return <span className="text-[color:var(--text-color)]/40">—</span>;
+  // Refuses on its own, not only where a report remembers to hide the column:
+  // a role that can't open the trail gets the label greyed out, with the
+  // reason on hover, rather than a link into a page that would turn it away.
+  const denial = accessDenial("/admin/audit-trail");
+  if (denial) {
+    return (
+      <span title={denial} aria-disabled="true" className="text-lg font-semibold text-[color:var(--text-color)]/40 whitespace-nowrap cursor-not-allowed">
+        View log
+      </span>
+    );
+  }
   const params = new URLSearchParams();
   if (audit.staff_account_id) params.set("staff_id", String(audit.staff_account_id));
   if (audit.from) params.set("from", audit.from);

@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { WebSocketProvider } from "./context/WebSocketContext";
 
 import HomePage from "./pages/Home";
@@ -20,6 +20,7 @@ import AdminReservations from "./admin_pages/AdminReservations";
 import AdminGuests from "./admin_pages/AdminGuests";
 import AdminFolios from "./admin_pages/AdminFolios";
 import AdminGuestSales from "./admin_pages/AdminGuestSales";
+import AdminFnbSales from "./admin_pages/AdminFnbSales";
 import AdminCheckIns from "./admin_pages/AdminCheckIns";
 import AdminCheckOuts from "./admin_pages/AdminCheckOuts";
 import AdminInHouse from "./admin_pages/AdminInHouse";
@@ -30,7 +31,7 @@ import AdminNightAudit from "./admin_pages/AdminNightAudit";
 import AdminAuditTrail from "./admin_pages/AdminAuditTrail";
 import AdminMenu from "./admin_pages/AdminMenu";
 import AdminNonGuestSales from "./admin_pages/AdminNonGuestSales";
-import AdminLaundrySales from "./admin_pages/AdminLaundrySales";
+import AdminLaundry from "./admin_pages/AdminLaundry";
 import AdminAccount from "./admin_pages/AdminAccount";
 import AdminHelp from "./admin_pages/AdminHelp";
 import AdminLoginPage from "./admin_pages/AdminLogin";
@@ -64,7 +65,11 @@ const router = createBrowserRouter([
       { path: "reservations", element: <AdminReservations /> },
       { path: "guests", element: <AdminGuests /> },
       { path: "folios", element: <AdminFolios /> },
-      { path: "guest-sales", element: <AdminGuestSales /> },
+      { path: "fnb-sales", element: <AdminFnbSales /> },
+      // Guest Sales and Non-Guest Sales are the two sections of F&B Sales
+      // now (2026-09-24); their old paths still answer, for bookmarks and
+      // for links printed on older receipts.
+      { path: "guest-sales", element: <Navigate to="/admin/fnb-sales" replace /> },
       { path: "check-ins", element: <AdminCheckIns /> },
       { path: "check-outs", element: <AdminCheckOuts /> },
       { path: "in-house", element: <AdminInHouse /> },
@@ -74,8 +79,8 @@ const router = createBrowserRouter([
       { path: "ota-payments", element: <AdminOtaPayments /> },
       { path: "audit-trail", element: <AdminAuditTrail /> },
       { path: "menu", element: <AdminMenu /> },
-      { path: "non-guest-sales", element: <AdminNonGuestSales /> },
-      { path: "laundry-sales", element: <AdminLaundrySales /> },
+      { path: "non-guest-sales", element: <Navigate to="/admin/fnb-sales" replace /> },
+      { path: "laundry-sales", element: <AdminLaundry /> },
       { path: "account", element: <AdminAccount /> },
       { path: "help", element: <AdminHelp /> },
       { path: "*", element: <NotFound /> },

@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { IoCartOutline } from "react-icons/io5";
 import Button from "../components/shared/Button";
 import Modal from "../components/shared/Modal";
-import PageHeading from "../components/shared/PageHeading";
+import PageOrSection from "../components/shared/PageOrSection";
 import StatusBadge from "../components/shared/StatusBadge";
+import NonGuestCreditsPanel from "../components/shared/NonGuestCreditsPanel";
+import { creditsForFolio } from "../components/shared/nonGuestCredits";
+import { settlementByCharge } from "../components/shared/folioCharges";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
@@ -14,7 +17,7 @@ import OrderItemRows from "../components/shared/OrderItemRows";
 import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
-import { formatPaymentMethod } from "../utils/report-format";
+import { formatPaymentMethod, formatDateTime } from "../utils/report-format";
 import {
   fetchNonGuestFolios,
   fetchNonGuestFolioById,
@@ -24,6 +27,7 @@ import {
   closeNonGuestFolio,
   recordNonGuestPayment,
   fetchNonGuestCredits,
+  fetchPendingNonGuestCredits,
   applyNonGuestCredit,
 } from "../utils/non-guest-folios-api";
 
@@ -37,9 +41,10 @@ const emptyItemForm = { ...emptyRow, bill_no: "" };
 const emptyPaymentForm = { splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "" };
 
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-const formatDateTime = (d) => d ? new Date(d).toLocaleString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
 
-export default function AdminNonGuestSalesPage() {
+// Renders as its own page, or as one section of a combined page - see
+// PageOrSection and AdminFnbSales (2026-09-24).
+export default function AdminNonGuestSalesPage({ asSection = false, hideTitle = false }) {
   // Nav already hides this page from an accountant session (see
   // adminNavItems.js) — same defense-in-depth fallback every other
   // role-gated page already has.
@@ -51,6 +56,7 @@ export default function AdminNonGuestSalesPage() {
     if (!canAccess) return;
     fetchFoodItems().then(setFoodItems).catch(() => {});
     fetchDrinkItems().then(setDrinkItems).catch(() => {});
+    loadAllCredits();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -203,24 +209,30 @@ export default function AdminNonGuestSalesPage() {
   const [paymentError, setPaymentError] = useState(null);
   const [closing, setClosing] = useState(false);
   const [folioCredits, setFolioCredits] = useState([]);
+  // Every credit still on file at the branch — listed below the folios, and
+  // the source the panel above works from.
+  const [allCredits, setAllCredits] = useState([]);
+  const loadAllCredits = async () => {
+    try {
+      const pending = await fetchPendingNonGuestCredits();
+      setAllCredits(pending);
+      return pending;
+    } catch {
+      setAllCredits([]);
+      return [];
+    }
+  };
   const [applyingCreditId, setApplyingCreditId] = useState(null);
   const [transactionReceipt, setTransactionReceipt] = useState(null);
   const [printReceipt, setPrintReceipt] = useState(null);
 
-  // No guest_name means there's nothing to match a credit against yet —
-  // fetchNonGuestCredits(undefined) would otherwise fall back to the bare
-  // "every pending credit at the branch" list, which is the wrong thing to
-  // show here.
-  const loadFolioCredits = async (guestName) => {
-    if (!guestName) {
-      setFolioCredits([]);
-      return;
-    }
-    try {
-      setFolioCredits(await fetchNonGuestCredits(guestName));
-    } catch {
-      setFolioCredits([]);
-    }
+  // Takes the folio, not just its name: a credit that came off THIS bill
+  // (an overpayment on it) belongs to it whether or not the sale was ever
+  // rung up under a name — which is the case the name-only lookup used to
+  // miss entirely. See creditsForFolio.
+  const loadFolioCredits = async (folio) => {
+    const pending = await loadAllCredits();
+    setFolioCredits(creditsForFolio(pending, folio));
   };
 
   const openFolioDetail = async (folio) => {
@@ -234,7 +246,7 @@ export default function AdminNonGuestSalesPage() {
       const full = await fetchNonGuestFolioById(folio.id);
       setSelectedFolio(full);
       setGuestInfoForm({ guest_name: full.guest_name || "", guest_phone: full.guest_phone || "" });
-      await loadFolioCredits(full.guest_name);
+      await loadFolioCredits(full);
     } catch (err) {
       setError((err.response?.data?.message || "Failed to load non-guest folio.") + " Please refresh the page.");
     } finally {
@@ -255,7 +267,7 @@ export default function AdminNonGuestSalesPage() {
       const full = await fetchNonGuestFolioById(selectedFolio.id);
       setSelectedFolio(full);
       setGuestInfoForm({ guest_name: full.guest_name || "", guest_phone: full.guest_phone || "" });
-      await loadFolioCredits(full.guest_name);
+      await loadFolioCredits(full);
     } catch {
       // Stale data until the next successful refresh — not worth surfacing
       // as an error for an action that already succeeded.
@@ -390,20 +402,25 @@ export default function AdminNonGuestSalesPage() {
   };
 
   const hasOutstandingBalance = selectedFolio && Number(selectedFolio.balance) > 0;
+  // What the money received has settled, charge by charge (display only -
+  // see settlementByCharge).
+  const chargeSettlement = settlementByCharge(
+    selectedFolio?.items || [],
+    selectedFolio?.total_received ?? selectedFolio?.amount_paid ?? 0,
+  );
 
   if (!canAccess) {
     return (
-      <div data-component="AdminNonGuestSales" className="px-[4rem] max-sm:px-[1rem] py-[4rem]">
+      <PageOrSection asSection={asSection} hideTitle={hideTitle} icon={IoCartOutline} title="Non-Guest Sales" dataComponent="AdminNonGuestSales">
         <p className="text-2xl text-[color:var(--text-color)]/68">
           You don't have permission to view this page.
         </p>
-      </div>
+      </PageOrSection>
     );
   }
 
   return (
-    <div data-component="AdminNonGuestSales" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
-      <PageHeading icon={IoCartOutline}>Non-Guest Sales</PageHeading>
+    <PageOrSection asSection={asSection} hideTitle={hideTitle} icon={IoCartOutline} title="Non-Guest Sales" dataComponent="AdminNonGuestSales">
       <p className="text-xl text-[color:var(--text-color)]/76">
         Record a food/drink order for someone who isn't a hotel guest — name is optional. Payment can be recorded now or later; it closes out automatically once the balance is settled.
       </p>
@@ -529,6 +546,7 @@ export default function AdminNonGuestSalesPage() {
               <tr className={table.headRow}>
                 <th className={`${table.th} ${table.stickyTh}`}>Guest</th>
                 <th className={table.th}>Folio #</th>
+                <th className={table.th}>Date &amp; Time</th>
                 <th className={table.th}>Total</th>
                 <th className={table.th}>Paid</th>
                 <th className={table.th}>Balance</th>
@@ -538,9 +556,9 @@ export default function AdminNonGuestSalesPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
+                <tr><td colSpan={8} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
               ) : folios.length === 0 ? (
-                <tr><td colSpan={7} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No non-guest folios match that search." : "No non-guest folios yet."}</td></tr>
+                <tr><td colSpan={8} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No non-guest folios match that search." : "No non-guest folios yet."}</td></tr>
               ) : (
                 folios.map((f) => (
                   <tr key={f.id} className={table.row}>
@@ -554,6 +572,8 @@ export default function AdminNonGuestSalesPage() {
                         || <span className="text-[color:var(--text-color)]/40">—</span>}
                     </td>
                     <td className={`${table.td} font-medium`}>{f.folio_number}</td>
+                    {/* When the sale was rung up. */}
+                    <td className={`${table.td} whitespace-nowrap`}>{formatDateTime(f.created_at)}</td>
                     <td className={table.td}>{money(f.total_amount)}</td>
                     <td className={table.td}>{money(f.amount_paid)}</td>
                     <td className={`${table.td} font-bold ${Number(f.balance) > 0 ? "text-red-500" : ""}`}>{money(f.balance)}</td>
@@ -570,6 +590,8 @@ export default function AdminNonGuestSalesPage() {
           </table>
         </div>
       </div>
+
+      <NonGuestCreditsPanel credits={allCredits} loading={loading} />
 
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 w-full mt-6">
@@ -666,12 +688,16 @@ export default function AdminNonGuestSalesPage() {
                         <span className="capitalize min-w-0 break-words">
                           {item.description}
                           {item.bill_no && <span className="text-[color:var(--text-color)]/68 ml-2">· Bill No {item.bill_no}</span>}
+                          <span className="text-[color:var(--text-color)]/68 ml-2">· {formatDateTime(item.created_at)}</span>
                           {Number(item.service_charge) > 0 && <span className="text-[color:var(--text-color)]/68 ml-2">· Service Charge {money(item.service_charge)}</span>}
                           {(item.is_manager || item.is_complementary) && (
                             <span className="ml-2"><StatusBadge status={item.is_manager ? "manager" : "complementary"} /></span>
                           )}
                         </span>
-                        <span className="font-bold whitespace-nowrap shrink-0">{money(Number(item.amount) + Number(item.service_charge))}</span>
+                        <span className="flex items-center gap-3 shrink-0">
+                          <StatusBadge status={chargeSettlement.get(item.id)} />
+                          <span className="font-bold whitespace-nowrap">{money(Number(item.amount) + Number(item.service_charge))}</span>
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -848,7 +874,7 @@ export default function AdminNonGuestSalesPage() {
           onClose={() => setPrintReceipt(null)}
         />
       )}
-    </div>
+    </PageOrSection>
   );
 }
 

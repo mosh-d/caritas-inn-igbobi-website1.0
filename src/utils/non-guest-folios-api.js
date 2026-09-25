@@ -72,6 +72,19 @@ export const fetchNonGuestCredits = async (guestName) => {
   return response.data;
 };
 
+// Every credit still on file at the branch, whoever it belongs to — what
+// the Unclaimed Credit panel lists, and what lets an overpayment be applied
+// back to the bill it came off even when that sale was rung up without a
+// name. Kept separate from fetchNonGuestCredits' name lookup rather than
+// widening it: the two answer different questions.
+export const fetchPendingNonGuestCredits = async () => {
+  const response = await axios.get(`${baseUrl}/api/non-guest-credits`, {
+    headers: getAuthHeaders(),
+    params: { status: "pending" },
+  });
+  return response.data;
+};
+
 export const applyNonGuestCredit = async (id, targetNonGuestFolioId) => {
   const response = await axios.post(
     `${baseUrl}/api/non-guest-credits/${id}/apply`,

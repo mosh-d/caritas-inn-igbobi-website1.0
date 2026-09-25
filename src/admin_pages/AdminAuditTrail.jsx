@@ -6,6 +6,7 @@ import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
 import { table, field } from "../components/shared/ui";
+import { accessDenial } from "../components/shared/adminNavItems";
 import { fetchAuditLogHistory, fetchAuditStaffOptions } from "../utils/audit-log-api";
 import { isManager, isAccountant } from "../utils/auth";
 import { useWebSocketContext } from "../context/WebSocketContext";
@@ -375,6 +376,11 @@ export default function AdminAuditTrail() {
                       const link = entry.entity_type && ENTITY_LINKS[entry.entity_type]
                         ? ENTITY_LINKS[entry.entity_type](entry)
                         : null;
+                      // An accountant reads the trail but may not open the
+                      // folio, reservation or room it points at - the link is
+                      // greyed out with the reason on hover, rather than
+                      // leading to a page that turns them away (2026-09-24).
+                      const linkDenial = link ? accessDenial(link.path) : null;
                       return (
                         <tr key={entry.id} className={table.row}>
                           <td className="px-8 py-4 font-semibold sticky left-0 z-10 bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]">{entry.username}</td>
@@ -386,14 +392,22 @@ export default function AdminAuditTrail() {
                             {entry.label ? (
                               <span className="flex flex-wrap items-center gap-3">
                                 {entry.label}
-                                {link && (
+                                {link && (linkDenial ? (
+                                  <span
+                                    title={linkDenial}
+                                    aria-disabled="true"
+                                    className="text-lg font-semibold text-[color:var(--text-color)]/40 whitespace-nowrap cursor-not-allowed"
+                                  >
+                                    {LINK_LABELS[entry.entity_type] || "View →"}
+                                  </span>
+                                ) : (
                                   <button
                                     onClick={() => navigate(link.path, { state: link.state })}
                                     className="text-lg font-semibold text-[color:var(--emphasis)] hover:underline cursor-pointer whitespace-nowrap"
                                   >
                                     {LINK_LABELS[entry.entity_type] || "View →"}
                                   </button>
-                                )}
+                                ))}
                               </span>
                             ) : (
                               <>
