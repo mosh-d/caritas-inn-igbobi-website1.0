@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import './utils/axios-interceptor';
 import App from './App.jsx';
 
 const container = document.getElementById('root');

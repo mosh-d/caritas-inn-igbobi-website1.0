@@ -1,5 +1,6 @@
 // Using environment variables with fallbacks
 import { SERVER_BASE_URL } from "./server-config";
+import { notifySessionExpired } from "./sessionExpiry";
 
 const API_BASE_URL = SERVER_BASE_URL;
 const API_URL = `${API_BASE_URL}/api/users`; // Added /api to match backend routes
@@ -25,11 +26,43 @@ const persistSession = (data) => {
   }
 };
 
-const clearStoredSession = () => {
+// Whether the person is still here, as opposed to a session that merely
+// still exists. The access token lapses every 30 minutes by design; what
+// must not happen is treating an actively-used session as finished because
+// of it (owner, 2026-09-27: "I was only logged in for about 30 minutes so
+// why did my tokens expire?").
+//
+// Stamped from real interaction only - a pointer or key event on the admin
+// (see AdminRoot) - never from a network response, because the app refetches
+// on its own (websocket reconnects, alert counts) and that would keep an
+// abandoned front-desk terminal signed in indefinitely, which is the thing
+// the short token was protecting against.
+const LAST_ACTIVITY_KEY = "auth_last_activity";
+export const IDLE_LIMIT_MS = 30 * 60 * 1000;
+
+export const markSessionActivity = () => {
+  try {
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+  } catch {
+    // Private mode / storage disabled: fall through to "assume active", the
+    // same assumption an untouched stamp already makes below.
+  }
+};
+
+// No stamp at all means the session predates this tracking (or storage is
+// unavailable) - treated as active, so an upgrade never signs anyone out.
+export const hasBeenIdleTooLong = () => {
+  const stamp = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || 0);
+  if (!stamp) return false;
+  return Date.now() - stamp > IDLE_LIMIT_MS;
+};
+
+export const clearStoredSession = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(BRANCH_INFO_KEY);
+  localStorage.removeItem(LAST_ACTIVITY_KEY);
 };
 
 export const getStoredRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -109,7 +142,26 @@ export const loginStaff = async (username, password) => {
 // Returns the new access token on success, or null on failure (and clears
 // the stored session in that case, since a failed refresh means the session
 // really is over).
+// Shared across every caller, because the server ROTATES: /refresh revokes
+// the token it was handed and issues a new one (AuthService.refresh). Two
+// refreshes firing with the same token therefore means the second is told
+// the session is over — and the session really is dropped, for a user who
+// did nothing wrong. That is easy to provoke: a page mount fires several
+// requests that all 401 together, and the route gate verifies alongside
+// them. One in-flight call, shared, removes the race. (The axios
+// interceptor keeps its own promise too; it is harmless, and this is the
+// one that covers callers outside it.)
+let inFlightRefresh = null;
+
 export const refreshAccessToken = async () => {
+  if (inFlightRefresh) return inFlightRefresh;
+  inFlightRefresh = performTokenRefresh().finally(() => {
+    inFlightRefresh = null;
+  });
+  return inFlightRefresh;
+};
+
+const performTokenRefresh = async () => {
   const refreshToken = getStoredRefreshToken();
   if (!refreshToken) return null;
 
@@ -140,9 +192,25 @@ export const verifyToken = async () => {
   if (!token) return null;
 
   try {
-    const response = await fetch(`${API_URL}/verify`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const verifyWith = (bearer) =>
+      fetch(`${API_URL}/verify`, { headers: { Authorization: `Bearer ${bearer}` } });
+
+    let response = await verifyWith(token);
+
+    // A 401 here means the ACCESS token lapsed, which says nothing about
+    // whether the session did - the refresh token behind it lasts seven
+    // days. This used to clear the session outright, so half an hour of
+    // work ended at the next page change. It now renews, exactly as the
+    // axios interceptor does for every other request (this one is a bare
+    // fetch, so the interceptor never sees it).
+    //
+    // Only for someone still working: an untouched session still lapses on
+    // the same 30-minute clock, which is what the no-refresh-at-the-gate
+    // rule was protecting.
+    if (response.status === 401 && !hasBeenIdleTooLong()) {
+      const renewed = await refreshAccessToken();
+      if (renewed) response = await verifyWith(renewed);
+    }
 
     if (!response.ok) {
       clearStoredSession();
@@ -215,8 +283,12 @@ export const logout = async () => {
 // session expired" message instead of silently landing back on a blank
 // login form with no explanation, which is what happened before.
 export const handleSessionExpired = () => {
-  clearStoredSession();
-  window.location.href = "/admin?sessionExpired=true";
+  // No redirect here any more: bouncing straight to the login screen gave no
+  // explanation, and the raw server wording ("Authentication failed") was
+  // left sitting in whatever dialog was open. The modal this raises says
+  // what happened and offers the one action that helps; it clears the
+  // session itself when the user acts on it.
+  notifySessionExpired();
 };
 
 // Get auth headers

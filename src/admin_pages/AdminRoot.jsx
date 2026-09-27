@@ -3,7 +3,9 @@ import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { AnimatePresence, MotionConfig, MotionDiv, pageEnter } from "../components/shared/motion";
 import { IoClose } from 'react-icons/io5';
-import { verifyToken, getStoredStaffRole } from "../utils/auth";
+import { verifyToken, getStoredStaffRole, markSessionActivity } from "../utils/auth";
+import { onSessionExpired } from "../utils/sessionExpiry";
+import SessionExpiredModal from "../components/shared/SessionExpiredModal";
 import { canAccessNavItem, defaultAdminPath, isAdminPage } from "../components/shared/adminNavItems";
 import Unauthorized from "../components/shared/Unauthorized";
 import AdminNavBar from "../components/shared/AdminNavBar";
@@ -135,6 +137,28 @@ export default function AdminRootLayout() {
   }, []);
 
   const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Raised from the axios interceptor (module code, no component to dispatch
+  // from) once a silent refresh has also failed.
+  useEffect(() => onSessionExpired(() => setSessionExpired(true)), []);
+
+  // "Still here" is a person touching the screen, not the app refetching on
+  // its own — see markSessionActivity. Throttled: this fires on every
+  // pointer and key event, and only the first one each minute matters.
+  useEffect(() => {
+    let last = 0;
+    const stamp = () => {
+      const now = Date.now();
+      if (now - last < 60000) return;
+      last = now;
+      markSessionActivity();
+    };
+    stamp();
+    const events = ["pointerdown", "keydown"];
+    events.forEach((e) => window.addEventListener(e, stamp, { passive: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, stamp));
+  }, []);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
   const isLoginPage = location.pathname === "/admin";
@@ -340,6 +364,10 @@ export default function AdminRootLayout() {
           onCancel={changingRole ? () => setChangingRole(null) : undefined}
         />
       )}
+
+      {/* Over everything, including any dialog that was open when the
+          session ended — see SessionExpiredModal. */}
+      {sessionExpired && <SessionExpiredModal />}
     </div>
     </MotionConfig>
   );

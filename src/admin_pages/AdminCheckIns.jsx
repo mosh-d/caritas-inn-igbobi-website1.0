@@ -44,6 +44,10 @@ const todayISO = () => adminTodayISO();
 // the availability check, room-number picker, and displayed night count
 // consistent with what will actually be booked.
 const walkInCheckInISO = () => currentBusinessDateISO();
+// The date picker above can be browsed ahead, so a listed arrival isn't
+// necessarily due. Check-in waits for the booked arrival's business day,
+// same rule the server enforces (ReservationsService.checkIn).
+const arrivesLater = (r) => String(r.check_in || "").slice(0, 10) > currentBusinessDateISO();
 const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).toLocaleString()}`;
 
 const EMPTY_WALK_IN = {
@@ -613,7 +617,7 @@ export default function AdminCheckInsPage() {
 
         <p className="text-xl text-[color:var(--text-color)]/76">
           {tab === "arrivals"
-            ? "Confirmed (paid) reservations expected to check in on the selected date."
+            ? "Confirmed (paid) reservations expected to check in on the selected date. Check-in opens on each guest's arrival day — to let someone in early, change their check-in date to today in Reservations first."
             : "Register a guest who arrives without an existing reservation."}
         </p>
 
@@ -657,9 +661,15 @@ export default function AdminCheckInsPage() {
                           <td className={table.td}>
                             <div className={table.actions}>
                               <button
-                                onClick={() => r.status === "confirmed" && openCheckIn(r)}
-                                disabled={r.status !== "confirmed"}
-                                title={r.status === "hold" ? "Awaiting payment — confirm reservation first" : ""}
+                                onClick={() => r.status === "confirmed" && !arrivesLater(r) && openCheckIn(r)}
+                                disabled={r.status !== "confirmed" || arrivesLater(r)}
+                                title={
+                                  r.status === "hold"
+                                    ? "Awaiting payment — confirm reservation first"
+                                    : arrivesLater(r)
+                                      ? `Booked to arrive ${formatDate(r.check_in)} — to check in early, change the check-in date to today in Reservations first`
+                                      : ""
+                                }
                                 className={btn.rowPrimary}
                               >
                                 Check In

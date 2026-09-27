@@ -29,13 +29,14 @@ import {
   checkOutReservation,
   extendStay,
   changeRoomType,
+  changeReservationDates,
   fetchAvailableRoomNumbers,
 } from "../utils/reservations-pms-api";
 import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, refundDeposit, fetchGuestCredit, transferDepositCredit } from "../utils/folios-api";
 import { fetchInHouse } from "../utils/front-office-api";
 import { canRefund } from "../utils/auth";
 import { fetchRoomDetails } from "../utils/room-data";
-import { hasPassedNoonCutoff } from "../utils/date-utils";
+import { hasPassedNoonCutoff, currentBusinessDateISO } from "../utils/date-utils";
 import { formatPaymentMethod } from "../utils/report-format";
 
 import DateInput from "../components/shared/DateInput";
@@ -43,6 +44,10 @@ const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
 const BRANCH_ID = 3; // Caritas Inn Igbobi branch ID
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+// A reservation's check_in/check_out are UTC-midnight markers for a date.
+const isoDateOf = (d) => (d ? new Date(d).toISOString().slice(0, 10) : "");
+const nightsBetween = (fromISO, toISO) =>
+  fromISO && toISO ? Math.round((Date.parse(toISO) - Date.parse(fromISO)) / (24 * 60 * 60 * 1000)) : 0;
 
 export default function AdminReservationsPage() {
   const navigate = useNavigate();
@@ -125,6 +130,13 @@ export default function AdminReservationsPage() {
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [confirmError, setConfirmError] = useState("");
   const [modalError, setModalError] = useState("");
+  // Stay Dates (2026-09-27): its own state and its own error, separate from
+  // the Details form, because a date change is saved on its own through
+  // change-dates — it re-prices the stay, so it must never ride along
+  // silently with Save Changes or Confirm.
+  const [stayDates, setStayDates] = useState({ check_in: "", check_out: "" });
+  const [datesError, setDatesError] = useState("");
+  const [changingDates, setChangingDates] = useState(false);
   const [showEarlyCheckoutConfirm, setShowEarlyCheckoutConfirm] = useState(false);
   const [earlyCheckoutError, setEarlyCheckoutError] = useState("");
 
@@ -242,6 +254,8 @@ export default function AdminReservationsPage() {
         };
       });
       lastEditedReservationIdRef.current = full.id;
+      setStayDates({ check_in: isoDateOf(full.check_in), check_out: isoDateOf(full.check_out) });
+      setDatesError("");
 
       setReservationFolio(folio);
       setDeposits(Array.isArray(depositsResult) ? depositsResult : []);
@@ -323,9 +337,10 @@ export default function AdminReservationsPage() {
     if (!reservationFolio) {
       updatePayload.total_rate = editFields.total_rate === "" ? null : Number(editFields.total_rate);
     }
-    if (editFields.check_in && !selectedReservation?.actual_check_in) {
-      updatePayload.check_in = editFields.check_in;
-    }
+    // No check_in here any more: dates are changed from Stay Dates, which
+    // goes through change-dates (availability, rooms, hold and price). The
+    // server still routes a check_in sent this way through the same guard,
+    // for an older build, but this page no longer relies on it.
     return updatePayload;
   };
 
@@ -700,6 +715,34 @@ export default function AdminReservationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNewRoomTypeId]);
 
+  const handleChangeDates = async () => {
+    if (!selectedReservation) return;
+    const saved = { check_in: isoDateOf(selectedReservation.check_in), check_out: isoDateOf(selectedReservation.check_out) };
+    const payload = {};
+    if (stayDates.check_in !== saved.check_in) payload.check_in = stayDates.check_in;
+    if (stayDates.check_out !== saved.check_out) payload.check_out = stayDates.check_out;
+    if (!payload.check_in && !payload.check_out) return;
+    try {
+      setChangingDates(true);
+      setDatesError("");
+      await changeReservationDates(selectedReservation.id, payload);
+      const full = await fetchReservationById(selectedReservation.id);
+      setSelectedReservation(full);
+      // The rate on screen and the discount calculator's night count both
+      // read editFields; without this they'd describe the old dates (the
+      // same stale-price problem the room-type change had).
+      setEditFields((prev) => ({ ...prev, total_rate: full.total_rate ?? "", check_in: isoDateOf(full.check_in) }));
+      setStayDates({ check_in: isoDateOf(full.check_in), check_out: isoDateOf(full.check_out) });
+      loadReservations();
+      setSuccessMessage("Stay dates updated.");
+      setTimeout(() => setSuccessMessage(""), 5000);
+    } catch (err) {
+      setDatesError(err.response?.data?.message || "Failed to change the dates.");
+    } finally {
+      setChangingDates(false);
+    }
+  };
+
   const handleChangeRoomType = async () => {
     if (!selectedReservation || !selectedNewRoomTypeId) return;
     try {
@@ -712,6 +755,13 @@ export default function AdminReservationsPage() {
       });
       const full = await fetchReservationById(selectedReservation.id);
       setSelectedReservation(full);
+      // The price on screen is rendered from editFields, seeded once when
+      // the modal opened — so without this it kept showing the OLD room
+      // type's total while the reservation underneath had been re-rated
+      // (owner, 2026-09-27). Only the rate is re-seeded: special_requests
+      // and the discount calculator are whatever the user has been typing,
+      // and a room-type change is no reason to discard that.
+      setEditFields((prev) => ({ ...prev, total_rate: full.total_rate ?? "" }));
       setPendingRoomSlots((full.room_assignments || []).map((ra) => ra.room_number));
       setSelectedNewRoomTypeId("");
       setNewTypeRoomOptions(null);
@@ -740,6 +790,32 @@ export default function AdminReservationsPage() {
 
   const res = selectedReservation;
   const canModify = res && res.status !== "cancelled" && res.status !== "completed";
+
+  // Check In waits for the booked arrival (owner, 2026-09-27) — the server
+  // refuses it too. "Today" is the business day, as it is for the server: at
+  // 2am the guest would be occupying the previous night, which the booking
+  // doesn't cover.
+  const businessToday = currentBusinessDateISO();
+  const arrivalAhead = Boolean(res) && isoDateOf(res.check_in) > businessToday;
+  const canChangeDates = Boolean(res) && canModify && !res.actual_check_in && !res.is_no_show;
+  const savedDates = res ? { check_in: isoDateOf(res.check_in), check_out: isoDateOf(res.check_out) } : null;
+  const datesChanged = Boolean(savedDates) &&
+    (stayDates.check_in !== savedDates.check_in || stayDates.check_out !== savedDates.check_out);
+  const oldNights = savedDates ? Math.max(1, nightsBetween(savedDates.check_in, savedDates.check_out)) : 0;
+  const newNights = nightsBetween(stayDates.check_in, stayDates.check_out);
+  const checkInMoved = Boolean(savedDates) && stayDates.check_in !== savedDates.check_in;
+  const datesBlockReason = !stayDates.check_in || !stayDates.check_out
+    ? "Pick both dates."
+    : newNights < 1
+      ? "Check-out has to be at least one night after check-in."
+      : checkInMoved && stayDates.check_in < businessToday
+        ? `Check-in can't be earlier than today, ${formatDate(businessToday)}.`
+        : "";
+  // Same arithmetic the server uses: the booking's own per-night rate,
+  // carried to the new night count, so a negotiated rate stays negotiated.
+  const newTotal = res && newNights >= 1
+    ? Math.round((Number(res.total_rate || 0) / oldNights) * newNights * 100) / 100
+    : 0;
   // Informational only — extending is allowed with an outstanding balance
   // (standard hotel practice; the balance simply grows with the added
   // nights), this just surfaces that fact next to the Extend button.
@@ -1006,12 +1082,18 @@ export default function AdminReservationsPage() {
                 </button>
               )}
               {!res.actual_check_in && canModify && (
-                res.status === "confirmed" && !res.is_no_show ? (
+                res.status === "confirmed" && !res.is_no_show && !arrivalAhead ? (
                   <button onClick={handleCheckIn} disabled={actionLoading} className={btn.success}>Check In</button>
                 ) : (
                   <button
                     disabled
-                    title={res.is_no_show ? "Marked as no-show — undo the no-show first if the guest is actually here" : "Awaiting payment — confirm reservation first"}
+                    title={
+                      res.is_no_show
+                        ? "Marked as no-show — undo the no-show first if the guest is actually here"
+                        : res.status !== "confirmed"
+                          ? "Awaiting payment — confirm reservation first"
+                          : `Booked to arrive ${formatDate(res.check_in)} — to check in early, move the check-in date to today under Stay Dates first`
+                    }
                     className={btn.success}
                   >
                     Check In
@@ -1062,6 +1144,75 @@ export default function AdminReservationsPage() {
                 <ContactRow type="email" value={res.guest_email} />
                 <ContactRow type="phone" value={res.phone_number} />
               </div>
+
+              {/* Stay dates — before arrival only; a stay in progress is
+                  changed from In-House (Extend Stay / Early Checkout). */}
+              {canChangeDates && (
+                <section className="flex flex-col gap-4">
+                  <h3 className="text-2xl font-bold text-[color:var(--black)]">Stay Dates</h3>
+                  {arrivalAhead && res.status === "confirmed" && (
+                    <div className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex flex-col gap-3 items-start">
+                      <p>
+                        Booked to arrive <strong>{formatDate(res.check_in)}</strong>, so Check In unlocks on that day.
+                        If the guest is here early, move the check-in date to today — the extra nights are added to the
+                        stay, held for them, and priced at this booking&apos;s own rate.
+                      </p>
+                      {stayDates.check_in !== businessToday && (
+                        <button type="button" className={btn.secondary} onClick={() => setStayDates((p) => ({ ...p, check_in: businessToday }))}>
+                          Use today as check-in
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                    <div className="flex flex-col gap-2">
+                      <label className={field.label}>Check-In Date</label>
+                      <DateInput
+                        value={stayDates.check_in}
+                        min={businessToday}
+                        onChange={(e) => setStayDates({ ...stayDates, check_in: e.target.value })}
+                        className={field.input}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className={field.label}>Check-Out Date</label>
+                      <DateInput
+                        value={stayDates.check_out}
+                        min={stayDates.check_in || businessToday}
+                        onChange={(e) => setStayDates({ ...stayDates, check_out: e.target.value })}
+                        className={field.input}
+                      />
+                    </div>
+                  </div>
+                  {datesChanged && !datesBlockReason && (
+                    <p className="text-xl text-[color:var(--text-color)]/76">
+                      {oldNights} night{oldNights === 1 ? "" : "s"} → <strong>{newNights} night{newNights === 1 ? "" : "s"}</strong>
+                      {" · "}{money(res.total_rate)} → <strong>{money(newTotal)}</strong>
+                    </p>
+                  )}
+                  {datesChanged && datesBlockReason && (
+                    <p className="text-lg text-[color:var(--text-color)]/68">{datesBlockReason}</p>
+                  )}
+                  {datesError && (
+                    <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{datesError}</p>
+                  )}
+                  {datesChanged && (
+                    <div className="flex gap-3 flex-wrap">
+                      <button onClick={handleChangeDates} disabled={changingDates || Boolean(datesBlockReason)} className={btn.primary}>
+                        {changingDates ? "Updating..." : "Update Dates"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setStayDates(savedDates); setDatesError(""); }}
+                        disabled={changingDates}
+                        className={btn.secondary}
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  )}
+                </section>
+              )}
 
               {/* Editable fields */}
               <section className="flex flex-col gap-4">
@@ -1123,16 +1274,6 @@ export default function AdminReservationsPage() {
                           className={field.input}
                         />
                       </div>
-                    </div>
-                  )}
-                  {!res.actual_check_in && (
-                    <div className="flex flex-col gap-2">
-                      <label className={field.label}>Check-In Date</label>
-                      <DateInput
-                        value={editFields.check_in}
-                        onChange={(e) => setEditFields({ ...editFields, check_in: e.target.value })}
-                        className={field.input}
-                      />
                     </div>
                   )}
                 </div>

@@ -243,6 +243,17 @@ export const checkOutReservation = async (id) => {
   return response.data;
 };
 
+// Moves a not-yet-arrived stay's dates; availability, assigned rooms, the
+// room hold and the price all move with it server-side (changeDates).
+export const changeReservationDates = async (id, dates) => {
+  const response = await axios.post(
+    `${baseUrl}/api/reservations/${id}/change-dates`,
+    dates,
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+};
+
 export const extendStay = async (id, newCheckOut) => {
   const response = await axios.post(
     `${baseUrl}/api/reservations/${id}/extend-stay`,

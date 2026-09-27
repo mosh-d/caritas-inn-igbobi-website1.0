@@ -637,6 +637,18 @@ export default function AdminFoliosPage() {
     (Boolean(selectedFolio.reservation?.actual_check_out) || Boolean(selectedFolio.reservation?.is_no_show));
   // What the money received has settled, charge by charge (display only -
   // see settlementByCharge).
+  // What the charge form still needs before it can be posted. Amount may
+  // legitimately be negative (an adjustment walking back a charge), so it is
+  // checked for "filled in", not for "greater than zero".
+  const chargeAmountEntered = String(itemForm.amount ?? "").trim() !== "" && !Number.isNaN(Number(itemForm.amount));
+  const chargeDescriptionEntered = String(itemForm.description ?? "").trim() !== "";
+  const chargeReady = Boolean(itemForm.item_type) && chargeDescriptionEntered && chargeAmountEntered;
+  const chargeBlockReason = !chargeDescriptionEntered && !chargeAmountEntered
+    ? "Enter a description and an amount to post this charge."
+    : !chargeDescriptionEntered
+      ? "Enter a description — it appears on the guest's bill, so it can't be blank."
+      : "Enter an amount for this charge.";
+
   const chargeSettlement = settlementByCharge(
     selectedFolio?.items || [],
     selectedFolio?.total_received ?? selectedFolio?.amount_paid ?? 0,
@@ -1267,7 +1279,7 @@ export default function AdminFoliosPage() {
                         </select>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className={field.label}>Amount (₦)</label>
+                        <label className={field.label}>Amount (₦) *</label>
                         <input
                           type="number"
                           value={itemForm.amount}
@@ -1304,7 +1316,7 @@ export default function AdminFoliosPage() {
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className={field.label}>Description</label>
+                        <label className={field.label}>Description *</label>
                         <AutoGrowTextarea value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} className={field.textarea} />
                       </div>
                     </div>
@@ -1319,9 +1331,15 @@ export default function AdminFoliosPage() {
                         (e.g. -3000.00). This keeps the original charge visible for audit.
                       </p>
                     )}
-                    <button onClick={handleAddItem} disabled={addingItem || !itemForm.item_type || !itemForm.description || !itemForm.amount} className={`${btn.primary} self-start`}>
+                    <button onClick={handleAddItem} disabled={addingItem || !chargeReady} className={`${btn.primary} self-start`}>
                       {addingItem ? "Adding..." : "Add Charge"}
                     </button>
+                    {/* Never leave a disabled button unexplained — this one
+                        needed a description and never said so, which read as
+                        the button being broken (owner, 2026-09-27). */}
+                    {!chargeReady && !addingItem && (
+                      <p className="text-lg text-[color:var(--text-color)]/68">{chargeBlockReason}</p>
+                    )}
                   </div>
                 )}
               </section>

@@ -30,7 +30,21 @@ const isCheckoutDue = (checkOut) => checkOut && hasPassedNoonCutoff(checkOut);
 // night they did sleep is skipped by the night audit's "still present at 6am"
 // rule and never billed at all. Correcting the date first makes an ordinary
 // checkout bill exactly what was slept.
-const departsEarly = (checkOut, today) => Boolean(checkOut) && String(checkOut).slice(0, 10) > today;
+//
+// Judged against what a departure RIGHT NOW bills to, which the server works
+// out per row (departure_check_out) - never against today's date. A guest
+// who arrives and leaves on the same business day is correctly booked to
+// end TOMORROW (one night is the minimum), so "check_out > today" read them
+// as leaving early forever: the correction button stayed on screen and the
+// server kept answering that nothing needed correcting (2026-09-27). The
+// today comparison remains only as a fallback for an older server.
+const departsEarly = (reservation, today) => {
+  const checkOut = reservation?.check_out;
+  if (!checkOut) return false;
+  const booked = String(checkOut).slice(0, 10);
+  if (reservation.departure_check_out) return booked > String(reservation.departure_check_out).slice(0, 10);
+  return booked > today;
+};
 
 export default function AdminCheckOutsPage() {
   const navigate = useNavigate();
@@ -45,6 +59,10 @@ export default function AdminCheckOutsPage() {
   const [folioLoading, setFolioLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [adjustingDate, setAdjustingDate] = useState(false);
+  // Its own error, shown INSIDE the modal: setError renders on the page
+  // behind it, so a refused adjustment was invisible and the button looked
+  // dead (owner, 2026-09-27).
+  const [adjustError, setAdjustError] = useState("");
 
   const loadList = useCallback(async () => {
     try {
@@ -74,6 +92,7 @@ export default function AdminCheckOutsPage() {
 
   const openCheckOut = async (reservation) => {
     setSelected(reservation);
+    setAdjustError("");
     setFolio(null);
     setFolioLoading(true);
     try {
@@ -109,13 +128,14 @@ export default function AdminCheckOutsPage() {
     if (!selected) return;
     try {
       setAdjustingDate(true);
+      setAdjustError("");
       const updated = await shortenStayToDeparture(selected.id);
       setSelected((p) => ({ ...p, check_out: updated.check_out, total_rate: updated.total_rate }));
       setSuccessMessage("Checkout date corrected to today — the stay now bills only the nights actually slept.");
       setTimeout(() => setSuccessMessage(""), 5000);
       loadList();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to adjust the checkout date.");
+      setAdjustError(err.response?.data?.message || "Failed to adjust the checkout date.");
     } finally {
       setAdjustingDate(false);
     }
@@ -123,7 +143,7 @@ export default function AdminCheckOutsPage() {
 
   const balanceDue = folio && Number(folio.balance) > 0;
   // Blocks Check Out until the date is corrected — see departsEarly.
-  const selectedDepartsEarly = selected && departsEarly(selected.check_out, todayISO());
+  const selectedDepartsEarly = selected && departsEarly(selected, todayISO());
 
   return (
     <>
@@ -210,6 +230,9 @@ export default function AdminCheckOutsPage() {
             </>
           }
         >
+          {adjustError && (
+            <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full">{adjustError}</p>
+          )}
           {selectedDepartsEarly && (
             <div className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex flex-col gap-2">
               <p>
