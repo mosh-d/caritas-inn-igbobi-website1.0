@@ -9,6 +9,7 @@ import LoadingSpinner from "../components/shared/LoadingSpinner";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import ContactRow from "../components/shared/ContactRow";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
+import RefundCreditModal from "../components/shared/RefundCreditModal";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
@@ -563,14 +564,21 @@ export default function AdminReservationsPage() {
     }
   };
 
-  const handleRefundDeposit = async (depositId) => {
+  // Confirmed and given a payout method first (see RefundCreditModal) - this
+  // used to pay the credit out on a single click.
+  const [refundDepositTarget, setRefundDepositTarget] = useState(null);
+  const handleRefundDeposit = async (refundMethod) => {
+    const depositId = refundDepositTarget?.id;
+    if (!depositId) return;
     try {
       setDepositActionLoading(depositId);
-      await refundDeposit(depositId);
+      await refundDeposit(depositId, refundMethod);
+      setRefundDepositTarget(null);
       const deps = await fetchDeposits({ reservation_id: selectedReservation.id });
       setDeposits(Array.isArray(deps) ? deps : []);
     } catch (err) {
       setDepositError(err.response?.data?.message || "Failed to refund deposit.");
+      setRefundDepositTarget(null);
     } finally {
       setDepositActionLoading(null);
     }
@@ -1377,7 +1385,7 @@ export default function AdminReservationsPage() {
                                       Transfer
                                     </button>
                                     <button
-                                      onClick={() => handleRefundDeposit(dep.id)}
+                                      onClick={() => setRefundDepositTarget(dep)}
                                       disabled={depositActionLoading === dep.id}
                                       className={btn.rowDanger}
                                     >
@@ -1701,6 +1709,16 @@ export default function AdminReservationsPage() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {refundDepositTarget && (
+        <RefundCreditModal
+          credit={refundDepositTarget}
+          guestName={selectedReservation?.guest_name}
+          busy={depositActionLoading === refundDepositTarget.id}
+          onConfirm={handleRefundDeposit}
+          onClose={() => setRefundDepositTarget(null)}
+        />
       )}
 
       {transactionReceipt && (

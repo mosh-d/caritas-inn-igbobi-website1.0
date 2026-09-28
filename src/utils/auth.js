@@ -405,7 +405,9 @@ export const isManager = () => {
   return role === "manager" || role === "developer";
 };
 
-export const canManageRoomPrices = () => isManager();
+// Room types, their capacity and prices - manager-only on the Rooms page and
+// on the server (2026-09-28; prices were already).
+export const canManageRooms = () => isManager();
 
 // Same "developer passes every gated check too" reasoning as isManager()
 // above — the backend's RolesGuard already grants developer accounts

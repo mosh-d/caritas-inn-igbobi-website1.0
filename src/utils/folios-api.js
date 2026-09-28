@@ -35,13 +35,6 @@ export const fetchFolioById = async (id) => {
   return response.data;
 };
 
-export const fetchFolioItems = async (id) => {
-  const response = await axios.get(`${baseUrl}/api/folios/${id}/items`, {
-    headers: getAuthHeaders(),
-  });
-  return response.data;
-};
-
 export const addFolioItem = async (id, payload) => {
   const response = await axios.post(`${baseUrl}/api/folios/${id}/items`, payload, {
     headers: getAuthHeaders(),
@@ -84,14 +77,6 @@ export const recordPayment = async (payload) => {
 export const recordRefund = async (payload) => {
   const response = await axios.post(`${baseUrl}/api/payments/refund`, payload, {
     headers: getAuthHeaders(),
-  });
-  return response.data;
-};
-
-export const fetchPayments = async (params = {}) => {
-  const response = await axios.get(`${baseUrl}/api/payments`, {
-    headers: getAuthHeaders(),
-    params,
   });
   return response.data;
 };
@@ -143,8 +128,10 @@ export const fetchGuestCredit = async (guestId) => {
   return response.data;
 };
 
-export const refundDeposit = async (id) => {
-  const response = await axios.post(`${baseUrl}/api/deposits/${id}/refund`, {}, {
+// refundMethod: how the money was paid out (cash, transfer, ...) - required
+// by the server since 2026-09-28, so reports can take it off that tender.
+export const refundDeposit = async (id, refundMethod) => {
+  const response = await axios.post(`${baseUrl}/api/deposits/${id}/refund`, { refund_method: refundMethod }, {
     headers: getAuthHeaders(),
   });
   return response.data;

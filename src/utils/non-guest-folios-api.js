@@ -94,9 +94,3 @@ export const applyNonGuestCredit = async (id, targetNonGuestFolioId) => {
   return response.data;
 };
 
-export const refundNonGuestCredit = async (id) => {
-  const response = await axios.post(`${baseUrl}/api/non-guest-credits/${id}/refund`, {}, {
-    headers: getAuthHeaders(),
-  });
-  return response.data;
-};

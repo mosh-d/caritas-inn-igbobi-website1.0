@@ -8,9 +8,10 @@ import LoadingSpinner from "../components/shared/LoadingSpinner";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
-import { canManageRoomPrices, getAuthHeaders } from "../utils/auth";
+import { canManageRooms, getAuthHeaders } from "../utils/auth";
 import { SERVER_BASE_URL } from "../utils/server-config";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
+import ManagerOnlyTag from "../components/shared/ManagerOnlyTag";
 import { BRANCH_ID } from "../utils/branch";
 
 // ─── API Setup ────────────────────────────────────────────────────────────────
@@ -254,7 +255,7 @@ function ViewRoomModal({
   onError,
   onRoomDeleted,
   onRefreshRoom,
-  canManagePrices,
+  canManage,
   initiallyExpandPhysicalRooms,
   highlightRoomInventoryId,
 }) {
@@ -384,7 +385,7 @@ function ViewRoomModal({
   };
 
   const handleUpdatePrice = async () => {
-    if (!canManagePrices) {
+    if (!canManage) {
       onError("Only managers can update room prices.");
       return;
     }
@@ -594,11 +595,13 @@ function ViewRoomModal({
               );
               setConfirmDelete(true);
             }}
-            disabled={deleting}
-            className={`${btn.danger} mr-auto`}
+            disabled={deleting || !canManage}
+            className={btn.danger}
           >
             Delete Room
           </button>
+          {!canManage && <ManagerOnlyTag />}
+          <span className="mr-auto" />
           <button onClick={onClose} className={btn.secondary}>Close</button>
         </>
       }
@@ -615,7 +618,9 @@ function ViewRoomModal({
       <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
         <div className="flex justify-between items-center">
           <h3 className="text-2xl font-bold text-[color:var(--black)]">Summary, Amenities & Capacity</h3>
-          {!editingDetails && (
+          {!canManage ? (
+            <ManagerOnlyTag />
+          ) : !editingDetails && (
             <button onClick={() => setEditingDetails(true)} className={btn.secondary}>Edit</button>
           )}
         </div>
@@ -766,8 +771,11 @@ function ViewRoomModal({
 
       {/* Editable: Base Price + Breakfast Price */}
       <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
-        <h3 className="text-2xl font-bold text-[color:var(--black)]">Base Price (₦)</h3>
-        {canManagePrices ? (
+        <div className="flex justify-between items-center gap-3">
+          <h3 className="text-2xl font-bold text-[color:var(--black)]">Base Price (₦)</h3>
+          {!canManage && <ManagerOnlyTag />}
+        </div>
+        {canManage ? (
           <div className="flex flex-col gap-3">
             <div className="flex gap-3 flex-nowrap items-center">
               <input
@@ -806,7 +814,13 @@ function ViewRoomModal({
 
       {/* Editable: Max Capacity (physical rooms) */}
       <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
-        <h3 className="text-2xl font-bold text-[color:var(--black)]">Max Capacity (physical rooms)</h3>
+        <div className="flex justify-between items-center gap-3">
+          <h3 className="text-2xl font-bold text-[color:var(--black)]">Max Capacity (physical rooms)</h3>
+          {!canManage && <ManagerOnlyTag />}
+        </div>
+        {!canManage ? (
+          <p className="text-2xl font-bold">{room.max_capacity ?? "N/A"}</p>
+        ) : (
         <div className="flex gap-3 flex-nowrap items-center">
           <input
             type="number"
@@ -824,6 +838,7 @@ function ViewRoomModal({
             {updatingCapacity ? "..." : refreshing ? "Syncing..." : "Update"}
           </button>
         </div>
+        )}
       </section>
 
       {/* ── Capacity Decrease Confirmation ── */}
@@ -979,7 +994,7 @@ function StatCard({ label, value }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminRoomsPage() {
-  const canManagePrices = canManageRoomPrices();
+  const canManage = canManageRooms();
   const location = useLocation();
   const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
@@ -1194,7 +1209,7 @@ export default function AdminRoomsPage() {
 
   // Handle inline price update (desktop table)
   const handleInlinePriceUpdate = async (room) => {
-    if (!canManagePrices) {
+    if (!canManage) {
       showError("Only managers can update room prices.");
       return;
     }
@@ -1288,15 +1303,19 @@ export default function AdminRoomsPage() {
       >
         <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
           <PageHeading icon={IoBedOutline}>Rooms</PageHeading>
-          <button
-            onClick={() => {
-              console.log("AdminRooms: Opening Add Room modal");
-              setShowAddModal(true);
-            }}
-            className={`${btn.primary} whitespace-nowrap`}
-          >
-            + Add Room
-          </button>
+          <div className="flex items-center gap-3">
+            {!canManage && <ManagerOnlyTag />}
+            <button
+              onClick={() => {
+                console.log("AdminRooms: Opening Add Room modal");
+                setShowAddModal(true);
+              }}
+              disabled={!canManage}
+              className={`${btn.primary} whitespace-nowrap`}
+            >
+              + Add Room
+            </button>
+          </div>
         </div>
 
         {/* ── Table ── */}
@@ -1306,7 +1325,12 @@ export default function AdminRoomsPage() {
               <thead>
                 <tr className={table.headRow}>
                   <th className={`${table.th} ${table.stickyTh}`}>Room Type</th>
-                  <th className={`${table.th} hidden md:table-cell`}>Price (₦)</th>
+                  <th className={`${table.th} hidden md:table-cell`}>
+                    <span className="inline-flex items-center gap-3">
+                      Price (₦)
+                      {!canManage && <ManagerOnlyTag />}
+                    </span>
+                  </th>
                   <th className={table.th}>Actions</th>
                 </tr>
               </thead>
@@ -1332,7 +1356,7 @@ export default function AdminRoomsPage() {
 
                       {/* Desktop: Inline price input + Update button */}
                       <td className={`${table.td} hidden md:table-cell`}>
-                        {canManagePrices ? (
+                        {canManage ? (
                           <div className="flex flex-col gap-2">
                             <div className="flex flex-col gap-1">
                               <span className="text-lg text-[color:var(--text-color)]/68">Base Price</span>
@@ -1426,7 +1450,7 @@ export default function AdminRoomsPage() {
             setSelectedRoom(null);
           }}
           onRefreshRoom={fetchRoomById}
-          canManagePrices={canManagePrices}
+          canManage={canManage}
           initiallyExpandPhysicalRooms={modalExpandPhysicalRooms}
           highlightRoomInventoryId={modalHighlightRoomInventoryId}
         />

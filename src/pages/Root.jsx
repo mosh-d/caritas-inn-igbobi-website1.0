@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Helmet } from "react-helmet";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { localTodayISO } from "../utils/date-utils";
@@ -26,6 +26,15 @@ export default function RootLayout() {
   // Booking state
   const [roomType, setRoomType] = useState("");
   const [roomTypeId, setRoomTypeId] = useState(null);
+  // The room type chosen right now, for fetchAvailableRooms (2026-09-28).
+  // The live-update handler below keeps the copy of that function from when
+  // the dates last changed, and that copy's own `roomType` is whatever was
+  // picked back then - so a guest who changed room type afterwards had the
+  // "still on offer?" check run against their old choice.
+  const roomTypeRef = useRef(roomType);
+  useEffect(() => {
+    roomTypeRef.current = roomType;
+  }, [roomType]);
   const [totalPayment, setTotalPayment] = useState(0);
   const [roomPrices, setRoomPrices] = useState({});
   const branchId = BRANCH_ID;
@@ -137,9 +146,10 @@ export default function RootLayout() {
         setRoomPrices(prices);
 
         // Update current room type if it's no longer available
+        const chosenType = roomTypeRef.current;
         if (
-          roomType &&
-          !data.room_types.some((room) => room.room_type_name === roomType)
+          chosenType &&
+          !data.room_types.some((room) => room.room_type_name === chosenType)
         ) {
           setRoomType("");
           setRoomTypeId(null);

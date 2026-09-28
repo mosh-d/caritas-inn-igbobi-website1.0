@@ -22,13 +22,6 @@ export const fetchGuests = async (params = {}) => {
   return response.data;
 };
 
-export const fetchGuestById = async (id) => {
-  const response = await axios.get(`${baseUrl}/api/guests/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  return response.data;
-};
-
 export const fetchGuestReservations = async (id) => {
   const response = await axios.get(`${baseUrl}/api/guests/${id}/reservations`, {
     headers: getAuthHeaders(),

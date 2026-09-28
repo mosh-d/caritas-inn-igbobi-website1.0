@@ -10,6 +10,7 @@ import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
+import RefundCreditModal from "../components/shared/RefundCreditModal";
 import CopyIconButton from "../components/shared/CopyIconButton";
 import PaymentSplitRows from "../components/shared/PaymentSplitRows";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
@@ -536,17 +537,17 @@ export default function AdminFoliosPage() {
     }
   };
   const [refundingCreditId, setRefundingCreditId] = useState(null);
-  const handleRefundCredit = async () => {
+  const handleRefundCredit = async (refundMethod) => {
     const credit = refundCreditTarget;
     if (!selectedFolio || !credit) return;
     setRefundError(null);
     try {
       setRefundingCreditId(credit.id);
-      const result = await refundDeposit(credit.id);
+      const result = await refundDeposit(credit.id, refundMethod);
       setRefundCreditTarget(null);
       await refreshSelectedFolio();
       loadFolios();
-      setSuccessMessage(`Refunded ${money(result.refunded_amount ?? credit.available)} to the guest.`);
+      setSuccessMessage(`Refunded ${money(result.refunded_amount ?? credit.available)} to the guest by ${formatPaymentMethod(refundMethod)}.`);
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
       setRefundError(err.response?.data?.message || "Failed to refund the credit.");
@@ -1554,42 +1555,16 @@ export default function AdminFoliosPage() {
         </Modal>
       )}
 
+
       {/* ==== Refund Credit Confirmation ==== */}
       {refundCreditTarget && (
-        <Modal
+        <RefundCreditModal
+          credit={refundCreditTarget}
+          guestName={selectedFolio?.reservation?.guest_name}
+          busy={refundingCreditId === refundCreditTarget.id}
+          onConfirm={handleRefundCredit}
           onClose={() => setRefundCreditTarget(null)}
-          title={`Refund ${money(refundCreditTarget.available)}?`}
-          subtitle={`From ${refundCreditTarget.deposit_reference}${selectedFolio?.reservation?.guest_name ? ` — ${selectedFolio.reservation.guest_name}` : ""}`}
-          size="sm"
-          zIndex={1100}
-          footer={
-            <>
-              <button
-                onClick={() => setRefundCreditTarget(null)}
-                disabled={refundingCreditId === refundCreditTarget.id}
-                className={btn.secondary}
-              >
-                Back
-              </button>
-              <button
-                onClick={handleRefundCredit}
-                disabled={refundingCreditId === refundCreditTarget.id}
-                className={btn.dangerSolid}
-              >
-                {refundingCreditId === refundCreditTarget.id ? "Refunding..." : "Yes, Refund"}
-              </button>
-            </>
-          }
-        >
-          <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
-            This records {money(refundCreditTarget.available)} as handed back to the guest. It can't be undone — only refund once the money has actually left the drawer.
-          </p>
-          {Number(refundCreditTarget.amount_applied) > 0 && (
-            <p className="text-xl text-[color:var(--text-color)]/76">
-              {money(refundCreditTarget.amount_applied)} of the original {money(refundCreditTarget.amount)} has already gone toward a charge, so only the remaining {money(refundCreditTarget.available)} is refundable.
-            </p>
-          )}
-        </Modal>
+        />
       )}
 
       {transactionReceipt && (

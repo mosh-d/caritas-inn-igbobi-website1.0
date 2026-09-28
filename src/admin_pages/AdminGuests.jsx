@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoClose, IoFilter, IoPeopleOutline } from 'react-icons/io5';
 import Button from '../components/shared/Button';
+import ManagerOnlyTag from '../components/shared/ManagerOnlyTag';
 import Modal from '../components/shared/Modal';
 import PageHeading from '../components/shared/PageHeading';
 import StatusBadge from '../components/shared/StatusBadge';
@@ -611,12 +612,14 @@ export default function AdminGuestsPage() {
                 )}
               </>
             ) : (
-              <p className='text-xl text-[color:var(--text-color)]/76'>
-                {editForm.is_blacklisted
-                  ? `Blacklisted${editForm.blacklist_reason ? `: ${editForm.blacklist_reason}` : ''}`
-                  : 'Not blacklisted.'}{' '}
-                <span className='text-lg text-[color:var(--text-color)]/50'>(Only managers can change blacklist status.)</span>
-              </p>
+              <div className='flex justify-between items-center gap-3 flex-wrap'>
+                <p className='text-xl text-[color:var(--text-color)]/76'>
+                  {editForm.is_blacklisted
+                    ? `Blacklisted${editForm.blacklist_reason ? `: ${editForm.blacklist_reason}` : ''}`
+                    : 'Not blacklisted.'}
+                </p>
+                <ManagerOnlyTag />
+              </div>
             )}
           </section>
 
