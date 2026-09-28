@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { WebSocketProvider } from "./context/WebSocketContext";
 
 import HomePage from "./pages/Home";
@@ -6,35 +6,11 @@ import AboutPage from "./pages/About";
 import ContactPage from "./pages/Contact";
 import BookingConfirmationPage from "./pages/BookingConfirmation";
 import RootLayout from "./pages/Root";
-import AdminRootLayout from "./admin_pages/AdminRoot";
 import PrivacyPolicyPage from "./pages/PrivacyPolicy";
 import TermsOfServicePage from "./pages/TermsOfService";
 import ErrorPage from "./pages/Error";
-import AdminOverview from "./admin_pages/AdminOverview";
-// Bookings tab retired in favor of Reservations (which now also has Confirm/Early-Checkout/Export).
-// Kept here, commented out, in case we need to fall back to it.
-import AdminRooms from "./admin_pages/AdminRooms";
-import AdminRoomChart from "./admin_pages/AdminRoomChart";
-import AdminReservations from "./admin_pages/AdminReservations";
-import AdminGuests from "./admin_pages/AdminGuests";
-import AdminFolios from "./admin_pages/AdminFolios";
-import AdminGuestSales from "./admin_pages/AdminGuestSales";
-import AdminFnbSales from "./admin_pages/AdminFnbSales";
-import AdminCheckIns from "./admin_pages/AdminCheckIns";
-import AdminCheckOuts from "./admin_pages/AdminCheckOuts";
-import AdminInHouse from "./admin_pages/AdminInHouse";
-import AdminReports from "./admin_pages/AdminReports";
-import AdminAlerts from "./admin_pages/AdminAlerts";
-import AdminOtaPayments from "./admin_pages/AdminOtaPayments";
-import AdminNightAudit from "./admin_pages/AdminNightAudit";
-import AdminAuditTrail from "./admin_pages/AdminAuditTrail";
-import AdminMenu from "./admin_pages/AdminMenu";
-import AdminNonGuestSales from "./admin_pages/AdminNonGuestSales";
-import AdminLaundry from "./admin_pages/AdminLaundry";
-import AdminAccount from "./admin_pages/AdminAccount";
-import AdminHelp from "./admin_pages/AdminHelp";
-import AdminLoginPage from "./admin_pages/AdminLogin";
 import NotFound from "./pages/NotFound";
+import AdminMovedToPms from "./admin_pages/AdminMovedToPms";
 
 const router = createBrowserRouter([
   {
@@ -51,39 +27,11 @@ const router = createBrowserRouter([
       { path: "*", element: <NotFound /> },
     ],
   },
-  {
-    path: "/admin",
-    element: <AdminRootLayout />,
-    errorElement: <ErrorPage />,
-    children: [
-      { index: true, element: <AdminLoginPage /> },
-      { path: "overview", element: <AdminOverview /> },
-      { path: "rooms", element: <AdminRooms /> },
-      { path: "room-chart", element: <AdminRoomChart /> },
-      { path: "reservations", element: <AdminReservations /> },
-      { path: "guests", element: <AdminGuests /> },
-      { path: "folios", element: <AdminFolios /> },
-      { path: "fnb-sales", element: <AdminFnbSales /> },
-      // Guest Sales and Non-Guest Sales are the two sections of F&B Sales
-      // now (2026-09-24); their old paths still answer, for bookmarks and
-      // for links printed on older receipts.
-      { path: "guest-sales", element: <Navigate to="/admin/fnb-sales" replace /> },
-      { path: "check-ins", element: <AdminCheckIns /> },
-      { path: "check-outs", element: <AdminCheckOuts /> },
-      { path: "in-house", element: <AdminInHouse /> },
-      { path: "reports", element: <AdminReports /> },
-      { path: "night-audit", element: <AdminNightAudit /> },
-      { path: "alerts", element: <AdminAlerts /> },
-      { path: "ota-payments", element: <AdminOtaPayments /> },
-      { path: "audit-trail", element: <AdminAuditTrail /> },
-      { path: "menu", element: <AdminMenu /> },
-      { path: "non-guest-sales", element: <Navigate to="/admin/fnb-sales" replace /> },
-      { path: "laundry-sales", element: <AdminLaundry /> },
-      { path: "account", element: <AdminAccount /> },
-      { path: "help", element: <AdminHelp /> },
-      { path: "*", element: <NotFound /> },
-    ],
-  },
+  // The PMS moved to fivecloverhotels.com/pms (2026-09-28). Every /admin
+  // address answers with the card that opens the same page there; the old
+  // admin pages stay in admin_pages/, unrouted, until the new PMS has
+  // settled in.
+  { path: "/admin/*", element: <AdminMovedToPms />, errorElement: <ErrorPage /> },
 ]);
 
 export default function App() {

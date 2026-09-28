@@ -109,7 +109,7 @@ export const isAdminPage = (to) => ADMIN_NAV_ITEMS.some((item) => item.to === pa
 
 // The sidebar label written as a page name, for messages about it:
 // "GUEST FOLIOS" -> "Guest Folios", "OTA PAYMENTS" -> "OTA Payments".
-const KEEP_UPPERCASE = ["OTA", "PMS"];
+const KEEP_UPPERCASE = ["OTA", "PMS", "F&B"];
 export const adminPageTitle = (to) => {
   const item = ADMIN_NAV_ITEMS.find((i) => i.to === pathOnly(to));
   if (!item) return "that page";
