@@ -24,8 +24,9 @@ import {
 import { isManager } from '../utils/auth';
 import { useWebSocketContext } from '../context/WebSocketContext';
 import { money } from '../utils/report-format';
+import { GuestTagPills } from '../components/shared/GuestName';
+import { GUEST_TYPES, guestTagLabel } from '../utils/guest-tags';
 
-const GUEST_TYPES = ['walk-in', 'corporate', 'group', 'VIP'];
 const RESERVATIONS_PAGE_SIZE = 5;
 
 // Ordinary contact-info fields, saved via PUT /api/guests/:id (any staff).
@@ -33,7 +34,7 @@ const RESERVATIONS_PAGE_SIZE = 5;
 // (manager-only on the backend) — see handleSaveEdit below.
 const CONTACT_INFO_FIELDS = [
   'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'country',
-  'id_type', 'id_number', 'date_of_birth', 'nationality', 'guest_type',
+  'id_type', 'id_number', 'date_of_birth', 'nationality', 'guest_types',
   'company_name', 'tax_id',
 ];
 
@@ -47,11 +48,36 @@ const emptyGuestForm = {
   country: '',
   id_type: '',
   id_number: '',
-  guest_type: '',
+  guest_types: [],
   company_name: '',
   is_blacklisted: false,
   blacklist_reason: '',
 };
+
+// The Status filter: the blacklist, or one guest type.
+const STATUS_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'blacklisted', label: 'Blacklisted' },
+  ...GUEST_TYPES.map((t) => ({ key: t, label: guestTagLabel(t) })),
+];
+
+// A guest's types as a checklist - any number at once, a corporate VIP say
+// (2026-09-28). Shared by the edit and the add forms.
+function GuestTypeChecklist({ value = [], onChange }) {
+  const toggle = (type) =>
+    onChange(value.includes(type) ? value.filter((t) => t !== type) : GUEST_TYPES.filter((t) => t === type || value.includes(t)));
+  return GUEST_TYPES.map((t) => (
+    <label key={t} className='flex items-center gap-3 text-xl cursor-pointer'>
+      <input
+        type='checkbox'
+        checked={value.includes(t)}
+        onChange={() => toggle(t)}
+        className='w-6 h-6 accent-[var(--emphasis)] cursor-pointer'
+      />
+      {guestTagLabel(t)}
+    </label>
+  ));
+}
 
 export default function AdminGuestsPage() {
   const canManageGuestStatus = isManager();
@@ -66,8 +92,8 @@ export default function AdminGuestsPage() {
   const limit = 10;
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [guestTypeFilter, setGuestTypeFilter] = useState('all');
-  const [blacklistFilter, setBlacklistFilter] = useState('all');
+  // One Status filter (2026-09-28): the blacklist or one guest type.
+  const [statusFilter, setStatusFilter] = useState('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterDropdownRef = useRef(null);
 
@@ -94,9 +120,8 @@ export default function AdminGuestsPage() {
       setLoading(true);
       const params = { page, limit };
       if (searchQuery.trim()) params.search = searchQuery.trim();
-      if (guestTypeFilter !== 'all') params.guest_type = guestTypeFilter;
-      if (blacklistFilter !== 'all')
-        params.is_blacklisted = blacklistFilter === 'blacklisted';
+      if (statusFilter === 'blacklisted') params.is_blacklisted = true;
+      else if (statusFilter !== 'all') params.guest_type = statusFilter;
 
       const result = await fetchGuests(params);
       setGuests(result.data || []);
@@ -110,13 +135,13 @@ export default function AdminGuestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchQuery, guestTypeFilter, blacklistFilter]);
+  }, [page, searchQuery, statusFilter]);
 
   useEffect(() => {
     loadGuests();
   }, [loadGuests]);
 
-  useEffect(() => setPage(1), [searchQuery, guestTypeFilter, blacklistFilter]);
+  useEffect(() => setPage(1), [searchQuery, statusFilter]);
 
   // Re-fetch whenever the socket (re)connects (e.g. after a backend
   // restart), same pattern as AdminOverview.jsx/AdminRooms.jsx.
@@ -288,42 +313,19 @@ export default function AdminGuestsPage() {
                 </button>
                 {isFilterOpen && (
                   <div className='absolute right-0 mt-2 w-96 bg-white border border-[color:var(--text-color)]/15 rounded-xl shadow-xl z-20 overflow-hidden font-primary'>
-                    <div className='p-6 border-b border-[color:var(--text-color)]/10'>
-                      <p className='text-lg font-bold text-[color:var(--text-color)]/84 uppercase tracking-widest mb-4'>
-                        Guest Type
-                      </p>
-                      <div className='grid grid-cols-2 gap-3'>
-                        {['all', ...GUEST_TYPES].map((t) => (
-                          <button
-                            key={t}
-                            onClick={() => {
-                              setGuestTypeFilter(t);
-                              setIsFilterOpen(false);
-                            }}
-                            className={`py-3 rounded-lg text-xl capitalize cursor-pointer transition-all ${guestTypeFilter === t ? 'bg-[color:var(--emphasis)] text-white font-bold' : 'bg-black/4 text-[color:var(--text-color)] hover:bg-black/8'}`}
-                          >
-                            {t}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <div className='p-6'>
                       <p className='text-lg font-bold text-[color:var(--text-color)]/84 uppercase tracking-widest mb-4'>
-                        Blacklist Status
+                        Status
                       </p>
                       <div className='grid grid-cols-2 gap-3'>
-                        {[
-                          { key: 'all', label: 'All' },
-                          { key: 'blacklisted', label: 'Blacklisted' },
-                          { key: 'not_blacklisted', label: 'Not Blacklisted' },
-                        ].map((opt) => (
+                        {STATUS_FILTERS.map((opt) => (
                           <button
                             key={opt.key}
                             onClick={() => {
-                              setBlacklistFilter(opt.key);
+                              setStatusFilter(opt.key);
                               setIsFilterOpen(false);
                             }}
-                            className={`py-3 rounded-lg text-xl cursor-pointer transition-all ${blacklistFilter === opt.key ? 'bg-[color:var(--emphasis)] text-white font-bold' : 'bg-black/4 text-[color:var(--text-color)] hover:bg-black/8'}`}
+                            className={`py-3 rounded-lg text-xl cursor-pointer transition-all ${statusFilter === opt.key ? 'bg-[color:var(--emphasis)] text-white font-bold' : 'bg-black/4 text-[color:var(--text-color)] hover:bg-black/8'}`}
                           >
                             {opt.label}
                           </button>
@@ -351,7 +353,7 @@ export default function AdminGuestsPage() {
                   <th className={`${table.th} ${table.stickyTh}`}>Name</th>
                   <th className={`${table.th} hidden md:table-cell`}>Email</th>
                   <th className={`${table.th} hidden md:table-cell`}>Phone</th>
-                  <th className={`${table.th} hidden md:table-cell`}>Type</th>
+                  <th className={`${table.th} hidden md:table-cell`}>Status</th>
                   <th className={`${table.th} hidden md:table-cell`}>Stays</th>
                   <th className={table.th}>Actions</th>
                 </tr>
@@ -392,11 +394,6 @@ export default function AdminGuestsPage() {
                       <td className={`${table.td} ${table.stickyTd} font-medium`}>
                         <div className='flex items-center gap-3 flex-wrap'>
                           {g.first_name} {g.last_name}
-                          {g.is_blacklisted && (
-                            <span className='text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap'>
-                              Blacklisted
-                            </span>
-                          )}
                           {Number(g.outstanding_balance) > 0 && (
                             <span className='text-sm font-bold uppercase tracking-wide text-orange-700 bg-orange-100 px-2 py-1 rounded-full whitespace-nowrap'>
                               Owing {money(g.outstanding_balance)}
@@ -410,10 +407,8 @@ export default function AdminGuestsPage() {
                       <td className={`${table.td} hidden md:table-cell`}>
                         {g.phone ? formatPhone(g.phone) : 'N/A'}
                       </td>
-                      <td
-                        className={`${table.td} hidden md:table-cell capitalize`}
-                      >
-                        {g.guest_type || 'N/A'}
+                      <td className={`${table.td} hidden md:table-cell`}>
+                        {g.guest_tags?.length ? <GuestTagPills tags={g.guest_tags} /> : '—'}
                       </td>
                       <td className={`${table.td} hidden md:table-cell`}>
                         {g.total_stays}
@@ -471,13 +466,7 @@ export default function AdminGuestsPage() {
           onClose={closeGuestDetail}
           title={`${selectedGuest.first_name} ${selectedGuest.last_name}`}
           subtitle={selectedGuest.email || undefined}
-          badge={
-            selectedGuest.is_blacklisted && (
-              <span className='inline-block px-3 py-1 rounded-full text-lg font-bold leading-tight whitespace-nowrap bg-red-100 text-red-700'>
-                Blacklisted
-              </span>
-            )
-          }
+          badge={<GuestTagPills tags={selectedGuest.guest_tags} />}
           size='lg'
           footer={
             <>
@@ -559,67 +548,43 @@ export default function AdminGuestsPage() {
               value={editForm.country || ''}
               onChange={(v) => setEditForm({ ...editForm, country: v })}
             />
-            <div className='flex flex-col gap-2'>
-              <label className={field.label}>Guest Type</label>
-              <select
-                value={editForm.guest_type || ''}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, guest_type: e.target.value })
-                }
-                className={field.select}
-              >
-                <option value=''>—</option>
-                {GUEST_TYPES.map((t) => (
-                  <option
-                    key={t}
-                    value={t}
-                  >
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
           </section>
 
-          <section className='flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6'>
-            {canManageGuestStatus ? (
-              <>
-                <label className='flex items-center gap-3 text-xl cursor-pointer'>
-                  <input
-                    type='checkbox'
-                    checked={!!editForm.is_blacklisted}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, is_blacklisted: e.target.checked })
-                    }
-                    className='w-6 h-6 accent-[var(--emphasis)] cursor-pointer'
+          {/* Status (2026-09-28): the guest's types - several at once - and the
+              blacklist, all shown as tags beside their name on every screen.
+              Types are front-desk work; the blacklist stays manager-only. */}
+          <section className='flex flex-col gap-4 border-t border-[color:var(--text-color)]/10 pt-6'>
+            <label className={field.label}>Status</label>
+            <div className='flex flex-wrap gap-x-8 gap-y-3'>
+              <GuestTypeChecklist
+                value={editForm.guest_types}
+                onChange={(guest_types) => setEditForm({ ...editForm, guest_types })}
+              />
+              <label className={`flex items-center gap-3 text-xl ${canManageGuestStatus ? 'cursor-pointer' : 'text-[color:var(--text-color)]/60'}`}>
+                <input
+                  type='checkbox'
+                  checked={!!editForm.is_blacklisted}
+                  disabled={!canManageGuestStatus}
+                  onChange={(e) => setEditForm({ ...editForm, is_blacklisted: e.target.checked })}
+                  className='w-6 h-6 accent-[var(--emphasis)] cursor-pointer disabled:cursor-not-allowed'
+                />
+                Blacklisted
+                {!canManageGuestStatus && <ManagerOnlyTag />}
+              </label>
+            </div>
+            {editForm.is_blacklisted && (
+              canManageGuestStatus ? (
+                <div className='flex flex-col gap-2'>
+                  <label className={field.label}>Blacklist Reason</label>
+                  <AutoGrowTextarea
+                    value={editForm.blacklist_reason || ''}
+                    onChange={(e) => setEditForm({ ...editForm, blacklist_reason: e.target.value })}
+                    className={field.textarea}
                   />
-                  Blacklisted
-                </label>
-                {editForm.is_blacklisted && (
-                  <div className='flex flex-col gap-2'>
-                    <label className={field.label}>Blacklist Reason</label>
-                    <AutoGrowTextarea
-                      value={editForm.blacklist_reason || ''}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          blacklist_reason: e.target.value,
-                        })
-                      }
-                      className={field.textarea}
-                    />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className='flex justify-between items-center gap-3 flex-wrap'>
-                <p className='text-xl text-[color:var(--text-color)]/76'>
-                  {editForm.is_blacklisted
-                    ? `Blacklisted${editForm.blacklist_reason ? `: ${editForm.blacklist_reason}` : ''}`
-                    : 'Not blacklisted.'}
-                </p>
-                <ManagerOnlyTag />
-              </div>
+                </div>
+              ) : editForm.blacklist_reason ? (
+                <p className='text-xl text-[color:var(--text-color)]/76'>Reason: {editForm.blacklist_reason}</p>
+              ) : null
             )}
           </section>
 
@@ -794,24 +759,13 @@ export default function AdminGuestsPage() {
               onChange={(v) => setCreateForm({ ...createForm, phone: v })}
             />
             <div className='flex flex-col gap-2'>
-              <label className={field.label}>Guest Type</label>
-              <select
-                value={createForm.guest_type}
-                onChange={(e) =>
-                  setCreateForm({ ...createForm, guest_type: e.target.value })
-                }
-                className={field.select}
-              >
-                <option value=''>—</option>
-                {GUEST_TYPES.map((t) => (
-                  <option
-                    key={t}
-                    value={t}
-                  >
-                    {t}
-                  </option>
-                ))}
-              </select>
+              <label className={field.label}>Status</label>
+              <div className='flex flex-wrap gap-x-8 gap-y-3 py-2'>
+                <GuestTypeChecklist
+                  value={createForm.guest_types}
+                  onChange={(guest_types) => setCreateForm({ ...createForm, guest_types })}
+                />
+              </div>
             </div>
             <LabeledInput
               label='Company Name'

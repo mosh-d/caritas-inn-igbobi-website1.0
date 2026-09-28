@@ -7,6 +7,7 @@ import StatusBadge from "../components/shared/StatusBadge";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchOtaSettlements, markOtaSettlementPaid } from "../utils/ota-api";
 import { money } from "../utils/report-format";
+import GuestName from "../components/shared/GuestName";
 
 // Money owed by OTAs rather than by guests.
 //
@@ -116,7 +117,7 @@ export default function AdminOtaPaymentsPage() {
               <tbody>
                 {settlements.map((s) => (
                   <tr key={s.id} className={table.row}>
-                    <td className={`${table.td} ${table.stickyTd}`}>{s.reservation?.guest_name || "—"}</td>
+                    <td className={`${table.td} ${table.stickyTd}`}><GuestName name={s.reservation?.guest_name || "—"} tags={s.reservation?.guest_tags} /></td>
                     <td className={table.td}>{s.reservation?.booking_reference || "—"}</td>
                     <td className={table.td}>{s.start_date} to {s.end_date}</td>
                     <td className={table.td}>{s.includes_breakfast ? "Room and breakfast" : "Room only"}</td>

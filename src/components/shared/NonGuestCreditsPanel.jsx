@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { creditOwnerLabel, creditServiceLabel } from "./nonGuestCredits";
-import { formatDateTime, money } from "../../utils/report-format";
-import { table } from "./ui";
+import { formatDateTime, formatPaymentMethod, money } from "../../utils/report-format";
+import { btn, table } from "./ui";
+import RefundCreditModal from "./RefundCreditModal";
+import { canRefund } from "../../utils/auth";
+import { refundNonGuestCredit } from "../../utils/non-guest-folios-api";
 
 // Money the hotel owes back, listed the same way money owed TO the hotel
 // already is. Until now an overpayment on a walk-in bill went into a credit
@@ -8,13 +12,36 @@ import { table } from "./ui";
 // it could surface needed the sale to have been rung up under a name, and
 // most aren't.
 //
-// Read-only on purpose: a credit is spent against a particular bill, so it
-// is applied from inside that folio (where the target is unambiguous), not
-// from a list where it isn't. This is the list that tells staff there is
-// something to spend.
-export default function NonGuestCreditsPanel({ credits = [], loading = false }) {
+// A credit is spent against a particular bill, so it is applied from inside
+// that folio (where the target is unambiguous), not from this list. What the
+// list does offer is paying a credit back out (2026-09-28) - to the front
+// desk only, the role responsible for the drawer (owner, 2026-09-10); a
+// waitron sees the list without the button. onRefunded reloads the page's
+// credits afterwards.
+export default function NonGuestCreditsPanel({ credits = [], loading = false, onRefunded }) {
   const pending = credits.filter((c) => c.status === "pending");
   const total = pending.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const refundable = canRefund();
+  const [refundTarget, setRefundTarget] = useState(null);
+  const [refunding, setRefunding] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  const handleRefund = async (refundMethod) => {
+    const credit = refundTarget;
+    try {
+      setRefunding(true);
+      setMessage(null);
+      await refundNonGuestCredit(credit.id, refundMethod);
+      setRefundTarget(null);
+      setMessage({ ok: true, text: `Refunded ${money(credit.amount)} (${credit.credit_reference}) by ${formatPaymentMethod(refundMethod)}.` });
+      await onRefunded?.();
+    } catch (err) {
+      setRefundTarget(null);
+      setMessage({ ok: false, text: err.response?.data?.message || "Failed to refund the credit." });
+    } finally {
+      setRefunding(false);
+    }
+  };
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -28,6 +55,11 @@ export default function NonGuestCreditsPanel({ credits = [], loading = false }) 
         Overpayments kept on file. Open the bill you want it spent on and apply it there — a credit
         from an overpayment can always be applied back to the bill it came off.
       </p>
+      {message && (
+        <p className={`text-xl rounded-lg px-4 py-3 border ${message.ok ? "text-green-700 bg-green-50 border-green-200" : "text-red-600 bg-red-50 border-red-200"}`}>
+          {message.text}
+        </p>
+      )}
       {loading ? null : pending.length === 0 ? (
         <p className="text-xl text-[color:var(--text-color)]/68">No unclaimed credit right now.</p>
       ) : (
@@ -42,6 +74,7 @@ export default function NonGuestCreditsPanel({ credits = [], loading = false }) 
                   <th className={table.th}>Date &amp; Time</th>
                   <th className={table.th}>Amount</th>
                   <th className={table.th}>Reference</th>
+                  {refundable && <th className={table.th}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -53,12 +86,29 @@ export default function NonGuestCreditsPanel({ credits = [], loading = false }) 
                     <td className={`${table.td} whitespace-nowrap`}>{formatDateTime(c.created_at)}</td>
                     <td className={`${table.td} font-bold text-blue-700`}>{money(c.amount)}</td>
                     <td className={`${table.td} font-mono text-base`}>{c.credit_reference}</td>
+                    {refundable && (
+                      <td className={table.td}>
+                        <button onClick={() => setRefundTarget(c)} disabled={refunding} className={btn.rowDanger}>
+                          Refund
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
+      )}
+      {refundTarget && (
+        <RefundCreditModal
+          credit={refundTarget}
+          reference={refundTarget.credit_reference}
+          guestName={creditOwnerLabel(refundTarget)}
+          busy={refunding}
+          onConfirm={handleRefund}
+          onClose={() => setRefundTarget(null)}
+        />
       )}
     </div>
   );

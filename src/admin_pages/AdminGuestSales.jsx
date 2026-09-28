@@ -13,6 +13,8 @@ import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import { fetchInHouse } from "../utils/front-office-api";
 import { addFolioItemsBatch, fetchFolioById, fetchPendingFolios, recordPayment } from "../utils/folios-api";
+import GuestName from "../components/shared/GuestName";
+import { withGuestTags } from "../utils/guest-tags";
 
 const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", is_complementary: false };
 const emptyOrder = { reservation_id: "", bill_no: "", rows: [{ ...emptyRow }] };
@@ -268,7 +270,7 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
                 <option value="">Select an in-house guest</option>
                 {inHouse.map((r) => (
                   <option key={r.id} value={r.id}>
-                    Room {r.room_assignments?.[0]?.room_number || "—"} — {r.guest_name}
+                    Room {r.room_assignments?.[0]?.room_number || "—"} — {withGuestTags(r.guest_name, r.guest_tags)}
                   </option>
                 ))}
               </select>
@@ -370,7 +372,7 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
                               the sticky cell's own opaque background would
                               otherwise sit plain white over an already-tinted
                               selected row. */}
-                          <td className={`${table.td} sticky left-0 z-10 max-lg:whitespace-normal! max-lg:min-w-[18rem] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)] ${isSelected ? "bg-[color-mix(in_srgb,var(--emphasis)_5%,white)]" : "bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)]"}`}>{r.guest_name}</td>
+                          <td className={`${table.td} sticky left-0 z-10 max-lg:whitespace-normal! max-lg:min-w-[18rem] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)] ${isSelected ? "bg-[color-mix(in_srgb,var(--emphasis)_5%,white)]" : "bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)]"}`}><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                           <td className={table.td}>{r.room_assignments?.[0]?.room_number || "—"}</td>
                           <td className={table.td}>{r.folio.folio_number}</td>
                           {/* When this guest's bill was opened. */}
@@ -422,7 +424,7 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
                       const guestName = f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : (f.reservation?.guest_name || "N/A");
                       return (
                         <tr key={f.id} className={`${table.row} ${isSelected ? "bg-[color:var(--emphasis)]/5" : ""}`}>
-                          <td className={table.td}>{guestName}</td>
+                          <td className={table.td}><GuestName name={guestName} tags={f.guest_tags || f.reservation?.guest_tags} /></td>
                           <td className={table.td}>{f.folio_number}</td>
                           <td className={table.td}>{formatDate(f.reservation?.actual_check_out)}</td>
                           <td className={`${table.td} font-bold text-red-500`}>{money(f.balance)}</td>

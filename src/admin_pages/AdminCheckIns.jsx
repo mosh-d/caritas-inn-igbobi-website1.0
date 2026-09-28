@@ -33,6 +33,8 @@ import DateInput from "../components/shared/DateInput";
 import { MotionDiv, tabEnter } from "../components/shared/motion";
 import { BRANCH_ID } from "../utils/branch";
 import { formatDate } from "../utils/report-format";
+import GuestName from "../components/shared/GuestName";
+import { GuestTagPills } from "../components/shared/GuestName";
 const todayISO = () => adminTodayISO();
 // A Walk-In's check-in is always "right now" — but the reservation it
 // creates must be dated by the hotel's business day (6am Lagos cutover, see
@@ -81,7 +83,9 @@ export default function AdminCheckInsPage() {
   const [walkInError, setWalkInError] = useState(null);
   const [walkInAvailableRooms, setWalkInAvailableRooms] = useState(null);
   const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
-  const [walkInBlacklisted, setWalkInBlacklisted] = useState(false);
+  // Every tag of the guest behind the typed phone - a VIP as much as a
+  // blacklist (2026-09-28).
+  const [walkInTags, setWalkInTags] = useState([]);
   const [walkInKnownNames, setWalkInKnownNames] = useState([]);
   // Guest-profile lookup as name, phone, OR email is typed — distinct from
   // walkInKnownNames above (that one's the SAME guest's own alternate
@@ -168,7 +172,7 @@ export default function AdminCheckInsPage() {
     // always carries a "+234" prefix, so a raw length check would fire the
     // lookup after three typed digits.
     if (parsePhone(phone).national.length < 7) {
-      setWalkInBlacklisted(false);
+      setWalkInTags([]);
       setWalkInKnownNames([]);
       return;
     }
@@ -177,12 +181,12 @@ export default function AdminCheckInsPage() {
       checkGuestBlacklist({ phone })
         .then((data) => {
           if (cancelled) return;
-          setWalkInBlacklisted(Boolean(data?.is_blacklisted));
+          setWalkInTags(data?.guest_tags || []);
           setWalkInKnownNames(
             (data?.alternate_names || "").split(",").map((n) => n.trim()).filter(Boolean),
           );
         })
-        .catch(() => { if (!cancelled) { setWalkInBlacklisted(false); setWalkInKnownNames([]); } });
+        .catch(() => { if (!cancelled) { setWalkInTags([]); setWalkInKnownNames([]); } });
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [walkIn.phone]);
@@ -653,7 +657,7 @@ export default function AdminCheckInsPage() {
                     ) : (
                       reservations.map((r) => (
                         <tr key={r.id} className={table.row}>
-                          <td className={`${table.td} ${table.stickyTd} font-medium`}>{r.guest_name}</td>
+                          <td className={`${table.td} ${table.stickyTd} font-medium`}><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                           <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                           <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.check_out)}</td>
                           <td className={table.td}><StatusBadge status={r.status} /></td>
@@ -968,9 +972,7 @@ export default function AdminCheckInsPage() {
                       <div className="flex flex-col gap-2 flex-1 min-w-48">
                         <label className={field.label}>
                           Phone <span className="text-red-500">*</span>
-                          {walkInBlacklisted && (
-                            <span className="ml-3 text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
-                          )}
+                          <GuestTagPills tags={walkInTags} className="ml-3" />
                         </label>
                         <PhoneInput
                           value={walkIn.phone}
@@ -1197,7 +1199,7 @@ export default function AdminCheckInsPage() {
       {selected && (
         <Modal
           onClose={() => setSelected(null)}
-          title={selected.guest_name}
+          title={<GuestName name={selected.guest_name} tags={selected.guest_tags} />}
           subtitle="Confirm arrival details before checking the guest in."
           size="sm"
           footer={

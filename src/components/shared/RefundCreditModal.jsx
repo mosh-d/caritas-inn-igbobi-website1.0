@@ -7,9 +7,10 @@ import { money, formatPaymentMethod, PAYMENT_METHODS } from "../../utils/report-
 // money left (2026-09-28). The payout method is what lets the payment
 // reports take the refund off cash or transfer instead of a catch-all
 // "Credit Refunds" line, so it has to be picked; there is no default to
-// click past. Shared by Guest Folios and Reservations - Reservations used to
-// pay a credit out on a single click, with no confirmation at all.
-export default function RefundCreditModal({ credit, guestName, busy, onConfirm, onClose }) {
+// click past. Shared by Guest Folios, Reservations and the walk-in credits
+// list - Reservations used to pay a credit out on a single click, with no
+// confirmation at all.
+export default function RefundCreditModal({ credit, reference, guestName, busy, onConfirm, onClose }) {
   const [method, setMethod] = useState("");
   const amount = Number(credit.amount || 0);
   const applied = Number(credit.amount_applied || 0);
@@ -19,7 +20,7 @@ export default function RefundCreditModal({ credit, guestName, busy, onConfirm, 
     <Modal
       onClose={onClose}
       title={`Refund ${money(available)}?`}
-      subtitle={`From ${credit.deposit_reference}${guestName ? ` — ${guestName}` : ""}`}
+      subtitle={`From ${reference}${guestName ? ` — ${guestName}` : ""}`}
       size="sm"
       zIndex={1100}
       footer={

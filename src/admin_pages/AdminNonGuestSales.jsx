@@ -589,7 +589,7 @@ export default function AdminNonGuestSalesPage({ asSection = false, hideTitle = 
         </div>
       </div>
 
-      <NonGuestCreditsPanel credits={allCredits} loading={loading} />
+      <NonGuestCreditsPanel credits={allCredits} loading={loading} onRefunded={loadAllCredits} />
 
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 w-full mt-6">

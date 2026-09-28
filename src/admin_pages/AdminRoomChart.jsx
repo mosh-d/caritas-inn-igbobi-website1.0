@@ -11,6 +11,7 @@ import { btn } from '../components/shared/ui';
 import { fetchRoomChart } from '../utils/reservations-pms-api';
 import { useWebSocketContext } from '../context/WebSocketContext';
 import RoomStatusTag from '../components/shared/RoomStatusTag';
+import { withGuestTags } from '../utils/guest-tags';
 
 const DAYS_VISIBLE = 14;
 const DAY_MS = 86400000;
@@ -428,11 +429,11 @@ function RoomRow({
               <button
                 key={`${bar.reservation_id}-${i}`}
                 onClick={() => onSelectBar(bar)}
-                title={`${bar.guest_name} · ${new Date(bar.check_in).toLocaleDateString(undefined, { timeZone: 'Africa/Lagos' })} → ${new Date(bar.check_out).toLocaleDateString(undefined, { timeZone: 'Africa/Lagos' })}${bar.rooms_needed ? ` · ${bar.rooms_needed} room(s) needed` : ''}`}
+                title={`${withGuestTags(bar.guest_name, bar.guest_tags)} · ${new Date(bar.check_in).toLocaleDateString(undefined, { timeZone: 'Africa/Lagos' })} → ${new Date(bar.check_out).toLocaleDateString(undefined, { timeZone: 'Africa/Lagos' })}${bar.rooms_needed ? ` · ${bar.rooms_needed} room(s) needed` : ''}`}
                 className={`admin-bar-in m-1 px-3 py-1 rounded-md text-lg font-semibold truncate text-left cursor-pointer transition-opacity hover:opacity-80 ${BAR_STYLES[bar.status] || 'bg-gray-400 text-white'}`}
                 style={{ gridColumn: `${startCol + 1} / ${endCol + 1}` }}
               >
-                {bar.guest_name}
+                {withGuestTags(bar.guest_name, bar.guest_tags)}
               </button>
             );
           })}

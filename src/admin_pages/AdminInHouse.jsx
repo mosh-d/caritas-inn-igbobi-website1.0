@@ -28,6 +28,7 @@ import RoomStatusTag from "../components/shared/RoomStatusTag";
 
 import DateInput from "../components/shared/DateInput";
 import { money, formatDate } from "../utils/report-format";
+import GuestName from "../components/shared/GuestName";
 const roomStatusKey = (roomTypeId, roomNumber) => `${roomTypeId}::${roomNumber}`;
 
 const isOverdue = (checkOut) => checkOut && hasPassedNoonCutoff(checkOut);
@@ -412,7 +413,7 @@ export default function AdminInHousePage() {
                 ) : (
                   filteredReservations.map((r) => (
                     <tr key={r.id} className={table.row}>
-                      <td className={`${table.td} ${table.stickyTd} align-top font-medium`}>{r.guest_name}</td>
+                      <td className={`${table.td} ${table.stickyTd} align-top font-medium`}><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                       <td className={`${table.td} align-top hidden md:table-cell`}>
                         {(r.room_assignments || []).length === 0 ? (
                           "Unassigned"
@@ -455,7 +456,7 @@ export default function AdminInHousePage() {
         <Modal
           onClose={closeDetail}
           loading={detailLoading || !selected}
-          title={selected?.guest_name || ""}
+          title={selected ? <GuestName name={selected.guest_name} tags={selected.guest_tags} /> : ""}
           subtitle={selected ? `${selected.room_type?.name || "N/A"} · Checked in ${formatDate(selected.actual_check_in)}` : ""}
           badge={selected && isOverdue(selected.check_out) && (
             <span className="inline-block px-3 py-1 rounded-full text-lg font-bold leading-tight whitespace-nowrap bg-red-100 text-red-700">Overdue</span>

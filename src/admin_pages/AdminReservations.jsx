@@ -42,6 +42,8 @@ import { formatPaymentMethod, money, formatDate } from "../utils/report-format";
 
 import DateInput from "../components/shared/DateInput";
 import { BRANCH_ID } from "../utils/branch";
+import GuestName from "../components/shared/GuestName";
+import { withGuestTags } from "../utils/guest-tags";
 const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
 // A reservation's check_in/check_out are UTC-midnight markers for a date.
 const isoDateOf = (d) => (d ? new Date(d).toISOString().slice(0, 10) : "");
@@ -983,16 +985,13 @@ export default function AdminReservationsPage() {
                   reservations.map((r) => (
                     <tr key={r.id} className={table.row}>
                       <td className={`${table.td} ${table.stickyTd} font-medium`}>
-                        <div className="flex items-center gap-3">
-                          {r.guest_name}
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <GuestName name={r.guest_name} tags={r.guest_tags} />
                           {r.is_no_show && (
                             <span className="text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">No-Show</span>
                           )}
                           {r.is_expired_hold && (
                             <span className="text-sm font-bold uppercase tracking-wide text-orange-700 bg-orange-100 px-2 py-1 rounded-full whitespace-nowrap">Hold Expired</span>
-                          )}
-                          {r.guest?.is_blacklisted && (
-                            <span className="text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
                           )}
                         </div>
                         <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
@@ -1043,7 +1042,7 @@ export default function AdminReservationsPage() {
         <Modal
           onClose={closeDetail}
           loading={detailLoading || !res}
-          title={res?.guest_name || ""}
+          title={res ? <GuestName name={res.guest_name} tags={res.guest_tags} /> : ""}
           subtitle={res ? `Booking Ref: ${res.booking_reference || res.id}` : ""}
           badge={res && (
             <span className="flex items-center gap-2">
@@ -1408,7 +1407,7 @@ export default function AdminReservationsPage() {
                               <option value="">Choose the booking to move it to…</option>
                               {inHouseOptions.map((r) => (
                                 <option key={r.id} value={r.id}>
-                                  {r.guest_name}
+                                  {withGuestTags(r.guest_name, r.guest_tags)}
                                   {(r.room_assignments || []).length > 0
                                     ? ` · Room ${(r.room_assignments || []).map((a) => a.room_number).join(", ")}`
                                     : ""}
@@ -1714,6 +1713,7 @@ export default function AdminReservationsPage() {
       {refundDepositTarget && (
         <RefundCreditModal
           credit={refundDepositTarget}
+          reference={refundDepositTarget.deposit_reference}
           guestName={selectedReservation?.guest_name}
           busy={depositActionLoading === refundDepositTarget.id}
           onConfirm={handleRefundDeposit}

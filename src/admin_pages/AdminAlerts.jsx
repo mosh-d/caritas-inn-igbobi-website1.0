@@ -11,6 +11,7 @@ import { markNoShow } from "../utils/reservations-pms-api";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { MotionDiv, tabEnter } from "../components/shared/motion";
 import { money, formatDate } from "../utils/report-format";
+import GuestName from "../components/shared/GuestName";
 
 const daysAgo = (date) => {
   const diff = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
@@ -294,7 +295,7 @@ export default function AdminAlertsPage() {
                           {paginate(missed, "missed").map((r) => (
                             <tr key={r.id} className={table.row}>
                               <td className={`${table.td} ${table.stickyTd} font-medium`}>
-                                <div>{r.guest_name}</div>
+                                <div><GuestName name={r.guest_name} tags={r.guest_tags} /></div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
@@ -357,7 +358,7 @@ export default function AdminAlertsPage() {
                           {paginate(guestCredits, "credits").map((c) => (
                             <tr key={c.id} className={table.row}>
                               <td className={`${table.td} ${table.stickyTd} font-medium`}>
-                                <div>{c.guest_name}</div>
+                                <div><GuestName name={c.guest_name} tags={c.guest_tags} /></div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{c.booking_reference}</div>
                               </td>
                               <td className={`${table.td} font-bold text-green-700`}>{money(c.amount_available)}</td>
@@ -410,7 +411,7 @@ export default function AdminAlertsPage() {
                           {paginate(unconfirmed, "unconfirmed").map((r) => (
                             <tr key={r.id} className={table.row}>
                               <td className={`${table.td} ${table.stickyTd} font-medium`}>
-                                <div>{r.guest_name}</div>
+                                <div><GuestName name={r.guest_name} tags={r.guest_tags} /></div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
@@ -464,7 +465,7 @@ export default function AdminAlertsPage() {
                           {paginate(overdue, "overdue").map((r) => (
                             <tr key={r.id} className={table.row}>
                               <td className={`${table.td} ${table.stickyTd} font-medium`}>
-                                <div>{r.guest_name}</div>
+                                <div><GuestName name={r.guest_name} tags={r.guest_tags} /></div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
@@ -515,7 +516,7 @@ export default function AdminAlertsPage() {
                           {paginate(balances, "balances").map((f) => (
                             <tr key={f.id} className={table.row}>
                               <td className={`${table.td} ${table.stickyTd} font-medium`}>
-                                <div>{f.reservation?.guest_name || "N/A"}</div>
+                                <div><GuestName name={f.reservation?.guest_name || "N/A"} tags={f.reservation?.guest_tags} /></div>
                                 <div className="text-base text-[color:var(--text-color)]/68">{f.reservation?.booking_reference}</div>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}>{f.folio_number}</td>

@@ -9,6 +9,7 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 
 import DateInput from "../components/shared/DateInput";
 import { money, formatDate } from "../utils/report-format";
+import GuestName from "../components/shared/GuestName";
 
 function yesterday() {
   const d = new Date();
@@ -145,7 +146,7 @@ export default function AdminNightAudit() {
                     {result.details.map((d, i) => (
                       <tr key={i} className={table.row}>
                         <td className="px-6 py-3 font-medium sticky left-0 z-10 bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)]">
-                          <div>{d.guest_name}</div>
+                          <div><GuestName name={d.guest_name} tags={d.guest_tags} /></div>
                           {d.booking_reference && (
                             <div className="text-base text-[color:var(--text-color)]/68">{d.booking_reference}</div>
                           )}

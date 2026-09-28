@@ -35,6 +35,8 @@ import {
   applyDeposit,
   transferDepositCredit,
 } from "../utils/folios-api";
+import GuestName from "../components/shared/GuestName";
+import { withGuestTags } from "../utils/guest-tags";
 
 const CHARGE_TYPES = ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
 
@@ -790,7 +792,10 @@ export default function AdminFoliosPage() {
                             repeat guest's account can carry an older spelling,
                             which used to show here while the reservation showed
                             the new one (owner, 2026-09-16). */}
-                        {f.reservation?.guest_name || (f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : "N/A")}
+                        <GuestName
+                          name={f.reservation?.guest_name || (f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : "N/A")}
+                          tags={f.reservation?.guest_tags || f.guest_tags}
+                        />
                       </td>
                       <td className={`${table.td} font-medium`}>{f.folio_number}</td>
                       {showGuestStatusColumn && (
@@ -896,7 +901,15 @@ export default function AdminFoliosPage() {
             <>
               {/* Summary */}
               <div className="grid grid-cols-1 gap-4">
-                <SummaryStat label="Guest" value={selectedFolio.reservation?.guest_name || (selectedFolio.guest ? `${selectedFolio.guest.first_name} ${selectedFolio.guest.last_name}` : "N/A")} />
+                <SummaryStat
+                  label="Guest"
+                  value={
+                    <GuestName
+                      name={selectedFolio.reservation?.guest_name || (selectedFolio.guest ? `${selectedFolio.guest.first_name} ${selectedFolio.guest.last_name}` : "N/A")}
+                      tags={selectedFolio.reservation?.guest_tags || selectedFolio.guest_tags}
+                    />
+                  }
+                />
                 {/* The stay the folio belongs to. Shows what actually happened
                     once it has — an arrival or departure that is still only
                     scheduled says so, rather than passing a plan off as fact. */}
@@ -1180,7 +1193,7 @@ export default function AdminFoliosPage() {
                               <option value="">Choose the folio to move it to…</option>
                               {inHouseOptions.map((r) => (
                                 <option key={r.id} value={r.id}>
-                                  {r.guest_name}
+                                  {withGuestTags(r.guest_name, r.guest_tags)}
                                   {(r.room_assignments || []).length > 0
                                     ? ` · Room ${(r.room_assignments || []).map((a) => a.room_number).join(", ")}`
                                     : ""}
@@ -1560,6 +1573,7 @@ export default function AdminFoliosPage() {
       {refundCreditTarget && (
         <RefundCreditModal
           credit={refundCreditTarget}
+          reference={refundCreditTarget.deposit_reference}
           guestName={selectedFolio?.reservation?.guest_name}
           busy={refundingCreditId === refundCreditTarget.id}
           onConfirm={handleRefundCredit}

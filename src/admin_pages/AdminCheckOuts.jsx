@@ -13,6 +13,7 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 
 import DateInput from "../components/shared/DateInput";
 import { money, formatDate } from "../utils/report-format";
+import GuestName from "../components/shared/GuestName";
 const todayISO = () => adminTodayISO();
 // Whether this reservation's scheduled checkout has actually become due
 // (noon Lagos on check_out) — the date picker above can be browsed to a
@@ -186,7 +187,7 @@ export default function AdminCheckOutsPage() {
                 ) : (
                   reservations.map((r) => (
                     <tr key={r.id} className={table.row}>
-                      <td className={`${table.td} ${table.stickyTd} font-medium`}>{r.guest_name}</td>
+                      <td className={`${table.td} ${table.stickyTd} font-medium`}><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                       <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                       <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.actual_check_in)}</td>
                       <td className={table.td}>
@@ -209,7 +210,7 @@ export default function AdminCheckOutsPage() {
       {selected && (
         <Modal
           onClose={() => setSelected(null)}
-          title={selectedDepartsEarly ? `Early Departure — ${selected.guest_name}` : selected.guest_name}
+          title={<GuestName name={selectedDepartsEarly ? `Early Departure — ${selected.guest_name}` : selected.guest_name} tags={selected.guest_tags} />}
           subtitle={selectedDepartsEarly
             ? "Their booked check-out is still ahead — correct the date first so the bill matches the nights actually slept."
             : "Review the folio balance before completing check-out."}

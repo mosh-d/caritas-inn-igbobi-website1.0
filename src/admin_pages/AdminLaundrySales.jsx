@@ -315,7 +315,7 @@ export default function AdminLaundrySalesPage({ asSection = false, hideTitle = f
         )}
       </div>
 
-      <NonGuestCreditsPanel credits={credits} loading={loading} />
+      <NonGuestCreditsPanel credits={credits} loading={loading} onRefunded={loadCredits} />
 
       {selected && (
         <LaundryFolioModal

@@ -30,6 +30,7 @@ import { fetchNightAuditHistory } from "../utils/night-audit-api";
 import { fetchReservations } from "../utils/reservations-pms-api";
 import { adminTodayISO } from "../utils/date-utils";
 import { money } from "../utils/report-format";
+import GuestName from "../components/shared/GuestName";
 
 // Local-getter based, not toISOString() — toISOString() always converts to
 // UTC first, which for Lagos (WAT, UTC+1) silently reports the wrong
@@ -507,7 +508,7 @@ export default function AdminOverviewPage() {
                     recentBookings.map((r) => (
                       <tr key={r.id} className={table.row}>
                         <td className={`${table.td} ${table.stickyTd} font-medium`}>
-                          <div>{r.guest_name}</div>
+                          <div><GuestName name={r.guest_name} tags={r.guest_tags} /></div>
                           <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                         </td>
                         <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>

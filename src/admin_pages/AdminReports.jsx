@@ -41,6 +41,7 @@ import { AuditLink, ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBa
 
 import DateInput from "../components/shared/DateInput";
 import { MotionDiv, tabEnter } from "../components/shared/motion";
+import GuestName from "../components/shared/GuestName";
 function currentMonthRange() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -588,7 +589,7 @@ function ManifestTab() {
 
   const renderRow = (r) => (
     <tr key={r.id} className="border-b border-[color:var(--text-color)]/10 transition-colors">
-      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
+      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_numbers || "Unassigned"}</td>
       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(r.room_price)}</td>
       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(r.breakfast_price)}</td>
@@ -758,7 +759,7 @@ function AnalysisTab() {
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{p.room_numbers || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{p.receipt_number || "—"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/68 font-mono text-lg">{p.payment_reference}</td>
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{p.guest_name}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={p.guest_name} tags={p.guest_tags} /></td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(p.payment_method)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(p.payment_date)}</td>
                       <td className={`px-6 py-4 text-right font-semibold ${p.status === "refunded" ? "text-red-600" : "text-[color:var(--black)]"}`}>
@@ -886,7 +887,7 @@ function PmsReportTab() {
                 <tbody>
                   {data.stay_overs.map((r) => (
                     <tr key={r.id} className="border-b border-[color:var(--text-color)]/10">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                       {/* A stay-over is already checked in (that's what makes them a stay-over,
                           not an arrival) but hasn't checked out yet — actual_check_in is a real
                           timestamp worth showing with a time; check_out is still just a scheduled
@@ -909,7 +910,7 @@ function PmsReportTab() {
                 <tbody>
                   {data.arrivals.map((r) => (
                     <tr key={r.id} className="border-b border-[color:var(--text-color)]/10">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-lg font-bold ${r.arrived ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
                           {r.arrived ? "Arrived" : "Still Expected"}
@@ -931,7 +932,7 @@ function PmsReportTab() {
                 <tbody>
                   {data.departures.map((r) => (
                     <tr key={r.id} className="border-b border-[color:var(--text-color)]/10">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-lg font-bold ${r.departed ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
                           {r.departed ? "Departed" : "Still In-House"}
@@ -1091,7 +1092,7 @@ function AccommodationReportTab({ shift }) {
                 <tbody>
                   {data.rows.map((r, i) => (
                     <tr key={`${r.reservation_id}-${r.room_number}-${i}`} className="border-b border-[color:var(--text-color)]/10">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_type_name}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_number}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84 whitespace-nowrap">{formatDate(r.arrival_date)}</td>
@@ -1151,7 +1152,7 @@ function AccommodationReportTab({ shift }) {
                   {data.non_revenue_rooms.map((r) => (
                     <tr key={`${r.room_number}-${r.status}`} className="border-b border-[color:var(--text-color)]/10">
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{r.room_number}</td>
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.name}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={r.name} tags={r.guest_tags} /></td>
                       <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
                       {showAudit && <td className="px-6 py-4"><AuditLink audit={r.audit} /></td>}
                     </tr>
@@ -1186,7 +1187,7 @@ function AccommodationReportTab({ shift }) {
                             the drawer: a negative amount, tagged. */}
                         <td className="px-6 py-4 font-medium text-[color:var(--black)]">
                           <span className="flex items-center gap-2 flex-wrap">
-                            {pmt.guest_name}
+                            <GuestName name={pmt.guest_name} tags={pmt.guest_tags} />
                             {pmt.status === "refunded" && (
                               <span className="text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Refund</span>
                             )}
@@ -1227,7 +1228,7 @@ function AccommodationReportTab({ shift }) {
                 <tbody>
                   {data.paid_before.map((d) => (
                     <tr key={d.id} className="border-b border-[color:var(--text-color)]/10 transition-colors">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={d.guest_name} tags={d.guest_tags} /></td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.amount)}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatPaymentMethod(d.payment_method)}</td>
@@ -1254,7 +1255,7 @@ function AccommodationReportTab({ shift }) {
                 <tbody>
                   {data.debt_recovery.map((d, i) => (
                     <tr key={i} className="border-b border-[color:var(--text-color)]/10 transition-colors">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{d.guest_name}</td>
+                      <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={d.guest_name} tags={d.guest_tags} /></td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{d.room_numbers || "Unassigned"}</td>
                       <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(d.debt_date)}</td>
                       <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(d.total_owed)}</td>
@@ -1294,7 +1295,7 @@ function AccommodationReportTab({ shift }) {
                     <tbody>
                       {data.other_charges.map((c) => (
                         <tr key={c.id} className="border-b border-[color:var(--text-color)]/10">
-                          <td className="px-6 py-4 font-medium text-[color:var(--black)]">{c.guest_name}</td>
+                          <td className="px-6 py-4 font-medium text-[color:var(--black)]"><GuestName name={c.guest_name} tags={c.guest_tags} /></td>
                           <td className="px-6 py-4 text-[color:var(--text-color)]/84">{c.room_numbers || "—"}</td>
                           <td className="px-6 py-4 text-[color:var(--text-color)]/84">{c.type}</td>
                           <td className="px-6 py-4 text-[color:var(--text-color)]/84">{c.description || "—"}</td>
@@ -1314,7 +1315,7 @@ function AccommodationReportTab({ shift }) {
                   <div className="flex flex-col gap-2 px-6 py-4">
                     {data.notes.map((n, i) => (
                       <p key={i} className="text-xl">
-                        <span className="font-bold">{n.guest_name}</span>{" "}
+                        <span className="font-bold"><GuestName name={n.guest_name} tags={n.guest_tags} /></span>{" "}
                         <span className="text-[color:var(--text-color)]/60">({n.booking_reference})</span> — {n.note}
                       </p>
                     ))}

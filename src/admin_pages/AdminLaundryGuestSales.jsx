@@ -13,6 +13,8 @@ import { getStoredStaffRole } from "../utils/auth";
 import { fetchLaundryItems } from "../utils/menu-api";
 import { fetchInHouse } from "../utils/front-office-api";
 import { addFolioItemsBatch, fetchFolioById, recordPayment } from "../utils/folios-api";
+import GuestName from "../components/shared/GuestName";
+import { withGuestTags } from "../utils/guest-tags";
 
 const emptyRow = { reference_id: "", laundry_service_type: "wash_and_iron", quantity: "1" };
 const emptyOrder = { reservation_id: "", bill_no: "", rows: [{ ...emptyRow }] };
@@ -229,7 +231,7 @@ export default function AdminLaundryGuestSales({ asSection = false, hideTitle = 
                 <option value="">Select an in-house guest</option>
                 {inHouse.map((r) => (
                   <option key={r.id} value={r.id}>
-                    Room {r.room_assignments?.[0]?.room_number || "—"} — {r.guest_name}
+                    Room {r.room_assignments?.[0]?.room_number || "—"} — {withGuestTags(r.guest_name, r.guest_tags)}
                   </option>
                 ))}
               </select>
@@ -349,7 +351,7 @@ export default function AdminLaundryGuestSales({ asSection = false, hideTitle = 
                         {/* The sticky cell carries its own opaque background,
                             so a selected row's tint has to be matched here
                             too or it sits plain white over the tint. */}
-                        <td className={`${table.td} sticky left-0 z-10 max-lg:whitespace-normal! max-lg:min-w-[18rem] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)] ${isSelected ? "bg-[color-mix(in_srgb,var(--emphasis)_5%,white)]" : "bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)]"}`}>{r.guest_name}</td>
+                        <td className={`${table.td} sticky left-0 z-10 max-lg:whitespace-normal! max-lg:min-w-[18rem] [box-shadow:inset_-1px_0_0_color-mix(in_srgb,var(--text-color)_12%,transparent)] ${isSelected ? "bg-[color-mix(in_srgb,var(--emphasis)_5%,white)]" : "bg-white group-hover:bg-[color-mix(in_srgb,black_2%,white)]"}`}><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
                         <td className={table.td}>{r.room_assignments?.[0]?.room_number || "—"}</td>
                         <td className={table.td}>{r.folio.folio_number}</td>
                         {/* When this guest's bill was opened. */}

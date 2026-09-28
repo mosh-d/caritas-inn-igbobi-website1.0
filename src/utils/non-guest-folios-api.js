@@ -85,6 +85,16 @@ export const fetchPendingNonGuestCredits = async () => {
   return response.data;
 };
 
+// Paying a walk-in credit back out (2026-09-28), with how the money left.
+export const refundNonGuestCredit = async (id, refundMethod) => {
+  const response = await axios.post(
+    `${baseUrl}/api/non-guest-credits/${id}/refund`,
+    { refund_method: refundMethod },
+    { headers: getAuthHeaders() },
+  );
+  return response.data;
+};
+
 export const applyNonGuestCredit = async (id, targetNonGuestFolioId) => {
   const response = await axios.post(
     `${baseUrl}/api/non-guest-credits/${id}/apply`,
