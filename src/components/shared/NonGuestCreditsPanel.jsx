@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { creditOwnerLabel, creditServiceLabel } from "./nonGuestCredits";
+import { canRefundCredit, creditOwnerLabel, creditServiceLabel } from "./nonGuestCredits";
 import { formatDateTime, formatPaymentMethod, money } from "../../utils/report-format";
 import { btn, table } from "./ui";
 import RefundCreditModal from "./RefundCreditModal";
-import { canRefund } from "../../utils/auth";
+import { getStoredStaffRole } from "../../utils/auth";
+import Pagination from "./Pagination";
+import usePagedRows from "../../utils/usePagedRows";
 import { refundNonGuestCredit } from "../../utils/non-guest-folios-api";
 
 // Money the hotel owes back, listed the same way money owed TO the hotel
@@ -14,14 +16,15 @@ import { refundNonGuestCredit } from "../../utils/non-guest-folios-api";
 //
 // A credit is spent against a particular bill, so it is applied from inside
 // that folio (where the target is unambiguous), not from this list. What the
-// list does offer is paying a credit back out (2026-09-28) - to the front
-// desk only, the role responsible for the drawer (owner, 2026-09-10); a
-// waitron sees the list without the button. onRefunded reloads the page's
-// credits afterwards.
+// list does offer is paying a credit back out (2026-09-28), each drawer its
+// own: the F&B floor refunds F&B credits, the front desk laundry ones (see
+// canRefundCredit). onRefunded reloads the page's credits afterwards.
 export default function NonGuestCreditsPanel({ credits = [], loading = false, onRefunded }) {
   const pending = credits.filter((c) => c.status === "pending");
   const total = pending.reduce((sum, c) => sum + Number(c.amount || 0), 0);
-  const refundable = canRefund();
+  const role = getStoredStaffRole();
+  const refundable = pending.some((c) => canRefundCredit(c, role));
+  const pendingPage = usePagedRows(pending);
   const [refundTarget, setRefundTarget] = useState(null);
   const [refunding, setRefunding] = useState(false);
   const [message, setMessage] = useState(null);
@@ -78,7 +81,7 @@ export default function NonGuestCreditsPanel({ credits = [], loading = false, on
                 </tr>
               </thead>
               <tbody>
-                {pending.map((c) => (
+                {pendingPage.rows.map((c) => (
                   <tr key={c.id} className={table.row}>
                     <td className={`${table.td} ${table.stickyTd}`}>{creditOwnerLabel(c)}</td>
                     <td className={table.td}>{c.source_folio?.folio_number || "—"}</td>
@@ -88,9 +91,11 @@ export default function NonGuestCreditsPanel({ credits = [], loading = false, on
                     <td className={`${table.td} font-mono text-base`}>{c.credit_reference}</td>
                     {refundable && (
                       <td className={table.td}>
-                        <button onClick={() => setRefundTarget(c)} disabled={refunding} className={btn.rowDanger}>
-                          Refund
-                        </button>
+                        {canRefundCredit(c, role) && (
+                          <button onClick={() => setRefundTarget(c)} disabled={refunding} className={btn.rowDanger}>
+                            Refund
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -100,6 +105,7 @@ export default function NonGuestCreditsPanel({ credits = [], loading = false, on
           </div>
         </div>
       )}
+      <Pagination page={pendingPage.page} totalPages={pendingPage.totalPages} onPage={pendingPage.setPage} className="mt-0" />
       {refundTarget && (
         <RefundCreditModal
           credit={refundTarget}

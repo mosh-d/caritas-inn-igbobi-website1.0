@@ -33,5 +33,13 @@ export const creditOwnerLabel = (credit) =>
   || credit?.source_folio?.folio_number
   || "Unnamed sale";
 
-export const creditServiceLabel = (credit) =>
-  credit?.source_folio?.service_type === "laundry" ? "Laundry" : "F&B";
+// The kind of sale a credit came off.
+export const creditKind = (credit) => (credit?.source_folio?.service_type === "laundry" ? "laundry" : "fnb");
+
+export const creditServiceLabel = (credit) => (creditKind(credit) === "laundry" ? "Laundry" : "F&B");
+
+// Each drawer pays back its own credits (owner, 2026-09-28): the F&B floor
+// collects F&B money and refunds it, the front desk the laundry. The server
+// refuses the rest (NonGuestCreditsController).
+const REFUNDS_BY_ROLE = { waitron: "fnb", receptionist: "laundry" };
+export const canRefundCredit = (credit, role) => role === "developer" || REFUNDS_BY_ROLE[role] === creditKind(credit);

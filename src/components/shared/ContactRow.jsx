@@ -8,7 +8,8 @@ import { dialablePhone, formatPhone } from "../../utils/phone-format";
 // but always will from a genuine anchor click. The copy button is a
 // sibling, not nested inside the anchor (interactive-in-interactive is
 // invalid HTML and unreliable to click).
-export default function ContactRow({ type, value }) {
+// `tag`: a note beside the label, e.g. an email that bounced.
+export default function ContactRow({ type, value, tag = null }) {
   const isEmail = type === "email";
   const label = isEmail ? "Email" : "Phone";
   const Icon = isEmail ? IoMailOutline : IoCallOutline;
@@ -26,7 +27,7 @@ export default function ContactRow({ type, value }) {
     <>
       <Icon size={22} className="shrink-0 text-[color:var(--text-color)]/60" />
       <div className="min-w-0">
-        <span className="block font-semibold text-[color:var(--text-color)]/68 uppercase tracking-wide text-lg">{label}</span>
+        <span className="flex items-center gap-2 flex-wrap font-semibold text-[color:var(--text-color)]/68 uppercase tracking-wide text-lg">{label}{tag}</span>
         <span className="block font-medium break-all">{shown || "N/A"}</span>
       </div>
     </>

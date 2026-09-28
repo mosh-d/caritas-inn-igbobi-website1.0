@@ -12,6 +12,7 @@ import { isManager, isAccountant } from "../utils/auth";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
 import DateInput from "../components/shared/DateInput";
+import Pagination from "../components/shared/Pagination";
 // Maps a Phase-2 rich entry's entity_type to the deep link that opens it.
 // Two different existing conventions get reused here, each already built
 // for a different page: AdminFolios.jsx/AdminReservations.jsx read ?id=
@@ -397,27 +398,11 @@ export default function AdminAuditTrail() {
               </div>
             </div>
 
-            {pages > 1 && (
-              <div className="flex justify-center items-center gap-4 w-full mt-6">
-                <Button
-                  variant="emphasis"
-                  onClick={() => load(page - 1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo, search: filterSearch })}
-                  disabled={page === 1}
-                  className={page === 1 ? "opacity-30 cursor-not-allowed" : ""}
-                >
-                  Previous
-                </Button>
-                <span className="text-lg font-medium">Page {page} of {pages}</span>
-                <Button
-                  variant="emphasis"
-                  onClick={() => load(page + 1, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo, search: filterSearch })}
-                  disabled={page === pages}
-                  className={page === pages ? "opacity-30 cursor-not-allowed" : ""}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={pages}
+              onPage={(p) => load(p, { staffId: filterStaffId, role: filterRole, action: filterAction, from: filterFrom, to: filterTo, search: filterSearch })}
+            />
           </>
         )}
       </div>

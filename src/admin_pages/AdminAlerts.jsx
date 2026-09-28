@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { IoClose, IoNotificationsOutline, IoMenuOutline } from "react-icons/io5";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
-import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
 import { btn, table } from "../components/shared/ui";
@@ -12,6 +11,7 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 import { MotionDiv, tabEnter } from "../components/shared/motion";
 import { money, formatDate } from "../utils/report-format";
 import GuestName from "../components/shared/GuestName";
+import Pagination from "../components/shared/Pagination";
 
 const daysAgo = (date) => {
   const diff = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
@@ -58,17 +58,6 @@ const timeUntil = (date, now) => {
 
 const PAGE_SIZE = 10;
 
-function Pagination({ page, total, onPage }) {
-  const pages = Math.ceil(total / PAGE_SIZE);
-  if (pages <= 1) return null;
-  return (
-    <div className="flex justify-center items-center gap-4 w-full mt-6">
-      <Button variant="emphasis" onClick={() => onPage(page - 1)} disabled={page === 1} className={page === 1 ? "opacity-30 cursor-not-allowed" : ""}>Previous</Button>
-      <span className="text-lg font-medium">Page {page} of {pages}</span>
-      <Button variant="emphasis" onClick={() => onPage(page + 1)} disabled={page === pages} className={page === pages ? "opacity-30 cursor-not-allowed" : ""}>Next</Button>
-    </div>
-  );
-}
 
 export default function AdminAlertsPage() {
   const navigate = useNavigate();
@@ -324,7 +313,7 @@ export default function AdminAlertsPage() {
                       </table>
                     </div>
                   </div>
-                  <Pagination page={pages.missed} total={missed.length} onPage={(p) => setPage("missed", p)} />
+                  <Pagination page={pages.missed} totalPages={Math.ceil(missed.length / PAGE_SIZE)} onPage={(p) => setPage("missed", p)} />
                 </div>
               )
             )}
@@ -382,7 +371,7 @@ export default function AdminAlertsPage() {
                       </table>
                     </div>
                   </div>
-                  <Pagination page={pages.credits} total={guestCredits.length} onPage={(p) => setPage("credits", p)} />
+                  <Pagination page={pages.credits} totalPages={Math.ceil(guestCredits.length / PAGE_SIZE)} onPage={(p) => setPage("credits", p)} />
                 </div>
               )
             )}
@@ -436,7 +425,7 @@ export default function AdminAlertsPage() {
                       </table>
                     </div>
                   </div>
-                  <Pagination page={pages.unconfirmed} total={unconfirmed.length} onPage={(p) => setPage("unconfirmed", p)} />
+                  <Pagination page={pages.unconfirmed} totalPages={Math.ceil(unconfirmed.length / PAGE_SIZE)} onPage={(p) => setPage("unconfirmed", p)} />
                 </div>
               )
             )}
@@ -486,7 +475,7 @@ export default function AdminAlertsPage() {
                       </table>
                     </div>
                   </div>
-                  <Pagination page={pages.overdue} total={overdue.length} onPage={(p) => setPage("overdue", p)} />
+                  <Pagination page={pages.overdue} totalPages={Math.ceil(overdue.length / PAGE_SIZE)} onPage={(p) => setPage("overdue", p)} />
                 </div>
               )
             )}
@@ -535,7 +524,7 @@ export default function AdminAlertsPage() {
                       </table>
                     </div>
                   </div>
-                  <Pagination page={pages.balances} total={balances.length} onPage={(p) => setPage("balances", p)} />
+                  <Pagination page={pages.balances} totalPages={Math.ceil(balances.length / PAGE_SIZE)} onPage={(p) => setPage("balances", p)} />
                 </div>
               )
             )}

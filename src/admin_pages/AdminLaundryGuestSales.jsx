@@ -15,6 +15,8 @@ import { fetchInHouse } from "../utils/front-office-api";
 import { addFolioItemsBatch, fetchFolioById, recordPayment } from "../utils/folios-api";
 import GuestName from "../components/shared/GuestName";
 import { withGuestTags } from "../utils/guest-tags";
+import Pagination from "../components/shared/Pagination";
+import usePagedRows from "../utils/usePagedRows";
 
 const emptyRow = { reference_id: "", laundry_service_type: "wash_and_iron", quantity: "1" };
 const emptyOrder = { reservation_id: "", bill_no: "", rows: [{ ...emptyRow }] };
@@ -42,6 +44,8 @@ export default function AdminLaundryGuestSales({ asSection = false, hideTitle = 
 
   const [items, setItems] = useState([]);
   const [inHouse, setInHouse] = useState([]);
+  // 10 rows a page (2026-09-28), owing first - who to take a payment from.
+  const inHousePage = usePagedRows([...inHouse].sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0)));
   const [loadingGuests, setLoadingGuests] = useState(true);
   const [order, setOrder] = useState(emptyOrder);
   const [submitting, setSubmitting] = useState(false);
@@ -341,9 +345,7 @@ export default function AdminLaundryGuestSales({ asSection = false, hideTitle = 
               ) : (
                 // Owing folios first, same as Guest Sales — that's who staff
                 // actually need to take a payment from.
-                [...inHouse]
-                  .sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0))
-                  .map((r) => {
+                inHousePage.rows.map((r) => {
                     const isSelected = String(r.folio.id) === String(selectedFolioMeta?.folioId);
                     const balance = Number(r.folio?.balance || 0);
                     return (
@@ -372,6 +374,7 @@ export default function AdminLaundryGuestSales({ asSection = false, hideTitle = 
             </tbody>
           </table>
         </div>
+        <Pagination page={inHousePage.page} totalPages={inHousePage.totalPages} onPage={inHousePage.setPage} className="my-4" />
       </div>
 
       {selectedFolioMeta && (

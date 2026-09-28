@@ -27,6 +27,8 @@ import {
   fetchPendingNonGuestCredits,
   applyNonGuestCredit,
 } from "../utils/non-guest-folios-api";
+import Pagination from "../components/shared/Pagination";
+import { PAGE_SIZE } from "../utils/usePagedRows";
 
 const emptyRow = { reference_id: "", laundry_service_type: "wash_and_iron", quantity: 1 };
 const emptyNewFolio = { guest_name: "", guest_phone: "", bill_no: "", rows: [{ ...emptyRow }] };
@@ -50,6 +52,10 @@ export default function AdminLaundrySalesPage({ asSection = false, hideTitle = f
   const [items, setItems] = useState([]);
   const [folios, setFolios] = useState([]);
   const [loading, setLoading] = useState(true);
+  // 10 sales a page, fetched a page at a time (2026-09-28) - it loaded the
+  // latest 50 into one long table.
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
 
   const [newFolio, setNewFolio] = useState(emptyNewFolio);
@@ -77,14 +83,15 @@ export default function AdminLaundrySalesPage({ asSection = false, hideTitle = f
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchNonGuestFolios({ service_type: "laundry", limit: 50 });
+      const data = await fetchNonGuestFolios({ service_type: "laundry", page, limit: PAGE_SIZE });
       setFolios(data?.data || []);
+      setTotalPages(data?.totalPages || 1);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load laundry sales.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     fetchLaundryItems().then(setItems).catch(() => setItems([]));
@@ -313,6 +320,7 @@ export default function AdminLaundrySalesPage({ asSection = false, hideTitle = f
             </div>
           </div>
         )}
+        <Pagination page={page} totalPages={totalPages} onPage={setPage} />
       </div>
 
       <NonGuestCreditsPanel credits={credits} loading={loading} onRefunded={loadCredits} />

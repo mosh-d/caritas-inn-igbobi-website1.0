@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { IoClose, IoFilter, IoCalendarOutline } from "react-icons/io5";
-import Button from "../components/shared/Button";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
@@ -44,6 +43,8 @@ import DateInput from "../components/shared/DateInput";
 import { BRANCH_ID } from "../utils/branch";
 import GuestName from "../components/shared/GuestName";
 import { withGuestTags } from "../utils/guest-tags";
+import Pagination from "../components/shared/Pagination";
+import EmailStatusTag from "../components/shared/EmailStatusTag";
 const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
 // A reservation's check_in/check_out are UTC-midnight markers for a date.
 const isoDateOf = (d) => (d ? new Date(d).toISOString().slice(0, 10) : "");
@@ -993,6 +994,7 @@ export default function AdminReservationsPage() {
                           {r.is_expired_hold && (
                             <span className="text-sm font-bold uppercase tracking-wide text-orange-700 bg-orange-100 px-2 py-1 rounded-full whitespace-nowrap">Hold Expired</span>
                           )}
+                          <EmailStatusTag status={r.email_status} />
                         </div>
                         <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                       </td>
@@ -1026,15 +1028,7 @@ export default function AdminReservationsPage() {
           </div>
         </div>
 
-        <div className="flex justify-center items-center gap-4 w-full mt-6">
-          {totalPages > 1 && (
-            <>
-              <Button variant="emphasis" onClick={() => setPage(page - 1)} disabled={page === 1} className={page === 1 ? "opacity-30 cursor-not-allowed" : ""}>Previous</Button>
-              <span className="text-lg font-medium">Page {page} of {totalPages}</span>
-              <Button variant="emphasis" onClick={() => setPage(page + 1)} disabled={page === totalPages} className={page === totalPages ? "opacity-30 cursor-not-allowed" : ""}>Next</Button>
-            </>
-          )}
-        </div>
+        <Pagination page={page} totalPages={totalPages} onPage={setPage} />
       </div>
 
       {/* ==== Reservation Detail Modal ==== */}
@@ -1150,7 +1144,7 @@ export default function AdminReservationsPage() {
 
               {/* Contact */}
               <div className="grid grid-cols-1 gap-4">
-                <ContactRow type="email" value={res.guest_email} />
+                <ContactRow type="email" value={res.guest_email} tag={<EmailStatusTag status={res.email_status} />} />
                 <ContactRow type="phone" value={res.phone_number} />
               </div>
 

@@ -10,6 +10,7 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 import DateInput from "../components/shared/DateInput";
 import { money, formatDate } from "../utils/report-format";
 import GuestName from "../components/shared/GuestName";
+import Pagination from "../components/shared/Pagination";
 
 function yesterday() {
   const d = new Date();
@@ -227,27 +228,7 @@ export default function AdminNightAudit() {
               </div>
             </div>
 
-            {historyPages > 1 && (
-              <div className="flex justify-center items-center gap-4 w-full mt-6">
-                <Button
-                  variant="emphasis"
-                  onClick={() => loadHistory(historyPage - 1)}
-                  disabled={historyPage === 1}
-                  className={historyPage === 1 ? "opacity-30 cursor-not-allowed" : ""}
-                >
-                  Previous
-                </Button>
-                <span className="text-lg font-medium">Page {historyPage} of {historyPages}</span>
-                <Button
-                  variant="emphasis"
-                  onClick={() => loadHistory(historyPage + 1)}
-                  disabled={historyPage === historyPages}
-                  className={historyPage === historyPages ? "opacity-30 cursor-not-allowed" : ""}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
+            <Pagination page={historyPage} totalPages={historyPages} onPage={loadHistory} />
           </>
         )}
       </div>

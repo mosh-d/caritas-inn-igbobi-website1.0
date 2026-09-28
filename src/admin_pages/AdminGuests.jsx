@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoClose, IoFilter, IoPeopleOutline } from 'react-icons/io5';
-import Button from '../components/shared/Button';
 import ManagerOnlyTag from '../components/shared/ManagerOnlyTag';
 import Modal from '../components/shared/Modal';
 import PageHeading from '../components/shared/PageHeading';
@@ -26,6 +25,7 @@ import { useWebSocketContext } from '../context/WebSocketContext';
 import { money } from '../utils/report-format';
 import { GuestTagPills } from '../components/shared/GuestName';
 import { GUEST_TYPES, guestTagLabel } from '../utils/guest-tags';
+import Pagination from '../components/shared/Pagination';
 
 const RESERVATIONS_PAGE_SIZE = 5;
 
@@ -436,33 +436,7 @@ export default function AdminGuestsPage() {
           </div>
         </div>
 
-        <div className='flex justify-center items-center gap-4 w-full mt-6'>
-          {totalPages > 1 && (
-            <>
-              <Button
-                variant='emphasis'
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-                className={page === 1 ? 'opacity-30 cursor-not-allowed' : ''}
-              >
-                Previous
-              </Button>
-              <span className='text-lg font-medium'>
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant='emphasis'
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-                className={
-                  page === totalPages ? 'opacity-30 cursor-not-allowed' : ''
-                }
-              >
-                Next
-              </Button>
-            </>
-          )}
-        </div>
+        <Pagination page={page} totalPages={totalPages} onPage={setPage} />
       </div>
 
       {/* ==== Guest Detail / Edit Modal ==== */}
@@ -681,29 +655,7 @@ export default function AdminGuestsPage() {
                         );
                       })}
                     </div>
-                    {reservationsTotalPages > 1 && (
-                      <div className='flex justify-center items-center gap-4 w-full mt-2'>
-                        <Button
-                          variant='emphasis'
-                          onClick={() => setReservationsPage((p) => p - 1)}
-                          disabled={reservationsPage === 1}
-                          className={reservationsPage === 1 ? 'opacity-30 cursor-not-allowed' : ''}
-                        >
-                          Previous
-                        </Button>
-                        <span className='text-lg font-medium'>
-                          Page {reservationsPage} of {reservationsTotalPages}
-                        </span>
-                        <Button
-                          variant='emphasis'
-                          onClick={() => setReservationsPage((p) => p + 1)}
-                          disabled={reservationsPage === reservationsTotalPages}
-                          className={reservationsPage === reservationsTotalPages ? 'opacity-30 cursor-not-allowed' : ''}
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    )}
+                    <Pagination page={reservationsPage} totalPages={reservationsTotalPages} onPage={setReservationsPage} className='mt-2' />
                   </>
                 );
               })()

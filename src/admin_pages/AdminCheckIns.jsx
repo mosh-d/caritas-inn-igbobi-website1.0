@@ -35,6 +35,7 @@ import { BRANCH_ID } from "../utils/branch";
 import { formatDate } from "../utils/report-format";
 import GuestName from "../components/shared/GuestName";
 import { GuestTagPills } from "../components/shared/GuestName";
+import EmailStatusTag from "../components/shared/EmailStatusTag";
 const todayISO = () => adminTodayISO();
 // A Walk-In's check-in is always "right now" — but the reservation it
 // creates must be dated by the hotel's business day (6am Lagos cutover, see
@@ -657,7 +658,10 @@ export default function AdminCheckInsPage() {
                     ) : (
                       reservations.map((r) => (
                         <tr key={r.id} className={table.row}>
-                          <td className={`${table.td} ${table.stickyTd} font-medium`}><GuestName name={r.guest_name} tags={r.guest_tags} /></td>
+                          <td className={`${table.td} ${table.stickyTd} font-medium`}>
+                            <GuestName name={r.guest_name} tags={r.guest_tags} />
+                            <EmailStatusTag status={r.email_status} className="ml-2" />
+                          </td>
                           <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                           <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.check_out)}</td>
                           <td className={table.td}><StatusBadge status={r.status} /></td>

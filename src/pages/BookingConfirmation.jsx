@@ -10,6 +10,7 @@ import { createReservation, fetchBlockedDates } from "../utils/booking-api";
 import { localTodayISO } from "../utils/date-utils";
 import { toast } from "react-toastify";
 import { useWebSocketContext } from "../context/WebSocketContext";
+import { suggestEmail } from "../utils/email-suggest";
 
 // Define the context type (optional, for TypeScript; can omit if not using TS)
 const useSharedContext = () => {
@@ -176,6 +177,8 @@ export default function BookingConfirmationPage() {
     updateTotalPayment(roomType, value);
   };
 
+  const emailSuggestion = suggestEmail(formData.email);
+
   // Validation logic
   const isFormValid = () => {
     const requiredFields = [
@@ -236,17 +239,8 @@ export default function BookingConfirmationPage() {
 
   // Handle booking confirmation
   const handleConfirmBooking = async () => {
-    console.log("=== CONFIRM BOOKING CLICKED ===");
-    console.log("Form data:", formData);
-    console.log("Room type:", roomType);
-    console.log("Number of rooms:", numberOfRooms);
-    console.log("Check-in:", checkInDate);
-    console.log("Check-out:", checkOutDate);
-    console.log("Is form valid?", isFormValid());
 
     if (!isFormValid()) {
-      console.log("Form validation failed");
-      console.log("Missing fields:", getMissingFields());
       setFormError("Please fill in all required fields");
       return;
     }
@@ -259,13 +253,10 @@ export default function BookingConfirmationPage() {
 
     try {
       setIsSubmitting(true);
-      console.log("Starting booking submission...");
 
       // Format dates
       const checkIn = formatDate(checkInDate);
       const checkOut = formatDate(checkOutDate);
-      console.log("Formatted check-in:", checkIn);
-      console.log("Formatted check-out:", checkOut);
 
       if (!checkIn || !checkOut) {
         throw new Error(
@@ -284,9 +275,7 @@ export default function BookingConfirmationPage() {
         phone_number: formData.phone,
       };
 
-      console.log("Sending reservation payload:", reservationPayload);
       const response = await createReservation(reservationPayload);
-      console.log("Reservation response:", response);
 
       if (response.reservation_id) {
         setReservationData({
@@ -300,14 +289,11 @@ export default function BookingConfirmationPage() {
         });
         setShowSuccessModal(true);
         await fetchAvailableRooms(checkInDate, checkOutDate);
-        console.log("Success modal shown");
       }
     } catch (error) {
-      console.error("Error creating reservation:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
+      // Status and message only - the request carried the guest's name,
+      // email and phone, which don't belong in a browser console.
+      console.error("Booking request failed:", error.response?.status, error.response?.data?.message || error.message);
 
       if (
         error.response?.status === 409 &&
@@ -327,7 +313,6 @@ export default function BookingConfirmationPage() {
       }
     } finally {
       setIsSubmitting(false);
-      console.log("=== BOOKING PROCESS COMPLETE ===");
     }
   };
 
@@ -393,17 +378,30 @@ export default function BookingConfirmationPage() {
                   </div>
 
                   <div className="flex flex-row gap-[2.4rem]">
-                    <CustomInput
-                      variant="default"
-                      type="email"
-                      id="email"
-                      label="Email Address"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                    >
-                      Enter your email address
-                    </CustomInput>
+                    <div className="flex w-full flex-col gap-[0.6rem]">
+                      <CustomInput
+                        variant="default"
+                        type="email"
+                        id="email"
+                        label="Email Address"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                      >
+                        Enter your email address
+                      </CustomInput>
+                      {/* A mistyped domain ("gmial.com") is the commonest way
+                          a real guest's confirmation goes nowhere (2026-09-28). */}
+                      {emailSuggestion && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((current) => ({ ...current, email: emailSuggestion }))}
+                          className="self-start text-left text-lg cursor-pointer"
+                        >
+                          Did you mean <span className="font-bold underline">{emailSuggestion}</span>?
+                        </button>
+                      )}
+                    </div>
 
                     {/* Not a CustomInput: the country code has to be picked,
                         not typed. Styled to match one so the row still reads

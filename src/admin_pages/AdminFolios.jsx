@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { IoClose, IoReceiptOutline } from "react-icons/io5";
-import Button from "../components/shared/Button";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
@@ -37,6 +36,7 @@ import {
 } from "../utils/folios-api";
 import GuestName from "../components/shared/GuestName";
 import { withGuestTags } from "../utils/guest-tags";
+import Pagination from "../components/shared/Pagination";
 
 const CHARGE_TYPES = ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
 
@@ -855,13 +855,7 @@ export default function AdminFoliosPage() {
           </div>
         </div>
 
-        {subTab === "all" && totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4 w-full mt-6">
-            <Button variant="emphasis" onClick={() => setPage(page - 1)} disabled={page === 1} className={page === 1 ? "opacity-30 cursor-not-allowed" : ""}>Previous</Button>
-            <span className="text-lg font-medium">Page {page} of {totalPages}</span>
-            <Button variant="emphasis" onClick={() => setPage(page + 1)} disabled={page === totalPages} className={page === totalPages ? "opacity-30 cursor-not-allowed" : ""}>Next</Button>
-          </div>
-        )}
+        {subTab === "all" && <Pagination page={page} totalPages={totalPages} onPage={setPage} />}
       </div>
 
       {/* ==== Folio Detail Modal ==== */}

@@ -15,6 +15,8 @@ import { fetchInHouse } from "../utils/front-office-api";
 import { addFolioItemsBatch, fetchFolioById, fetchPendingFolios, recordPayment } from "../utils/folios-api";
 import GuestName from "../components/shared/GuestName";
 import { withGuestTags } from "../utils/guest-tags";
+import Pagination from "../components/shared/Pagination";
+import usePagedRows from "../utils/usePagedRows";
 
 const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", is_complementary: false };
 const emptyOrder = { reservation_id: "", bill_no: "", rows: [{ ...emptyRow }] };
@@ -59,6 +61,12 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
   const [checkedOutFolios, setCheckedOutFolios] = useState([]);
   const [loadingCheckedOut, setLoadingCheckedOut] = useState(true);
   const [folioTab, setFolioTab] = useState("in-house");
+  // 10 rows a page (2026-09-28). Owing first, highest balance first - who
+  // staff need to take a payment from; the most recently checked out first.
+  const inHousePage = usePagedRows([...inHouse].sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0)));
+  const checkedOutPage = usePagedRows(
+    [...checkedOutFolios].sort((a, b) => new Date(b.reservation?.actual_check_out || 0) - new Date(a.reservation?.actual_check_out || 0)),
+  );
   useEffect(() => {
     if (!canAccess) return;
     fetchFoodItems().then(setFoodItems).catch(() => {});
@@ -360,9 +368,7 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
                   // Owing folios first (highest balance first) — that's who
                   // staff actually need to chase down and take a payment
                   // from; a settled or credit folio can sit further down.
-                  [...inHouse]
-                    .sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0))
-                    .map((r) => {
+                  inHousePage.rows.map((r) => {
                       const isSelected = String(r.folio.id) === String(selectedFolioMeta?.folioId);
                       const balance = Number(r.folio?.balance || 0);
                       return (
@@ -417,9 +423,7 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
                   // most likely to still be fresh in a guest's memory (or to
                   // still be reachable by phone), and the one staff most
                   // likely mean when they say "the guest who just left".
-                  [...checkedOutFolios]
-                    .sort((a, b) => new Date(b.reservation?.actual_check_out || 0) - new Date(a.reservation?.actual_check_out || 0))
-                    .map((f) => {
+                  checkedOutPage.rows.map((f) => {
                       const isSelected = String(f.id) === String(selectedFolioMeta?.folioId);
                       const guestName = f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : (f.reservation?.guest_name || "N/A");
                       return (
@@ -443,6 +447,11 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
               </tbody>
             </table>
           </div>
+        )}
+        {folioTab === "in-house" ? (
+          <Pagination page={inHousePage.page} totalPages={inHousePage.totalPages} onPage={inHousePage.setPage} className="my-4" />
+        ) : (
+          <Pagination page={checkedOutPage.page} totalPages={checkedOutPage.totalPages} onPage={checkedOutPage.setPage} className="my-4" />
         )}
       </div>
 
