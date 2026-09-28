@@ -7,7 +7,7 @@ import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
 import { table, field } from "../components/shared/ui";
 import { accessDenial } from "../components/shared/adminNavItems";
-import { fetchAuditLogHistory, fetchAuditStaffOptions } from "../utils/audit-log-api";
+import { fetchAuditActionLabels, fetchAuditLogHistory, fetchAuditStaffOptions } from "../utils/audit-log-api";
 import { isManager, isAccountant } from "../utils/auth";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
@@ -38,36 +38,6 @@ const LINK_LABELS = {
   room_type: "View room →",
   room_inventory: "View room →",
   night_audit: "View night audit →",
-};
-
-// Every action code any controller currently records — see each
-// controller's auditLogsService.record({ action: ... }) call. Kept as one
-// list here so the filter dropdown and the table's fallback label always
-// agree with what's actually being logged.
-const ACTION_LABELS = {
-  "reservation.early_checkout": "Early checkout",
-  "drink_item.stock_movement": "Stock movement recorded",
-  "payment.record": "Payment recorded",
-  "payment.refund": "Payment refunded",
-  "folio.close": "Folio closed",
-  "folio.post_item": "Charge posted",
-  "deposit.record": "Deposit recorded",
-  "deposit.apply": "Deposit applied",
-  "deposit.refund": "Deposit refunded",
-  "room.price_update": "Room price updated",
-  "room.status_change": "Room status changed",
-  "shift.select": "Shift recorded",
-  "ota_settlement.record": "OTA payment expected",
-  "ota_settlement.paid": "OTA payment received",
-  "reservation.confirm": "Reservation confirmed",
-  "reservation.cancel": "Reservation cancelled",
-  "reservation.checkin": "Check-in",
-  "reservation.checkout": "Check-out",
-  "reservation.extend": "Stay extended",
-  // Written by the PMS itself, not a person (2026-09-18).
-  "night_audit.charge": "Night audit charge",
-  "night_audit.credit_applied": "Night audit: credit applied (PB)",
-  "night_audit.run": "Night audit run",
 };
 
 // Every role whose actions can appear in a BRANCH audit trail. accountant
@@ -121,6 +91,8 @@ export default function AdminAuditTrail() {
   const [error, setError] = useState(null);
 
   const [staffOptions, setStaffOptions] = useState([]);
+  // Action code -> name, from the server (see fetchAuditActionLabels).
+  const [actionLabels, setActionLabels] = useState({});
   // Deep links from the reports' Action columns (see AuditLink in
   // reportUi.jsx) carry their filters in the URL. They seed the filters at the
   // very first render, so every effect below sees them from the start —
@@ -189,6 +161,7 @@ export default function AdminAuditTrail() {
     setFilterSearch(fromUrl.search);
     load(1, fromUrl);
     fetchAuditStaffOptions().then(setStaffOptions).catch(() => {});
+    fetchAuditActionLabels().then(setActionLabels).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canView, urlKey]);
 
@@ -320,7 +293,7 @@ export default function AdminAuditTrail() {
             className={field.select}
           >
             <option value="">All actions</option>
-            {Object.entries(ACTION_LABELS).map(([value, label]) => (
+            {Object.entries(actionLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>

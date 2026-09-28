@@ -14,6 +14,15 @@ export const fetchAuditLogHistory = async (params = {}) => {
   return response.data;
 };
 
+// Every action code the server records and its name, for the action filter
+// (2026-09-28) - one list, kept with the code that records the actions.
+export const fetchAuditActionLabels = async () => {
+  const response = await axios.get(`${baseUrl}/api/audit-logs/actions`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
 // Distinct staff who have at least one logged action for this branch —
 // feeds the Audit Trail page's staff filter dropdown.
 export const fetchAuditStaffOptions = async () => {

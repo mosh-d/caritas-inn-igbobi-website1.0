@@ -237,7 +237,12 @@ export default function AdminGuestsPage() {
         contactInfo[key] = editForm[key];
       }
       await updateGuest(selectedGuest.id, contactInfo);
-      if (canManageGuestStatus) {
+      // Only when it actually changed (2026-09-28) - sending it on every
+      // save logged a blacklist change each time a manager saved anything.
+      const blacklistChanged =
+        Boolean(editForm.is_blacklisted) !== Boolean(selectedGuest.is_blacklisted) ||
+        (editForm.blacklist_reason || '') !== (selectedGuest.blacklist_reason || '');
+      if (canManageGuestStatus && blacklistChanged) {
         await updateGuestStatus(selectedGuest.id, {
           is_blacklisted: editForm.is_blacklisted,
           blacklist_reason: editForm.blacklist_reason,
