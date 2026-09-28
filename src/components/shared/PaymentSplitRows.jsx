@@ -1,7 +1,5 @@
 import { field, btn } from "./ui";
-import { formatPaymentMethod } from "../../utils/report-format";
-
-const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
+import { formatPaymentMethod, PAYMENT_METHODS } from "../../utils/report-format";
 
 // A guest can pay/deposit partly with one method and partly with another
 // (e.g. ₦30k cash + ₦20k transfer) in a single action — this renders that as

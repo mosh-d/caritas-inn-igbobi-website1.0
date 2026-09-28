@@ -31,9 +31,8 @@ import { fetchFolios, recordPayment, addFolioItem } from "../utils/folios-api";
 
 import DateInput from "../components/shared/DateInput";
 import { MotionDiv, tabEnter } from "../components/shared/motion";
-const BRANCH_ID = 3;
-const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
+import { BRANCH_ID } from "../utils/branch";
+import { formatDate } from "../utils/report-format";
 const todayISO = () => adminTodayISO();
 // A Walk-In's check-in is always "right now" — but the reservation it
 // creates must be dated by the hotel's business day (6am Lagos cutover, see

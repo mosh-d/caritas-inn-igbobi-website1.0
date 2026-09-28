@@ -5,8 +5,6 @@ const API_BASE_URL = SERVER_BASE_URL;
 
 export const createReservation = async (reservationData) => {
   try {
-    console.log("Sending reservation data to:", API_BASE_URL);
-    console.log("Payload:", JSON.stringify(reservationData, null, 2));
     // Ensure API_BASE_URL doesn't end with a slash to prevent double slashes
     const baseUrl = API_BASE_URL.endsWith("/")
       ? API_BASE_URL.slice(0, -1)
@@ -21,15 +19,11 @@ export const createReservation = async (reservationData) => {
         withCredentials: true,
       },
     );
-    console.log("Reservation response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Error details:", {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
-    });
+    // Status and server message only - the request carried the guest's
+    // name, email and phone, which don't belong in a browser console.
+    console.error("Booking request failed:", error.response?.status, error.response?.data?.message || error.message);
     throw error;
   }
 };

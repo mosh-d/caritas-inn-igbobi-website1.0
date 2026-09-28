@@ -1,28 +1,22 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { Helmet } from "react-helmet";
-import { fetchRoomDetails } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { localTodayISO } from "../utils/date-utils";
 import MainNavBar from "../components/shared/MainNavBar";
 import axios from "axios";
-import { generateHotelSchema } from "../utils/seoUtils";
 import SEO from "../components/seo/SEO";
 import SafeHelmet from "../components/seo/SafeHelmet";
 import SchemaMarkup from "../components/shared/SchemaMarkup";
 import { MotionConfig, MotionDiv } from "../components/shared/motion";
 import { SERVER_BASE_URL } from "../utils/server-config";
+import { BRANCH_ID } from "../utils/branch";
 
 const API_BASE_URL = SERVER_BASE_URL;
-
-// Generate structured data for the hotel
-const hotelStructuredData = generateHotelSchema();
 
 export default function RootLayout() {
   const location = useLocation();
   const isHome = location.pathname === "/";
-  const isAbout = location.pathname === "/about";
-  const isContact = location.pathname === "/contact";
 
   // Shared state for dates
   const [checkInDate, setCheckInDate] = useState("");
@@ -34,7 +28,7 @@ export default function RootLayout() {
   const [roomTypeId, setRoomTypeId] = useState(null);
   const [totalPayment, setTotalPayment] = useState(0);
   const [roomPrices, setRoomPrices] = useState({});
-  const [branchId] = useState(3); // Caritas Inn Igbobi branch ID
+  const branchId = BRANCH_ID;
   const [roomTypes, setRoomTypes] = useState([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
 
@@ -181,7 +175,7 @@ export default function RootLayout() {
   }, [checkInDate, checkOutDate]);
 
   // Subscribe to WebSocket updates
-  const { isConnected, subscribe } = useWebSocketContext();
+  const { subscribe } = useWebSocketContext();
   
   useEffect(() => {
     const unsubscribe = subscribe(handleRoomsUpdated);

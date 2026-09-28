@@ -1,7 +1,7 @@
 // Single shared source for how each room status is labeled/colored, so the
 // tag looks and reads identically everywhere it shows up (Rooms page, Room
 // Chart, In-House, ...) instead of drifting between per-page copies.
-export const ROOM_STATUS_META = {
+const ROOM_STATUS_META = {
   available: { label: "Vacant", className: "bg-green-100 text-green-700" },
   occupied: { label: "Occupied", className: "bg-blue-100 text-blue-700" },
   out_of_order: { label: "Out of Order", className: "bg-red-100 text-red-700" },

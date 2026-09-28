@@ -91,13 +91,6 @@ export default function HeroSection() {
     setCheckInDate,
     checkOutDate,
     setCheckOutDate,
-    numberOfRooms,
-    setNumberOfRooms,
-    roomType,
-    setRoomType,
-    totalPayment,
-    calculateTotalPayment,
-    updateTotalPayment,
   } = useSharedContext();
 
   return (

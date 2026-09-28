@@ -116,15 +116,24 @@ export default function AdminRootLayout() {
     onChange: shifts[role] ? () => setChangingRole(role) : undefined,
   }));
 
-  // Anchor every admin-facing date helper to the server's clock, once per
-  // session. A front-desk PC with a wrong clock or timezone otherwise shows
-  // the wrong day's arrivals and defaults every report to the wrong date —
-  // the client half of the fix that followed the 2026-08-11 midnight
-  // walk-in incident. Failure is deliberately silent: the helpers keep
-  // using the device clock exactly as before, so a network blip degrades to
-  // the old behaviour rather than blocking the page.
   const [clockDriftMinutes, setClockDriftMinutes] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+
+  // Anchor every admin-facing date helper to the server's clock, once per
+  // signed-in session. A front-desk PC with a wrong clock or timezone
+  // otherwise shows the wrong day's arrivals and defaults every report to
+  // the wrong date — the client half of the fix that followed the
+  // 2026-08-11 midnight walk-in incident. Failure is deliberately silent:
+  // the helpers keep using the device clock exactly as before, so a network
+  // blip degrades to the old behaviour rather than blocking the page.
+  //
+  // Keyed on isAuthenticated (2026-09-27 audit): the endpoint needs a
+  // login, and this used to run once on mount - on the login screen, before
+  // there was a token - so it was refused, and nothing retried after
+  // signing in. Every session that began at the login screen ran on the
+  // device clock.
   useEffect(() => {
+    if (!isAuthenticated) return;
     let cancelled = false;
     fetchBusinessDate()
       .then((d) => {
@@ -134,9 +143,7 @@ export default function AdminRootLayout() {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, []);
-
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  }, [isAuthenticated]);
   const [sessionExpired, setSessionExpired] = useState(false);
 
   // Raised from the axios interceptor (module code, no component to dispatch

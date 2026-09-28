@@ -27,10 +27,9 @@ import { hasPassedNoonCutoff } from "../utils/date-utils";
 import RoomStatusTag from "../components/shared/RoomStatusTag";
 
 import DateInput from "../components/shared/DateInput";
+import { money, formatDate } from "../utils/report-format";
 const roomStatusKey = (roomTypeId, roomNumber) => `${roomTypeId}::${roomNumber}`;
 
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const isOverdue = (checkOut) => checkOut && hasPassedNoonCutoff(checkOut);
 
 export default function AdminInHousePage() {

@@ -1,6 +1,7 @@
 // Using environment variables with fallbacks
 import { SERVER_BASE_URL } from "./server-config";
 import { notifySessionExpired } from "./sessionExpiry";
+import { BRANCH_ID } from "./branch";
 
 const API_BASE_URL = SERVER_BASE_URL;
 const API_URL = `${API_BASE_URL}/api/users`; // Added /api to match backend routes
@@ -8,7 +9,6 @@ const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || "auth_token";
 const REFRESH_TOKEN_KEY = "auth_refresh_token";
 const USER_KEY = "admin_user";
 const BRANCH_INFO_KEY = "branch_info";
-const BRANCH_ID = 3; // Caritas Inn Igbobi branch ID
 
 const persistSession = (data) => {
   localStorage.setItem(TOKEN_KEY, data.token);
@@ -106,8 +106,8 @@ export const login = async (staffRole, password) => {
 
 // Individual-account login, additive alongside the shared branch/role login()
 // above — see docs/STAFF-ACCOUNTS-PLAN.md and docs/TERMINAL-SCRIPTS.md in the
-// backend repo. branch_id is still the hardcoded BRANCH_ID for this site,
-// same as every other login call — it's also how a "developer" account's
+// backend repo. branch_id is this site's BRANCH_ID (utils/branch.js), same
+// as every other login call — it's also how a "developer" account's
 // session gets scoped to this branch, since developer accounts have no
 // branch of their own.
 export const loginStaff = async (username, password) => {

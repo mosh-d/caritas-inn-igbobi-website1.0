@@ -35,10 +35,9 @@ import { isAccountant, isReceptionist, isStorekeeper, isWaitron } from "../utils
 // them — a plain component file can't co-export helper functions/consts
 // alongside its default export (breaks Fast Refresh), so this couldn't just
 // live here.
-import { money, pct, formatDate, formatDateTime } from "../utils/report-format";
+import { money, pct, formatDate, formatDateTime, formatPaymentMethod } from "../utils/report-format";
 import { canViewAuditTrail } from "../components/shared/adminNavItems";
 import { AuditLink, ReportSection, TableHead, EmptyRow, SummaryCard, OccupancyBadge, StaffActivitySection } from "../components/shared/reportUi";
-import { formatPaymentMethod } from "../utils/report-format";
 
 import DateInput from "../components/shared/DateInput";
 import { MotionDiv, tabEnter } from "../components/shared/motion";

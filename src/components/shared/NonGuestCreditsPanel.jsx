@@ -1,8 +1,6 @@
 import { creditOwnerLabel, creditServiceLabel } from "./nonGuestCredits";
-import { formatDateTime } from "../../utils/report-format";
+import { formatDateTime, money } from "../../utils/report-format";
 import { table } from "./ui";
-
-const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 // Money the hotel owes back, listed the same way money owed TO the hotel
 // already is. Until now an overpayment on a walk-in bill went into a credit

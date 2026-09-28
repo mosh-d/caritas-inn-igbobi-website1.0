@@ -135,7 +135,6 @@ export default function DatePicker({
               const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
               const disabled = isDisabled(dateStr);
               const isBlocked = blockedSet.has(dateStr);
-              const isPast = dateStr < effectiveMin;
               const isSelected = dateStr === value;
               const isToday = dateStr === today;
 

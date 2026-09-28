@@ -22,10 +22,10 @@ import {
 } from '../utils/guests-api';
 import { isManager } from '../utils/auth';
 import { useWebSocketContext } from '../context/WebSocketContext';
+import { money } from '../utils/report-format';
 
 const GUEST_TYPES = ['walk-in', 'corporate', 'group', 'VIP'];
 const RESERVATIONS_PAGE_SIZE = 5;
-const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 // Ordinary contact-info fields, saved via PUT /api/guests/:id (any staff).
 // Blacklist status/reason are saved separately via PATCH /:id/status

@@ -1,8 +1,8 @@
 import Modal from "./Modal";
 import { btn } from "./ui";
 import { getStoredBranch, getStoredStaffUsername } from "../../utils/auth";
+import { money } from "../../utils/report-format";
 
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDateTime = (d) =>
   new Date(d).toLocaleString("en-US", { timeZone: "Africa/Lagos", dateStyle: "medium", timeStyle: "short" });
 

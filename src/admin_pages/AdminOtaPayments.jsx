@@ -6,8 +6,7 @@ import Modal from "../components/shared/Modal";
 import StatusBadge from "../components/shared/StatusBadge";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchOtaSettlements, markOtaSettlementPaid } from "../utils/ota-api";
-
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+import { money } from "../utils/report-format";
 
 // Money owed by OTAs rather than by guests.
 //

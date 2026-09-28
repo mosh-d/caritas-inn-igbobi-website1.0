@@ -8,7 +8,7 @@ import FolioBalanceModal from "../components/shared/FolioBalanceModal";
 import TransactionReceiptModal from "../components/shared/TransactionReceiptModal";
 import OrderItemRows from "../components/shared/OrderItemRows";
 import { btn, field, table } from "../components/shared/ui";
-import { formatDateTime } from "../utils/report-format";
+import { formatDateTime, money, formatDate } from "../utils/report-format";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
 import { fetchInHouse } from "../utils/front-office-api";
@@ -21,9 +21,6 @@ const emptyOrder = { reservation_id: "", bill_no: "", rows: [{ ...emptyRow }] };
 // the guest paid," not the fuller adjustment/refund/closing workflow that
 // stays Folios-page-only.
 const emptyPaymentForm = { splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "" };
-
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";
 
 // Dedicated order-taking page for an in-house guest's room folio —
 // AdminFolios.jsx's generic "Add a Charge" form used to be the only way to

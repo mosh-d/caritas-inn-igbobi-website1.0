@@ -13,7 +13,6 @@ import ErrorPage from "./pages/Error";
 import AdminOverview from "./admin_pages/AdminOverview";
 // Bookings tab retired in favor of Reservations (which now also has Confirm/Early-Checkout/Export).
 // Kept here, commented out, in case we need to fall back to it.
-// import AdminBookings from "./admin_pages/AdminBookings";
 import AdminRooms from "./admin_pages/AdminRooms";
 import AdminRoomChart from "./admin_pages/AdminRoomChart";
 import AdminReservations from "./admin_pages/AdminReservations";
@@ -59,7 +58,6 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminLoginPage /> },
       { path: "overview", element: <AdminOverview /> },
-      // { path: "bookings", element: <AdminBookings /> },
       { path: "rooms", element: <AdminRooms /> },
       { path: "room-chart", element: <AdminRoomChart /> },
       { path: "reservations", element: <AdminReservations /> },

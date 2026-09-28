@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { IoChevronDown, IoChevronForward } from "react-icons/io5";
 import { btn, field } from "./ui";
-
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+import { money } from "../../utils/report-format";
 
 // The item lines of one bill, shared by Guest Sales and Non-Guest Sales —
 // both post the same food/drink lines, and Non-Guest additionally has the

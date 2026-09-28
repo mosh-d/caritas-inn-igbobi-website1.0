@@ -8,7 +8,7 @@ import TransactionReceiptModal from "../components/shared/TransactionReceiptModa
 import FolioBalanceModal from "../components/shared/FolioBalanceModal";
 import { LAUNDRY_SERVICE_TYPES } from "../components/shared/laundryServices";
 import { btn, field, table } from "../components/shared/ui";
-import { formatDateTime } from "../utils/report-format";
+import { formatDateTime, money } from "../utils/report-format";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchLaundryItems } from "../utils/menu-api";
 import { fetchInHouse } from "../utils/front-office-api";
@@ -17,8 +17,6 @@ import { addFolioItemsBatch, fetchFolioById, recordPayment } from "../utils/foli
 const emptyRow = { reference_id: "", laundry_service_type: "wash_and_iron", quantity: "1" };
 const emptyOrder = { reservation_id: "", bill_no: "", rows: [{ ...emptyRow }] };
 const emptyPaymentForm = { splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "" };
-
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 /**
  * An in-house guest's laundry, posted to their own room folio.

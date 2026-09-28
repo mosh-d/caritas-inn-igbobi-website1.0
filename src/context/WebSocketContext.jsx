@@ -3,10 +3,9 @@ import { io } from 'socket.io-client';
 import { SOCKET_SERVER_URL } from '../utils/server-config';
 import { fetchAlerts } from '../utils/alerts-api';
 import { canAccessNavItem } from '../components/shared/adminNavItems';
+import { BRANCH_ID } from '../utils/branch';
 
 const WebSocketContext = createContext(null);
-
-const BRANCH_ID = import.meta.env.VITE_BRANCH_ID || '3';
 
 // How long the socket has to stay disconnected before pages fall back to a
 // plain HTTP refetch. The socket and the REST API are separate transports —
@@ -53,6 +52,9 @@ function WebSocketProvider({ children }) {
   // re-sync after login — the mount-time fetch fails silently on the
   // public site / login screen (no auth yet) and would leave the badge at 0.
   const refreshAlertCount = useCallback(() => {
+    // Only for a role with an Alerts page - the server refuses the rest
+    // (2026-09-27 audit), so polling for them would only ever fail.
+    if (!canAccessNavItem("/admin/alerts")) return;
     fetchAlerts()
       .then((data) => syncAlertCount(data.total ?? 0))
       .catch(() => {});
@@ -167,7 +169,7 @@ function WebSocketProvider({ children }) {
       if (disconnectedIntervalRef.current) clearInterval(disconnectedIntervalRef.current);
       if (reservationRefreshTimerRef.current) clearTimeout(reservationRefreshTimerRef.current);
     };
-  }, []);
+  }, [syncAlertCount]);
 
   const subscribe = useCallback((callback, type = 'rooms') => {
     const targetSet =

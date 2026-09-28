@@ -8,18 +8,7 @@ import { runNightAudit, fetchNightAuditHistory } from "../utils/night-audit-api"
 import { useWebSocketContext } from "../context/WebSocketContext";
 
 import DateInput from "../components/shared/DateInput";
-const money = (v) =>
-  `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-
-const formatDate = (d) =>
-  d
-    ? new Date(d).toLocaleDateString("en-US", {
-        timeZone: "Africa/Lagos",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "—";
+import { money, formatDate } from "../utils/report-format";
 
 function yesterday() {
   const d = new Date();

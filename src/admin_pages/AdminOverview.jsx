@@ -29,6 +29,7 @@ import { fetchReportsDashboard } from "../utils/reports-api";
 import { fetchNightAuditHistory } from "../utils/night-audit-api";
 import { fetchReservations } from "../utils/reservations-pms-api";
 import { adminTodayISO } from "../utils/date-utils";
+import { money } from "../utils/report-format";
 
 // Local-getter based, not toISOString() — toISOString() always converts to
 // UTC first, which for Lagos (WAT, UTC+1) silently reports the wrong
@@ -52,7 +53,6 @@ const yesterdayISO = () => {
   d.setDate(d.getDate() - 1);
   return toLocalISO(d);
 };
-const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric" }) : "N/A";
 

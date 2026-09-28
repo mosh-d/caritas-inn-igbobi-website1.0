@@ -21,10 +21,9 @@ import {
   deleteLaundryItem,
 } from "../utils/menu-api";
 import StatusBadge from "../components/shared/StatusBadge";
+import { money } from "../utils/report-format";
 
 const EMPTY_LAUNDRY_FORM = { name: "", wash_and_iron_price: "", ironing_only_price: "" };
-
-const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 export default function AdminMenu() {
   // Pricing/add/delete belongs to manager, accountant and storekeeper

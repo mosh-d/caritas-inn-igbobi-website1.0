@@ -10,7 +10,7 @@ import TransactionReceiptModal from "../components/shared/TransactionReceiptModa
 import PrintReceiptModal from "../components/shared/PrintReceiptModal";
 import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { btn, field, table } from "../components/shared/ui";
-import { formatDateTime } from "../utils/report-format";
+import { formatDateTime, money } from "../utils/report-format";
 import { settlementByCharge } from "../components/shared/folioCharges";
 import NonGuestCreditsPanel from "../components/shared/NonGuestCreditsPanel";
 import { creditsForFolio } from "../components/shared/nonGuestCredits";
@@ -27,8 +27,6 @@ import {
   fetchPendingNonGuestCredits,
   applyNonGuestCredit,
 } from "../utils/non-guest-folios-api";
-
-const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 const emptyRow = { reference_id: "", laundry_service_type: "wash_and_iron", quantity: 1 };
 const emptyNewFolio = { guest_name: "", guest_phone: "", bill_no: "", rows: [{ ...emptyRow }] };

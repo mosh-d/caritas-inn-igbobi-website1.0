@@ -1,5 +1,5 @@
-// Shared formatting helpers used across the report tabs in
-// AdminReports.jsx — kept in one place so every report formats identically.
+// Shared formatting helpers - every admin page formats money, dates and
+// payment methods through these, so they read the same everywhere.
 
 export const money = (v) =>
   `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -25,6 +25,10 @@ export const formatDate = (d) =>
 //
 // Reports build comma-joined lists of methods ("cash, pos"), so each value is
 // handled in turn.
+// The methods staff can take a payment in. 'ota' is deliberately absent:
+// only an OTA settlement records it (the server refuses it from staff too).
+export const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
+
 const PAYMENT_METHOD_LABELS = {
   ota: "OTA",
   pos: "POS",

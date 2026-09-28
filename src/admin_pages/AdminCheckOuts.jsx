@@ -12,8 +12,7 @@ import { adminTodayISO, hasPassedNoonCutoff } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
 import DateInput from "../components/shared/DateInput";
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+import { money, formatDate } from "../utils/report-format";
 const todayISO = () => adminTodayISO();
 // Whether this reservation's scheduled checkout has actually become due
 // (noon Lagos on check_out) — the date picker above can be browsed to a

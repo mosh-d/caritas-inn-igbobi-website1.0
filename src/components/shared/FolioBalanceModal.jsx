@@ -4,10 +4,8 @@ import StatusBadge from "./StatusBadge";
 import PaymentSplitRows from "./PaymentSplitRows";
 import AutoGrowTextarea from "./AutoGrowTextarea";
 import { chargeTypeLabel, settlementByCharge } from "./folioCharges";
-import { formatDateTime } from "../../utils/report-format";
+import { formatDateTime, money } from "../../utils/report-format";
 import { btn, field } from "./ui";
-
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 // Compact — a balance summary + payment form, not the full Folio Detail
 // experience (no tax/discount, refunds, or closing here; that stays

@@ -17,7 +17,7 @@ import AutoGrowTextarea from "../components/shared/AutoGrowTextarea";
 import { canRefund, getStoredStaffRole } from "../utils/auth";
 import { markOtaSettlementPaid, createOtaSettlement, updateOtaSettlement, previewOtaAmount } from "../utils/ota-api";
 import { fetchInHouse } from "../utils/front-office-api";
-import { formatPaymentMethod } from "../utils/report-format";
+import { formatPaymentMethod, money, formatDate, PAYMENT_METHODS } from "../utils/report-format";
 import DateInput from "../components/shared/DateInput";
 import {
   fetchFolios,
@@ -50,7 +50,6 @@ const allowedChargeTypesForRole = (role) => {
   if (role === "waitron") return [];
   return CHARGE_TYPES;
 };
-const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 
 // Both tax and discount can be either a percentage of the charge amount or
 // a flat figure, picked via tax_mode/discount_mode.
@@ -67,9 +66,6 @@ const emptyPaymentForm = {
   tax_mode: "fixed", tax: "", discount_mode: "percentage", discount: "",
 };
 const emptyRefundForm = { amount: "", payment_method: "transfer", receipt_number: "", notes: "" };
-
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "—";
 
 // id set means the form is adjusting that settlement's nights rather than
 // adding a range. touched means someone has actually moved the nights, which

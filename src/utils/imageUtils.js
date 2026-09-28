@@ -14,8 +14,6 @@ export const getOptimizedImageProps = (src, alt, { className = '', sizes = '100v
     console.warn('Image is missing alt text:', src);
   }
 
-  // Check if the image is from an external source
-  const isExternal = src.startsWith('http');
   
   // For local images, you could add WebP conversion logic here
   // For now, we'll just use the original source

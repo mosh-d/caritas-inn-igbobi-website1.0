@@ -10,11 +10,7 @@ import { fetchAlerts } from "../utils/alerts-api";
 import { markNoShow } from "../utils/reservations-pms-api";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { MotionDiv, tabEnter } from "../components/shared/motion";
-
-const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
-
-const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+import { money, formatDate } from "../utils/report-format";
 
 const daysAgo = (date) => {
   const diff = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);

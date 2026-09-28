@@ -17,7 +17,7 @@ import OrderItemRows from "../components/shared/OrderItemRows";
 import { btn, field, table } from "../components/shared/ui";
 import { getStoredStaffRole } from "../utils/auth";
 import { fetchFoodItems, fetchDrinkItems } from "../utils/menu-api";
-import { formatPaymentMethod, formatDateTime } from "../utils/report-format";
+import { formatPaymentMethod, formatDateTime, money } from "../utils/report-format";
 import {
   fetchNonGuestFolios,
   fetchNonGuestFolioById,
@@ -39,8 +39,6 @@ const emptyRow = { item_kind: "food", reference_id: "", quantity: "1", is_comple
 const emptyNewFolioForm = { guest_name: "", guest_phone: "", bill_no: "", rows: [{ ...emptyRow }] };
 const emptyItemForm = { ...emptyRow, bill_no: "" };
 const emptyPaymentForm = { splits: [{ amount: "", payment_method: "transfer" }], receipt_number: "", notes: "" };
-
-const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 // Renders as its own page, or as one section of a combined page - see
 // PageOrSection and AdminFnbSales (2026-09-24).

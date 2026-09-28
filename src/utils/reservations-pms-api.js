@@ -1,6 +1,7 @@
 import axios from "axios";
 import { SERVER_BASE_URL } from "./server-config";
 import { getAuthHeaders } from "./auth";
+import { downloadFile } from "./download";
 
 const baseUrl = SERVER_BASE_URL.endsWith("/")
   ? SERVER_BASE_URL.slice(0, -1)
@@ -88,15 +89,6 @@ export const undoExpiredHold = async (id) => {
 // Public — used by the guest-facing booking flow, which has no staff
 // session. Kept for that caller; staff-initiated confirms use
 // confirmReservationById below instead, so they get audit attribution.
-export const confirmReservation = async (reservation_id) => {
-  const response = await axios.post(
-    `${baseUrl}/api/reservations/confirm`,
-    { reservation_id },
-    { headers: { "Content-Type": "application/json" } },
-  );
-  return response.data;
-};
-
 // Staff-initiated confirmation (Admin Bookings, Admin Reservations, walk-in
 // check-in) — guarded, so the resulting audit_logs entry is attributed to
 // the staff member who confirmed it.
@@ -113,18 +105,25 @@ export const emergencyCheckout = async (reservation_id) => {
   const response = await axios.post(
     `${baseUrl}/api/reservations/emergency-checkout`,
     { reservation_id },
-    { headers: { "Content-Type": "application/json" } },
+    // The Authorization header was missing here (2026-09-27 audit), so In-House
+    // "Early Checkout" was refused as unauthenticated.
+    { headers: getAuthHeaders() },
   );
   return response.data;
 };
 
-export const buildReservationsExportUrl = ({ branchId, statuses = [], startDate, endDate }) => {
-  let queryParams = `branch_id=${branchId}`;
-  if (statuses.length > 0) queryParams += `&status=${statuses.join(",")}`;
-  if (startDate) queryParams += `&start_date=${startDate}`;
-  if (endDate) queryParams += `&end_date=${endDate}`;
-  return `${baseUrl}/api/bookings/export?${queryParams}`;
-};
+// Through downloadFile, not a URL navigation - see utils/download.js.
+export const exportReservations = ({ branchId, statuses = [], startDate, endDate }) =>
+  downloadFile(
+    "/api/bookings/export",
+    {
+      branch_id: branchId,
+      ...(statuses.length > 0 && { status: statuses.join(",") }),
+      ...(startDate && { start_date: startDate }),
+      ...(endDate && { end_date: endDate }),
+    },
+    `reservations_${startDate || "all"}_to_${endDate || "all"}.csv`,
+  );
 
 export const checkAvailability = async (branchId, startDate, endDate) => {
   const response = await axios.post(`${baseUrl}/api/reservations/availability`, {

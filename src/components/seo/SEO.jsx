@@ -12,7 +12,6 @@ const SEO = ({
   noindex = false,
 }) => {
   const siteName = "Caritas Inn Igbobi";
-  const siteUrl = "https://igbobi.caritasinn.com";
   const twitterHandle = "@fivecloverhotel";
 
   return (

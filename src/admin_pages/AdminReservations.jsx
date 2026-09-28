@@ -23,7 +23,7 @@ import {
   undoExpiredHold,
   confirmReservationById,
   emergencyCheckout,
-  buildReservationsExportUrl,
+  exportReservations,
   checkInReservation,
   assignRoom,
   checkOutReservation,
@@ -37,13 +37,11 @@ import { fetchInHouse } from "../utils/front-office-api";
 import { canRefund } from "../utils/auth";
 import { fetchRoomDetails } from "../utils/room-data";
 import { hasPassedNoonCutoff, currentBusinessDateISO } from "../utils/date-utils";
-import { formatPaymentMethod } from "../utils/report-format";
+import { formatPaymentMethod, money, formatDate } from "../utils/report-format";
 
 import DateInput from "../components/shared/DateInput";
+import { BRANCH_ID } from "../utils/branch";
 const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
-const BRANCH_ID = 3; // Caritas Inn Igbobi branch ID
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
-const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 // A reservation's check_in/check_out are UTC-midnight markers for a date.
 const isoDateOf = (d) => (d ? new Date(d).toISOString().slice(0, 10) : "");
 const nightsBetween = (fromISO, toISO) =>
@@ -85,6 +83,8 @@ export default function AdminReservationsPage() {
   const [creatingFolio, setCreatingFolio] = useState(false);
 
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   const [exportStartDate, setExportStartDate] = useState("");
   const [exportEndDate, setExportEndDate] = useState("");
   const [exportStatuses, setExportStatuses] = useState({ active: true, confirmed: true });
@@ -776,16 +776,18 @@ export default function AdminReservationsPage() {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const statuses = Object.keys(exportStatuses).filter((s) => exportStatuses[s]);
-    const url = buildReservationsExportUrl({
-      branchId: BRANCH_ID,
-      statuses,
-      startDate: exportStartDate,
-      endDate: exportEndDate,
-    });
-    window.location.href = url;
-    setIsExportOpen(false);
+    try {
+      setExporting(true);
+      setExportError("");
+      await exportReservations({ branchId: BRANCH_ID, statuses, startDate: exportStartDate, endDate: exportEndDate });
+      setIsExportOpen(false);
+    } catch (err) {
+      setExportError(err.response?.data?.message || "Failed to export reservations.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const res = selectedReservation;
@@ -1665,10 +1667,13 @@ export default function AdminReservationsPage() {
           footer={
             <>
               <button onClick={() => setIsExportOpen(false)} className={btn.secondary}>Cancel</button>
-              <button onClick={handleExport} className={btn.primary}>Export CSV</button>
+              <button onClick={handleExport} disabled={exporting} className={btn.primary}>{exporting ? "Exporting..." : "Export CSV"}</button>
             </>
           }
         >
+          {exportError && (
+            <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3 w-full mb-4">{exportError}</p>
+          )}
           <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
             <div className="flex flex-col gap-2">
               <label className={field.label}>Start Date</label>
