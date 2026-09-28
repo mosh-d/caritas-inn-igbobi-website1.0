@@ -14,9 +14,11 @@ export const fetchFolios = async (params = {}) => {
   return response.data;
 };
 
-export const fetchPendingFolios = async () => {
+// params.with_sales ("fnb" | "laundry"): only bills with that kind of sale on them.
+export const fetchPendingFolios = async (params) => {
   const response = await axios.get(`${baseUrl}/api/folios/pending`, {
     headers: getAuthHeaders(),
+    params,
   });
   return response.data;
 };

@@ -44,19 +44,30 @@ export default function AdminLaundryGuestSales({ asSection = false, hideTitle = 
 
   const [items, setItems] = useState([]);
   const [inHouse, setInHouse] = useState([]);
-  // 10 rows a page (2026-09-28), owing first - who to take a payment from.
-  const inHousePage = usePagedRows([...inHouse].sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0)));
   const [loadingGuests, setLoadingGuests] = useState(true);
+  // In-house guests who have actually sent laundry - the list under the form.
+  const [laundryGuests, setLaundryGuests] = useState([]);
+  const [loadingLaundryGuests, setLoadingLaundryGuests] = useState(true);
+  // 10 rows a page (2026-09-28), owing first - who to take a payment from.
+  const inHousePage = usePagedRows([...laundryGuests].sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0)));
   const [order, setOrder] = useState(emptyOrder);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [printReceipt, setPrintReceipt] = useState(null);
 
-  const loadGuests = () =>
+  // The form's guest picker offers every in-house guest; the list below
+  // only those who actually sent laundry (owner, 2026-09-28 - same as the
+  // F&B Guest Sales list).
+  const loadGuests = () => Promise.all([
     fetchInHouse()
       .then((list) => setInHouse(list.filter((r) => r.folio)))
       .catch(() => setInHouse([]))
-      .finally(() => setLoadingGuests(false));
+      .finally(() => setLoadingGuests(false)),
+    fetchInHouse({ with_sales: "laundry" })
+      .then((list) => setLaundryGuests(list.filter((r) => r.folio)))
+      .catch(() => setLaundryGuests([]))
+      .finally(() => setLoadingLaundryGuests(false)),
+  ]);
 
   useEffect(() => {
     if (!canAccess) return;
@@ -338,10 +349,10 @@ export default function AdminLaundryGuestSales({ asSection = false, hideTitle = 
               </tr>
             </thead>
             <tbody>
-              {loadingGuests ? (
+              {loadingLaundryGuests ? (
                 <tr><td colSpan={6} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
-              ) : inHouse.length === 0 ? (
-                <tr><td colSpan={6} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest folios right now.</td></tr>
+              ) : laundryGuests.length === 0 ? (
+                <tr><td colSpan={6} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest has sent laundry yet.</td></tr>
               ) : (
                 // Owing folios first, same as Guest Sales — that's who staff
                 // actually need to take a payment from.

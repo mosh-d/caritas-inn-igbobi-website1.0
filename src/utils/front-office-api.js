@@ -22,9 +22,12 @@ export const fetchCheckOutList = async (date) => {
   return response.data;
 };
 
-export const fetchInHouse = async () => {
+// params.with_sales ("fnb" | "laundry"): only guests who bought that kind of
+// thing - the Guest Sales lists. Without it, every in-house guest.
+export const fetchInHouse = async (params) => {
   const response = await axios.get(`${baseUrl}/api/front-office/in-house`, {
     headers: getAuthHeaders(),
+    params,
   });
   return response.data;
 };

@@ -73,7 +73,7 @@ export default function NonGuestCreditsPanel({ credits = [], loading = false, on
                 <tr className={table.headRow}>
                   <th className={`${table.th} ${table.stickyTh}`}>Customer</th>
                   <th className={table.th}>From</th>
-                  <th className={table.th}>Sold As</th>
+                  <th className={table.th}>Type</th>
                   <th className={table.th}>Date &amp; Time</th>
                   <th className={table.th}>Amount</th>
                   <th className={table.th}>Reference</th>

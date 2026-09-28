@@ -38,7 +38,10 @@ import GuestName from "../components/shared/GuestName";
 import { withGuestTags } from "../utils/guest-tags";
 import Pagination from "../components/shared/Pagination";
 
-const CHARGE_TYPES = ["room_charge", "laundry_charge", "penalty", "adjustment", "correction"];
+// No laundry: it is posted from Laundry Sales, a garment at a time and
+// priced from the laundry list, and the server refuses a laundry charge
+// with no garment (owner, 2026-09-28).
+const CHARGE_TYPES = ["room_charge", "penalty", "adjustment", "correction"];
 
 // Food/drink moved to the dedicated Guest Sales page (AdminGuestSales.jsx —
 // a guest picker plus the printed receipt, instead of hunting for a folio

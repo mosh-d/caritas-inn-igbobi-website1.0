@@ -48,6 +48,9 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
   const [drinkItems, setDrinkItems] = useState([]);
   const [inHouse, setInHouse] = useState([]);
   const [loadingGuests, setLoadingGuests] = useState(true);
+  // In-house guests who have actually ordered F&B - the list under the form.
+  const [fnbGuests, setFnbGuests] = useState([]);
+  const [loadingFnbGuests, setLoadingFnbGuests] = useState(true);
   // Folios for a guest who has already checked out but still owes F&B — a
   // checked-out reservation drops off fetchInHouse() immediately (it's
   // scoped to currently-active stays), but the backend deliberately leaves
@@ -63,22 +66,36 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
   const [folioTab, setFolioTab] = useState("in-house");
   // 10 rows a page (2026-09-28). Owing first, highest balance first - who
   // staff need to take a payment from; the most recently checked out first.
-  const inHousePage = usePagedRows([...inHouse].sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0)));
+  const inHousePage = usePagedRows([...fnbGuests].sort((a, b) => Number(b.folio?.balance || 0) - Number(a.folio?.balance || 0)));
   const checkedOutPage = usePagedRows(
     [...checkedOutFolios].sort((a, b) => new Date(b.reservation?.actual_check_out || 0) - new Date(a.reservation?.actual_check_out || 0)),
   );
+  // The order form's guest picker offers every in-house guest - a first
+  // order has to be postable. The lists underneath show only guests who
+  // actually ordered F&B (owner, 2026-09-28): every owing guest in the
+  // house, most of whom never bought a thing at the bar, confused waitrons.
+  // Reloaded after an order or a payment, so a first order puts a guest on
+  // the list and a settled bill leaves Checked-Out (Owing).
+  const loadGuests = () => Promise.all([
+    fetchInHouse()
+      .then((list) => setInHouse(list.filter((r) => r.folio)))
+      .catch(() => setInHouse([]))
+      .finally(() => setLoadingGuests(false)),
+    fetchInHouse({ with_sales: "fnb" })
+      .then((list) => setFnbGuests(list.filter((r) => r.folio)))
+      .catch(() => setFnbGuests([]))
+      .finally(() => setLoadingFnbGuests(false)),
+    fetchPendingFolios({ with_sales: "fnb" })
+      .then((list) => setCheckedOutFolios((list || []).filter((f) => f.reservation?.actual_check_out)))
+      .catch(() => setCheckedOutFolios([]))
+      .finally(() => setLoadingCheckedOut(false)),
+  ]);
+
   useEffect(() => {
     if (!canAccess) return;
     fetchFoodItems().then(setFoodItems).catch(() => {});
     fetchDrinkItems().then(setDrinkItems).catch(() => {});
-    fetchInHouse()
-      .then((list) => setInHouse(list.filter((r) => r.folio)))
-      .catch(() => setInHouse([]))
-      .finally(() => setLoadingGuests(false));
-    fetchPendingFolios()
-      .then((list) => setCheckedOutFolios((list || []).filter((f) => f.reservation?.actual_check_out)))
-      .catch(() => setCheckedOutFolios([]))
-      .finally(() => setLoadingCheckedOut(false));
+    loadGuests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -210,6 +227,7 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
       if (String(selectedFolioMeta?.folioId) === String(selectedGuest.folio.id)) {
         await loadFolioDetail(selectedGuest.folio.id);
       }
+      await loadGuests();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to post the order.");
     } finally {
@@ -232,6 +250,7 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
       });
       setPaymentForm(emptyPaymentForm);
       await loadFolioDetail(folioDetail.id);
+      await loadGuests();
       setTransactionReceipt({
         title: "Payment Recorded",
         items: result.payments.map((p) => ({ reference: p.payment_reference, amount: money(p.amount), method: p.payment_method })),
@@ -360,10 +379,10 @@ export default function AdminGuestSalesPage({ asSection = false, hideTitle = fal
                 </tr>
               </thead>
               <tbody>
-                {loadingGuests ? (
+                {loadingFnbGuests ? (
                   <tr><td colSpan={6} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
-                ) : inHouse.length === 0 ? (
-                  <tr><td colSpan={6} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest folios right now.</td></tr>
+                ) : fnbGuests.length === 0 ? (
+                  <tr><td colSpan={6} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No in-house guest has ordered F&amp;B yet.</td></tr>
                 ) : (
                   // Owing folios first (highest balance first) — that's who
                   // staff actually need to chase down and take a payment
