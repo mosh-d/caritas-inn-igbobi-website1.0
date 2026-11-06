@@ -422,7 +422,7 @@ export default function BookingConfirmationPage() {
                   </div>
 
                   <div className="flex flex-row max-sm:flex-col gap-[2.4rem]">
-                    <div className="flex flex-col w-[50%] min-w-[16rem] gap-[.8rem]">
+                    <div className="flex flex-col w-[50%] max-sm:w-full min-w-[16rem] gap-[.8rem]">
                       <label
                         htmlFor="room-type"
                         className="text-lg font-semibold text-[color:var(--text-color)]"
@@ -459,7 +459,7 @@ export default function BookingConfirmationPage() {
                       )}
                     </div>
 
-                    <div className="flex flex-col w-[50%] gap-[.8rem]">
+                    <div className="flex flex-col w-[50%] max-sm:w-full gap-[.8rem]">
                       <label
                         htmlFor="number-of-rooms"
                         className="text-lg font-semibold text-[color:var(--text-color)]"

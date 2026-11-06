@@ -87,7 +87,7 @@ export default function MainNavBar() {
             </nav>
 
             {/* Logo - Centered */}
-            <div className="w-32 md:w-48 flex-shrink-0">
+            <div className="w-[12rem] flex-shrink-0">
               <NavLink to="/">
                 <img
                   src={logo}
