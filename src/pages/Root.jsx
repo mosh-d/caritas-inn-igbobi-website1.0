@@ -122,9 +122,10 @@ export default function RootLayout() {
   };
 
   // Function to fetch available rooms
-  const fetchAvailableRooms = async (checkIn, checkOut) => {
+  // quiet: a live refresh (below) - the dropdowns stay usable meanwhile.
+  const fetchAvailableRooms = async (checkIn, checkOut, { quiet = false } = {}) => {
     try {
-      setIsLoadingRooms(true);
+      if (!quiet) setIsLoadingRooms(true);
       // Ensure API_BASE_URL doesn't end with a slash to prevent double slashes
       const baseUrl = API_BASE_URL.endsWith("/")
         ? API_BASE_URL.slice(0, -1)
@@ -136,14 +137,16 @@ export default function RootLayout() {
       });
       const data = response.data;
       if (data?.room_types?.length) {
-        setRoomTypes(data.room_types);
+        // Only when something changed: a re-render would close a dropdown
+        // the guest has open.
+        setRoomTypes((prev) => (JSON.stringify(prev) === JSON.stringify(data.room_types) ? prev : data.room_types));
 
         // Update room prices — includes breakfast (see calculateTotalPayment)
         const prices = {};
         data.room_types.forEach((room) => {
           prices[room.room_type_name] = Number(room.base_rate || 0) + Number(room.breakfast_rate || 0);
         });
-        setRoomPrices(prices);
+        setRoomPrices((prev) => (JSON.stringify(prev) === JSON.stringify(prices) ? prev : prices));
 
         // Update current room type if it's no longer available
         const chosenType = roomTypeRef.current;
@@ -160,7 +163,7 @@ export default function RootLayout() {
       console.error("Error fetching room details:", error);
       throw error;
     } finally {
-      setIsLoadingRooms(false);
+      if (!quiet) setIsLoadingRooms(false);
     }
   };
 
@@ -176,13 +179,25 @@ export default function RootLayout() {
     }
   }, [checkInDate, checkOutDate, branchId]);
 
-  // WebSocket handler - refetch data when rooms are updated
+  // Live availability (owner, 2026-11-06: the booking dropdowns blinked and
+  // closed by themselves while staff worked in the PMS). Every change at the
+  // branch announces rooms_updated - a walk-in alone four times - and each
+  // one used to refetch several times over with the dropdowns disabled. Now
+  // a burst of announcements is one quiet refetch, 0.6s after the last:
+  // nothing is disabled, and nothing re-renders unless the rooms on offer
+  // actually changed.
+  const fetchRoomsRef = useRef(fetchAvailableRooms);
+  useEffect(() => {
+    fetchRoomsRef.current = fetchAvailableRooms;
+  });
+  const liveRefreshTimerRef = useRef(null);
   const handleRoomsUpdated = useCallback(() => {
-    console.log('🔄 [Root] Refreshing room data due to WebSocket update...');
-    if (checkInDate && checkOutDate) {
-      fetchAvailableRooms(checkInDate, checkOutDate);
-    }
-  }, [checkInDate, checkOutDate]);
+    clearTimeout(liveRefreshTimerRef.current);
+    liveRefreshTimerRef.current = setTimeout(() => {
+      fetchRoomsRef.current(undefined, undefined, { quiet: true }).catch(() => {});
+    }, 600);
+  }, []);
+  useEffect(() => () => clearTimeout(liveRefreshTimerRef.current), []);
 
   // Subscribe to WebSocket updates
   const { subscribe } = useWebSocketContext();

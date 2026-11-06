@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import Button from "../components/shared/Button";
 import CustomInput from "../components/shared/CustomInput";
@@ -9,7 +9,6 @@ import Footer from "../components/shared/Footer";
 import { createReservation, fetchBlockedDates } from "../utils/booking-api";
 import { localTodayISO } from "../utils/date-utils";
 import { toast } from "react-toastify";
-import { useWebSocketContext } from "../context/WebSocketContext";
 import { suggestEmail } from "../utils/email-suggest";
 
 // Define the context type (optional, for TypeScript; can omit if not using TS)
@@ -46,20 +45,9 @@ export default function BookingConfirmationPage() {
     fetchAvailableRooms, // Function to refresh room availability
   } = useSharedContext();
 
-  // WebSocket: live room count updates with delayed safety fetches
-  const handleRoomsUpdated = useCallback(() => {
-    console.log('🔄 [BookingConfirmation] WebSocket update - refreshing room availability...');
-    fetchAvailableRooms(checkInDate, checkOutDate);
-    setTimeout(() => fetchAvailableRooms(checkInDate, checkOutDate), 2000);
-    setTimeout(() => fetchAvailableRooms(checkInDate, checkOutDate), 5000);
-    setTimeout(() => fetchAvailableRooms(checkInDate, checkOutDate), 10000);
-  }, [fetchAvailableRooms, checkInDate, checkOutDate]);
-
-  const { subscribe } = useWebSocketContext();
-  useEffect(() => {
-    const unsubscribe = subscribe(handleRoomsUpdated);
-    return unsubscribe;
-  }, [handleRoomsUpdated, subscribe]);
+  // Live room counts come from Root's one quiet refresh (2026-11-06): this
+  // page's own refetches - four per announcement, each disabling the
+  // dropdowns - made them blink and close while a guest was choosing.
 
   // Get the currently selected room details
   const selectedRoom = roomTypes?.find(
