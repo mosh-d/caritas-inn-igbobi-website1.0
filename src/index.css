@@ -3,6 +3,49 @@
 
 /* Adding tailwind */
 @import "tailwindcss";
+/* ===================================
+   READABLE TYPE (owner, 2026-11-06: "text must be legible enough")
+   ===================================
+   Every size is a fraction of the root (design-system.css), and the root
+   shrinks with the screen (to 8px on a phone) - so text-lg came out at 9px on
+   a phone, and form fields at 8-11px, which made iPhone Safari zoom in on
+   every field. Each Tailwind size keeps its place in the scale but never
+   drops below a readable minimum, on any screen; a large screen still scales
+   up. The same scale as the group website and the PMS - pick sizes from it
+   (text-sm ... text-6xl), never text-[..px] or a smaller rem by hand. */
+@theme {
+  --text-xs: max(0.75rem, 11px);
+  --text-sm: max(0.875rem, 12px);
+  --text-base: max(1rem, 13px);
+  --text-lg: max(1.125rem, 14px);
+  --text-xl: max(1.25rem, 15px);
+  --text-2xl: max(1.5rem, 16px);
+  --text-3xl: max(1.875rem, 18px);
+  --text-4xl: max(2.25rem, 20px);
+  --text-5xl: max(3rem, 24px);
+  --text-6xl: max(3.75rem, 28px);
+}
+
+/* Text with no size of its own reads at the scale's body size. */
+body {
+  font-size: var(--text-xl);
+}
+
+/* Form fields on a phone or a touch screen: never under 16px - iPhone Safari
+   zooms the page in on any field smaller than that. In the base layer on
+   purpose: an !important there outranks a field's own size class, even an
+   important one (text-lg!) - Tailwind's utilities layer comes later, and for
+   !important the earlier layer wins. */
+@layer base {
+  @media (max-width: 48em), (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    select,
+    textarea {
+      font-size: max(16px, 1em) !important;
+    }
+  }
+}
+
 
 /* Additional app-wide styles go here */
 

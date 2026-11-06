@@ -351,7 +351,7 @@ export default function BookingConfirmationPage() {
                     Personal Information
                   </h2>
 
-                  <div className="flex w-full gap-[2.4rem]">
+                  <div className="flex max-sm:flex-col w-full gap-[2.4rem]">
                     <CustomInput
                       variant="default"
                       type="text"
@@ -377,7 +377,7 @@ export default function BookingConfirmationPage() {
                     </CustomInput>
                   </div>
 
-                  <div className="flex flex-row gap-[2.4rem]">
+                  <div className="flex flex-row max-sm:flex-col gap-[2.4rem]">
                     <div className="flex w-full flex-col gap-[0.6rem]">
                       <CustomInput
                         variant="default"
@@ -421,7 +421,7 @@ export default function BookingConfirmationPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-row gap-[2.4rem]">
+                  <div className="flex flex-row max-sm:flex-col gap-[2.4rem]">
                     <div className="flex flex-col w-[50%] min-w-[16rem] gap-[.8rem]">
                       <label
                         htmlFor="room-type"
@@ -517,7 +517,7 @@ export default function BookingConfirmationPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-row gap-[2.4rem]">
+                  <div className="flex flex-row max-sm:flex-col gap-[2.4rem]">
                     <DatePicker
                       label="Check in"
                       value={checkInDate}
